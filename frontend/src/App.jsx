@@ -8,6 +8,7 @@ import HighlightsPage from './pages/HighlightsPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
+import AuthScreen from './components/Auth/AuthScreen';
 import ImportModal from './components/PlaylistModal/ImportModal';
 import { useUserStore } from './stores/useUserStore';
 import { usePlaylistStore } from './stores/usePlaylistStore';
@@ -46,18 +47,16 @@ function App() {
         );
     }
 
-    if (!isAuthenticated) {
-        return (
-            <>
-                <LandingPage />
-                <Toaster position="top-right" toastOptions={toasterStyle} />
-            </>
-        );
-    }
-
     return (
         <BrowserRouter>
-            <div className="flex h-screen overflow-hidden bg-background relative pt-safe">
+            {!isAuthenticated ? (
+                <Routes>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/login" element={<AuthScreen />} />
+                    <Route path="*" element={<LandingPage />} />
+                </Routes>
+            ) : (
+                <div className="flex h-screen overflow-hidden bg-background relative pt-safe">
                 {/* Desktop Sidebar (hidden on mobile) */}
                 <div className="hidden md:flex flex-shrink-0 h-full">
                     <Sidebar onImportClick={() => setShowImport(true)} />
@@ -95,11 +94,11 @@ function App() {
                 {/* Mobile Bottom Navigation (hidden on desktop) */}
                 <MobileBottomNav />
 
-                {/* OVERLAYS GLOBAIS (Não podem estar presos no z-index do main) */}
                 {currentStream && <VideoPlayer />}
                 <ImportModal isOpen={showImport} onClose={() => setShowImport(false)} />
                 <MediaDetailModal />
             </div>
+            )}
             <Toaster position="top-right" toastOptions={toasterStyle} />
         </BrowserRouter>
     );
