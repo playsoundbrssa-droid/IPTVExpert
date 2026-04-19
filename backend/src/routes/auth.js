@@ -8,6 +8,7 @@ const router = express.Router();
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/google', authController.googleLogin);
+router.post('/google-supabase', authController.googleSupabaseLogin);
 
 // Protected routes
 router.get('/me', auth, authController.getProfile);

@@ -137,6 +137,55 @@ exports.googleLogin = async (req, res) => {
     }
 };
 
+// POST /api/auth/google-supabase
+exports.googleSupabaseLogin = async (req, res) => {
+    try {
+        const { user: sbUser, access_token } = req.body;
+
+        if (!sbUser || !sbUser.email) {
+            return res.status(400).json({ message: 'Dados do usuário Supabase inválidos.' });
+        }
+
+        const email = sbUser.email;
+        const name = sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email.split('@')[0];
+        const picture = sbUser.user_metadata?.avatar_url || sbUser.user_metadata?.picture;
+        const googleId = sbUser.identities?.find(i => i.provider === 'google')?.id || sbUser.id;
+
+        // Check if user exists by googleId or email
+        let user = await User.findOne({ where: { googleId } });
+
+        if (!user) {
+            user = await User.findOne({ where: { email } });
+            if (user) {
+                // Vincular Google ID à conta existente
+                await User.update({ googleId, avatar: picture || user.avatar }, { where: { id: user.id } });
+            } else {
+                // Create new user
+                user = await User.create({
+                    name,
+                    email,
+                    googleId,
+                    avatar: picture,
+                    password: null
+                });
+            }
+        } else if (picture && picture !== user.avatar) {
+            // Atualizar avatar se mudou
+            await User.update({ avatar: picture }, { where: { id: user.id } });
+        }
+
+        if (!user.isActive) {
+            return res.status(403).json({ message: 'Conta desativada. Contate o administrador.' });
+        }
+
+        const token = generateToken(user);
+        res.json({ token, user: sanitizeUser(user) });
+    } catch (error) {
+        console.error('[AUTH] Erro no login Supabase:', error);
+        res.status(500).json({ message: 'Erro ao sincronizar login com o servidor.' });
+    }
+};
+
 // GET /api/auth/me (protected)
 exports.getProfile = async (req, res) => {
     try {

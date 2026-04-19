@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useUserStore } from '../../stores/useUserStore';
 import toast from 'react-hot-toast';
 import { FiTv, FiMail, FiLock, FiUser } from 'react-icons/fi';
+import { supabase } from '../../services/supabase';
 
 export default function AuthScreen({ isModal = false }) {
     const [mode, setMode] = useState('login'); // 'login' or 'register'
@@ -32,38 +33,22 @@ export default function AuthScreen({ isModal = false }) {
     };
 
     const handleGoogleLogin = async () => {
-        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-        if (!googleClientId || googleClientId === 'SEU_GOOGLE_CLIENT_ID_AQUI') {
-            toast.success('Modo Demo Ativado');
-            let res = await login('demo@google.com', 'demo123');
-            if (!res?.success) {
-                await register('Usuário Google', 'demo@google.com', 'demo123');
-                res = await login('demo@google.com', 'demo123');
-            }
-            return;
-        }
-
-        if (!window.google?.accounts?.id) {
-            toast.error('Google SDK não carregado.');
-            return;
-        }
-
-        window.google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: async (response) => {
-                console.log('[DEBUG] Token recebido do Google. Validando no servidor...');
-                const result = await googleLogin(response.credential);
-                if (result.success) {
-                    toast.success('Login realizado!');
-                } else {
-                    console.error('[DEBUG] Erro no servidor:', result.message);
-                    toast.error(result.message);
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
                 }
-            }
-        });
+            });
 
-        window.google.accounts.id.prompt();
+            if (error) throw error;
+            
+            // Note: This will redirect the user away from the app.
+            // The return handling should be done in App.jsx or a dedicated callback page.
+        } catch (error) {
+            console.error('Erro ao iniciar login Google:', error.message);
+            toast.error('Erro ao conectar com Google via Supabase.');
+        }
     };
 
     return (
