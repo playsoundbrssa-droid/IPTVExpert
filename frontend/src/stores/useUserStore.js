@@ -14,16 +14,29 @@ export const useUserStore = create((set, get) => ({
         const token = localStorage.getItem('token');
         
         // 2. Check Supabase session (after redirect)
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AUTH] Verificando sessão Supabase...');
+        const { data: { session }, error: sbError } = await supabase.auth.getSession();
+        
+        if (sbError) console.error('[AUTH] Erro ao buscar sessão Supabase:', sbError);
 
-        if (session && !token) {
-            // User just returned from Google OAuth redirect on Supabase
-            console.log('[AUTH] Sessão Supabase detectada. Vinculando...');
-            const result = await get().googleSupabaseLogin(session);
-            if (result.success) return;
+        if (session) {
+            console.log('[AUTH] Sessão Supabase ativa encontrada para:', session.user?.email);
+            if (!token) {
+                console.log('[AUTH] Token local ausente. Sincronizando com backend...');
+                const result = await get().googleSupabaseLogin(session);
+                if (result.success) {
+                    console.log('[AUTH] Sincronização Supabase realizada com sucesso.');
+                    return;
+                }
+            }
+        } else {
+            console.log('[AUTH] Nenhuma sessão Supabase ativa.');
         }
 
-        if (!token) return;
+        if (!token) {
+            console.log('[AUTH] Nenhum token local ou sessão Supabase. Usuário não autenticado.');
+            return;
+        }
 
         try {
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -84,18 +97,23 @@ export const useUserStore = create((set, get) => ({
     // Google login (from Supabase Session)
     googleSupabaseLogin: async (session) => {
         set({ loading: true });
+        console.log('[AUTH] Iniciando googleSupabaseLogin...');
         try {
             // Envia os dados do usuário do Supabase para o nosso backend criar/vincular a conta
-            const { data } = await api.post('/auth/google-supabase', { 
+            const response = await api.post('/auth/google-supabase', { 
                 user: session.user,
                 access_token: session.access_token 
             });
+            
+            const { data } = response;
+            console.log('[AUTH] Backend respondeu com sucesso:', data.user?.email);
             
             localStorage.setItem('token', data.token);
             api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
             set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
             return { success: true };
         } catch (error) {
+            console.error('[AUTH] Erro na sincronização backend:', error.response?.data || error.message);
             set({ loading: false });
             return { success: false, message: error.response?.data?.message || 'Erro ao sincronizar com Supabase.' };
         }
