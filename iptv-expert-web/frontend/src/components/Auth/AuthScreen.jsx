@@ -34,34 +34,30 @@ export default function AuthScreen({ isModal = false }) {
     const handleGoogleLogin = async () => {
         const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-        // Modo Demonstração (Mock Fallback) se não houver chave real configurada
         if (!googleClientId || googleClientId === 'SEU_GOOGLE_CLIENT_ID_AQUI') {
-            toast.success('Modo Demo: Autenticando com Google Fake...');
-            // Tenta logar com email fake, se não existir, registra e loga.
+            toast.success('Modo Demo Ativado');
             let res = await login('demo@google.com', 'demo123');
             if (!res?.success) {
                 await register('Usuário Google', 'demo@google.com', 'demo123');
                 res = await login('demo@google.com', 'demo123');
             }
-            if (res?.success) {
-                toast.success('Login com Google simulado!');
-            }
             return;
         }
 
-        // Load Google Identity Services
         if (!window.google?.accounts?.id) {
-            toast.error('Google Identity Services não carregou. Verifique sua conexão.');
+            toast.error('Google SDK não carregado.');
             return;
         }
 
         window.google.accounts.id.initialize({
             client_id: googleClientId,
             callback: async (response) => {
+                console.log('[DEBUG] Token recebido do Google. Validando no servidor...');
                 const result = await googleLogin(response.credential);
                 if (result.success) {
-                    toast.success('Login com Google realizado!');
+                    toast.success('Login realizado!');
                 } else {
+                    console.error('[DEBUG] Erro no servidor:', result.message);
                     toast.error(result.message);
                 }
             }
