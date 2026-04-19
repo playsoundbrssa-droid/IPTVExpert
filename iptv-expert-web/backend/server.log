@@ -54,3 +54,4 @@
 [SERVER] Rodando em http://localhost:5000
 [DEBUG] Google Client ID no Servidor: 47965986459-cvl41sa4n07e4e8dk19e0rqki7qlefma.apps.googleusercontent.com
 [DEBUG] Payload recebido do Google para: playsoundbrssa@gmail.com
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
