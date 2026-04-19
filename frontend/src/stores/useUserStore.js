@@ -12,12 +12,30 @@ export const useUserStore = create((set, get) => ({
     init: async () => {
         const token = localStorage.getItem('token');
         
-        // 1. Ouvinte para mudanças de autenticação do Supabase (Redirect flow)
+        // 1. TENTA CAPTURAR O TOKEN DIRETAMENTE DA URL (Fallback de emergência)
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+            console.log('[AUTH] Token detectado na URL! Processando hash manualmente...');
+        }
+
+        // 2. Tenta pegar a sessão atual imediatamente
+        console.log('[AUTH] Verificando sessão inicial do Supabase...');
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+            console.error('[AUTH] Erro ao buscar sessão do Supabase:', sessionError.message);
+        }
+
+        if (initialSession && !get().isAuthenticated) {
+            console.log('[AUTH] Sessão inicial detectada. Sincronizando com backend...');
+            await get().googleSupabaseLogin(initialSession);
+        }
+
+        // 3. Ouvinte para mudanças de autenticação do Supabase (Redirect flow)
         supabase.auth.onAuthStateChange(async (event, session) => {
             console.log(`[AUTH] Evento Supabase: ${event}`);
             
-            if (session && !get().isAuthenticated) {
-                console.log('[AUTH] Sessão Supabase detectada via evento. Sincronizando...');
+            if (event === 'SIGNED_IN' && session && !get().isAuthenticated) {
+                console.log('[AUTH] Login detectado via evento. Sincronizando...');
                 await get().googleSupabaseLogin(session);
             }
         });
