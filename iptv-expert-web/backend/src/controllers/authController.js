@@ -94,12 +94,14 @@ exports.googleLogin = async (req, res) => {
         }
 
         // Verify the Google token
+        console.log('[DEBUG] Google Client ID no Servidor:', process.env.GOOGLE_CLIENT_ID);
         const ticket = await googleClient.verifyIdToken({
             idToken: credential,
             audience: process.env.GOOGLE_CLIENT_ID
         });
 
         const payload = ticket.getPayload();
+        console.log('[DEBUG] Payload recebido do Google para:', payload.email);
         const { sub: googleId, email, name, picture } = payload;
 
         // Check if user exists

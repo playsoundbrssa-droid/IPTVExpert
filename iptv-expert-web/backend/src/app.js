@@ -63,21 +63,22 @@ app.use((err, req, res, next) => {
     });
 });
 
+const { initializeTables } = require('./config/database');
+
 // Initialize database and start server
 const startServer = async () => {
     try {
-        console.log('[DB] Conexão SQLite estabelecida.');
-
+        // Criar tabelas se não existirem
+        await initializeTables();
         // Seed admin user on first run
         const adminEmail = process.env.ADMIN_EMAIL || 'admin@iptvexpert.com';
         const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
         
-        // better-sqlite3 calls are synchronous
-        const existingAdmin = User.findOne({ where: { email: adminEmail } });
+        const existingAdmin = await User.findOne({ where: { email: adminEmail } });
 
         if (!existingAdmin) {
             const hashed = await bcrypt.hash(adminPassword, 12);
-            User.create({
+            await User.create({
                 name: 'Administrador',
                 email: adminEmail,
                 password: hashed,

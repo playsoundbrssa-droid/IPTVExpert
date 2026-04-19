@@ -1,47 +1,56 @@
 const db = require('../config/database');
 
-// Initialize schema
-db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT,
-        role TEXT DEFAULT 'user',
-        googleId TEXT UNIQUE,
-        avatar TEXT,
-        isActive INTEGER DEFAULT 1,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-`);
+// Helper para converter placeholders '?' para '$1, $2...' se for PostgreSQL
+const formatQuery = (text) => {
+    if (!db.isPostgres) return text;
+    let index = 1;
+    return text.replace(/\?/g, () => `$${index++}`);
+};
 
 const User = {
-    findOne: (criteria) => {
-        let query = 'SELECT * FROM users WHERE ';
+    findOne: async (criteria) => {
+        let sql = 'SELECT * FROM users WHERE ';
         const keys = Object.keys(criteria.where);
         const values = Object.values(criteria.where);
         
-        query += keys.map(k => `${k} = ?`).join(' AND ');
+        sql += keys.map(k => `${k} = ?`).join(' AND ');
         
-        const stmt = db.prepare(query);
-        return stmt.get(...values);
+        const res = await db.query(formatQuery(sql), values);
+        if (!res.rows[0]) return null;
+        
+        // Normaliza isactive -> isActive para compatibilidade Postgres
+        const user = res.rows[0];
+        if (user.isactive !== undefined) user.isActive = user.isactive;
+        return user;
     },
 
-    findByPk: (id) => {
-        const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
-        return stmt.get(id);
+    findByPk: async (id) => {
+        const res = await db.query(formatQuery('SELECT * FROM users WHERE id = ?'), [id]);
+        if (!res.rows[0]) return null;
+        
+        const user = res.rows[0];
+        if (user.isactive !== undefined) user.isActive = user.isactive;
+        return user;
     },
 
-    create: (data) => {
+    create: async (data) => {
         const keys = Object.keys(data);
         const placeholders = keys.map(() => '?').join(', ');
         const values = Object.values(data);
         
-        const stmt = db.prepare(`INSERT INTO users (${keys.join(', ')}) VALUES (${placeholders})`);
-        const info = stmt.run(...values);
+        let sql = `INSERT INTO users (${keys.join(', ')}) VALUES (${placeholders}) RETURNING *`;
         
-        return { id: info.lastInsertRowid, ...data };
+        // No SQLite local não tem RETURNING *, então tratamos diferente
+        if (!db.isPostgres) {
+            sql = `INSERT INTO users (${keys.join(', ')}) VALUES (${placeholders})`;
+            const res = await db.query(sql, values);
+            return { id: res.lastInsertId, isActive: 1, ...data };
+        }
+
+        const res = await db.query(formatQuery(sql), values);
+        const user = res.rows[0];
+        if (user.isactive !== undefined) user.isActive = user.isactive;
+        return user;
     },
 
     update: async (data, criteria) => {
@@ -52,35 +61,35 @@ const User = {
         const setClause = setKeys.map(k => `${k} = ?`).join(', ');
         const whereClause = whereKeys.map(k => `${k} = ?`).join(' AND ');
         
-        const stmt = db.prepare(`UPDATE users SET ${setClause}, updatedAt = CURRENT_TIMESTAMP WHERE ${whereClause}`);
-        return stmt.run(...values);
+        const sql = `UPDATE users SET ${setClause}, updatedAt = CURRENT_TIMESTAMP WHERE ${whereClause}`;
+        return await db.query(formatQuery(sql), values);
     },
 
-    findAll: (options = {}) => {
-        let query = 'SELECT * FROM users';
+    findAll: async (options = {}) => {
+        let sql = 'SELECT * FROM users';
         const params = [];
 
         if (options.where) {
             const keys = Object.keys(options.where);
-            query += ' WHERE ' + keys.map(k => `${k} = ?`).join(' AND ');
+            sql += ' WHERE ' + keys.map(k => `${k} = ?`).join(' AND ');
             params.push(...Object.values(options.where));
         }
 
         if (options.order) {
-            query += ' ORDER BY ' + options.order.map(o => `${o[0]} ${o[1]}`).join(', ');
+            sql += ' ORDER BY ' + options.order.map(o => `${o[0]} ${o[1]}`).join(', ');
         }
 
-        const stmt = db.prepare(query);
-        return stmt.all(...params);
+        const res = await db.query(formatQuery(sql), params);
+        return res.rows;
     },
 
-    destroy: (criteria) => {
+    destroy: async (criteria) => {
         const keys = Object.keys(criteria.where);
         const values = Object.values(criteria.where);
         const whereClause = keys.map(k => `${k} = ?`).join(' AND ');
         
-        const stmt = db.prepare(`DELETE FROM users WHERE ${whereClause}`);
-        return stmt.run(...values);
+        const sql = `DELETE FROM users WHERE ${whereClause}`;
+        return await db.query(formatQuery(sql), values);
     }
 };
 
