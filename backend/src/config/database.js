@@ -7,12 +7,15 @@ let db;
 
 // Se houver uma URL de banco de dados (Produção), usa PostgreSQL
 if (process.env.DATABASE_URL) {
-    db = new Pool({
+    // Configuração robusta de SSL para Supabase no Railway/Render
+    const poolConfig = {
         connectionString: process.env.DATABASE_URL,
         ssl: {
-            rejectUnauthorized: false // Necessário para Supabase/Render
+            rejectUnauthorized: false
         }
-    });
+    };
+
+    db = new Pool(poolConfig);
     console.log('--- [DATABASE] Conectado ao PostgreSQL (Produção) ---');
 } else {
     // Caso contrário, usa SQLite (Desenvolvimento Local)
