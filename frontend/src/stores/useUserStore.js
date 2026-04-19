@@ -10,42 +10,29 @@ export const useUserStore = create((set, get) => ({
 
     // Initialize: check if stored token is still valid
     init: async () => {
-        // 1. Check local storage token (standard flow)
         const token = localStorage.getItem('token');
         
-        // 2. Check Supabase session (after redirect)
-        console.log('[AUTH] Verificando sessão Supabase...');
-        const { data: { session }, error: sbError } = await supabase.auth.getSession();
-        
-        if (sbError) console.error('[AUTH] Erro ao buscar sessão Supabase:', sbError);
-
-        if (session) {
-            console.log('[AUTH] Sessão Supabase ativa encontrada para:', session.user?.email);
-            if (!token) {
-                console.log('[AUTH] Token local ausente. Sincronizando com backend...');
-                const result = await get().googleSupabaseLogin(session);
-                if (result.success) {
-                    console.log('[AUTH] Sincronização Supabase realizada com sucesso.');
-                    return;
-                }
+        // 1. Ouvinte para mudanças de autenticação do Supabase (Redirect flow)
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log(`[AUTH] Evento Supabase: ${event}`);
+            
+            if (session && !get().isAuthenticated) {
+                console.log('[AUTH] Sessão Supabase detectada via evento. Sincronizando...');
+                await get().googleSupabaseLogin(session);
             }
-        } else {
-            console.log('[AUTH] Nenhuma sessão Supabase ativa.');
-        }
+        });
 
-        if (!token) {
-            console.log('[AUTH] Nenhum token local ou sessão Supabase. Usuário não autenticado.');
-            return;
-        }
-
-        try {
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            const { data } = await api.get('/auth/me');
-            set({ user: data.user, token, isAuthenticated: true });
-        } catch {
-            localStorage.removeItem('token');
-            delete api.defaults.headers.common['Authorization'];
-            set({ user: null, token: null, isAuthenticated: false });
+        // 2. Se já tivermos um token local, valida ele
+        if (token) {
+            try {
+                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                const { data } = await api.get('/auth/me');
+                set({ user: data.user, token, isAuthenticated: true });
+            } catch {
+                localStorage.removeItem('token');
+                delete api.defaults.headers.common['Authorization'];
+                set({ user: null, token: null, isAuthenticated: false });
+            }
         }
     },
 
