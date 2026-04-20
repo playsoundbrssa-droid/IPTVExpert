@@ -63,10 +63,11 @@ export default function AuthScreen({ isModal = false }) {
             <div className="glass-panel p-8 rounded-3xl w-[90%] max-w-[380px] animate-fade-in relative z-10 mx-auto">
                 {/* Logo */}
                 <div className="text-center mb-6 flex flex-col items-center justify-center">
-                    <div className="w-24 md:w-32 rounded-xl overflow-hidden flex items-center justify-center mb-1 shadow-lg shadow-neon-purple/20">
-                        <img src="/logo_banner.png" alt="IPTV Expert Logo" className="w-full h-auto object-contain scale-[1.05] rounded-xl" />
+                    <div className="w-14 md:w-16 h-14 md:h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 shadow-lg shadow-primary/20">
+                        <FiTv size={28} className="text-primary" />
                     </div>
-                    <p className="text-gray-500 text-xs font-medium tracking-wider uppercase mt-4">Web Player</p>
+                    <span className="text-xl font-black italic tracking-tighter bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">IPTV EXPERT</span>
+                    <p className="text-gray-500 text-[10px] font-medium tracking-wider uppercase mt-1">Web Player</p>
                 </div>
 
                 {/* Mode tabs */}
@@ -132,7 +133,7 @@ export default function AuthScreen({ isModal = false }) {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="btn-primary w-full py-3 text-lg font-bold rounded-xl flex items-center justify-center gap-2"
+                        className="btn-primary w-full py-3.5 text-base font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
                     >
                         {loading ? (
                             <>
@@ -156,7 +157,7 @@ export default function AuthScreen({ isModal = false }) {
                 {/* Google Login */}
                 <button
                     onClick={handleGoogleLogin}
-                    className="w-full py-3 flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium text-gray-300 hover:text-white transition-all duration-300"
+                    className="w-full py-3.5 flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 rounded-xl font-medium text-gray-300 hover:text-white transition-all duration-300"
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
