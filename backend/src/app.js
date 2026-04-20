@@ -6,8 +6,10 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const dns = require('dns');
 
-// Configure global DNS failover to bypass local ISP blocks
-dns.setServers(['1.1.1.1', '8.8.8.8']);
+// Forçar IPv4 primeiro para evitar erros ENETUNREACH em redes que não suportam IPv6 (comum no Render/Supabase)
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
 dotenv.config();
 
