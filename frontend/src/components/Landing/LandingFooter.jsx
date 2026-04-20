@@ -11,7 +11,7 @@ export default function LandingFooter() {
                             <img
                                 src="/iptv_logo.png"
                                 alt="IPTV Expert"
-                                className="w-10 h-10 rounded-xl object-cover drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]"
+                                className="w-10 h-10 rounded-xl object-cover drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] logo-blend"
                             />
                             <span className="text-base font-black italic tracking-tighter bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
                                 IPTV EXPERT

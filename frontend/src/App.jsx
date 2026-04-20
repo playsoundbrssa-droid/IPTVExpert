@@ -46,7 +46,7 @@ function App() {
                     <img
                         src="/iptv_logo.png"
                         alt="IPTV Expert"
-                        className="relative w-24 h-24 rounded-2xl drop-shadow-[0_0_30px_rgba(168,85,247,0.7)] animate-pulse"
+                        className="relative w-24 h-24 rounded-2xl drop-shadow-[0_0_30px_rgba(168,85,247,0.7)] animate-pulse logo-blend"
                     />
                 </div>
                 <div className="text-primary text-sm font-semibold tracking-widest uppercase opacity-60">Carregando...</div>
@@ -76,7 +76,7 @@ function App() {
                         <img
                             src="/iptv_logo.png"
                             alt="IPTV Expert"
-                            className="w-8 h-8 rounded-xl object-cover drop-shadow-[0_0_6px_rgba(168,85,247,0.5)]"
+                            className="w-8 h-8 rounded-xl object-cover drop-shadow-[0_0_6px_rgba(168,85,247,0.5)] logo-blend"
                         />
                         <h1 className="text-lg font-black bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent italic tracking-tighter">
                             IPTV Expert

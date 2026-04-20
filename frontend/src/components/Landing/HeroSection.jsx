@@ -19,7 +19,7 @@ export default function HeroSection({ onLoginClick }) {
                     <img 
                         src="/iptv_logo.png" 
                         alt="IPTV Expert Logo" 
-                        className="w-full h-auto relative z-10 drop-shadow-[0_0_40px_rgba(168,85,247,0.6)] rounded-3xl" 
+                        className="w-full h-auto relative z-10 drop-shadow-[0_0_40px_rgba(168,85,247,0.6)] rounded-3xl logo-blend" 
                     />
                 </div>
 
