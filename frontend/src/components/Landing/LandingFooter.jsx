@@ -8,10 +8,12 @@ export default function LandingFooter() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-10 md:mb-16">
                     <div className="col-span-2 md:col-span-1">
                         <div className="flex items-center gap-2 mb-4 md:mb-6">
-                            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                                <FiTv size={20} className="text-white" />
-                            </div>
-                            <span className="text-lg font-black italic tracking-tighter bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
+                            <img
+                                src="/iptv_logo.png"
+                                alt="IPTV Expert"
+                                className="w-10 h-10 rounded-xl object-cover drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]"
+                            />
+                            <span className="text-base font-black italic tracking-tighter bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
                                 IPTV EXPERT
                             </span>
                         </div>

@@ -40,8 +40,16 @@ function App() {
 
     if (!ready) {
         return (
-            <div className="h-screen flex items-center justify-center bg-background">
-                <div className="animate-pulse text-primary text-2xl font-black italic tracking-tighter">IPTV EXPERT</div>
+            <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
+                <div className="relative">
+                    <div className="absolute -inset-4 bg-neon-purple/30 blur-3xl rounded-full animate-pulse" />
+                    <img
+                        src="/iptv_logo.png"
+                        alt="IPTV Expert"
+                        className="relative w-24 h-24 rounded-2xl drop-shadow-[0_0_30px_rgba(168,85,247,0.7)] animate-pulse"
+                    />
+                </div>
+                <div className="text-primary text-sm font-semibold tracking-widest uppercase opacity-60">Carregando...</div>
                 <Toaster position="top-right" toastOptions={toasterStyle} />
             </div>
         );
@@ -64,9 +72,16 @@ function App() {
                 
                 {/* Mobile Header (hidden on desktop) */}
                 <header className="md:hidden absolute top-0 left-0 right-0 h-16 bg-[#0A0A0A]/80 backdrop-blur-3xl border-b border-white/5 z-40 flex items-center justify-between px-4 mt-safe">
-                    <h1 className="text-xl font-black bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent italic tracking-tighter">
-                        IPTV Expert
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <img
+                            src="/iptv_logo.png"
+                            alt="IPTV Expert"
+                            className="w-8 h-8 rounded-xl object-cover drop-shadow-[0_0_6px_rgba(168,85,247,0.5)]"
+                        />
+                        <h1 className="text-lg font-black bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent italic tracking-tighter">
+                            IPTV Expert
+                        </h1>
+                    </div>
                     <button 
                         onClick={() => setShowImport(true)}
                         className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95 transition-all text-white"

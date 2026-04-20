@@ -17,10 +17,13 @@ export default function Sidebar({ onImportClick }) {
     return (
         <aside className="w-64 glass-panel flex flex-col h-full border-r border-white/5 z-40 relative">
             <div className="p-6 flex flex-col items-center text-center">
-                <div className="mb-3 w-full flex items-center justify-center">
-                    <div className="w-28 md:w-36 overflow-hidden flex items-center justify-center rounded-xl shadow-lg shadow-black/20">
-                        <img src="/logo_banner.png" alt="IPTV Expert Logo" className="w-full h-auto object-contain scale-[1.02]" />
-                    </div>
+                <div className="mb-3 relative">
+                    <div className="absolute -inset-3 bg-neon-purple/20 blur-2xl rounded-full" />
+                    <img
+                        src="/iptv_logo.png"
+                        alt="IPTV Expert Logo"
+                        className="relative w-20 h-20 rounded-2xl object-cover drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                    />
                 </div>
                 <p className="text-[10px] text-gray-400 font-bold tracking-[0.2em] uppercase">Web Player</p>
             </div>

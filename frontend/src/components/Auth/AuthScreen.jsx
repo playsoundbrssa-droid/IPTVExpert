@@ -63,10 +63,14 @@ export default function AuthScreen({ isModal = false }) {
             <div className="glass-panel p-8 rounded-3xl w-[90%] max-w-[380px] animate-fade-in relative z-10 mx-auto">
                 {/* Logo */}
                 <div className="text-center mb-6 flex flex-col items-center justify-center">
-                    <div className="w-14 md:w-16 h-14 md:h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 shadow-lg shadow-primary/20">
-                        <FiTv size={28} className="text-primary" />
+                    <div className="relative w-24 md:w-28 mb-3">
+                        <div className="absolute -inset-3 bg-neon-purple/30 blur-2xl rounded-full" />
+                        <img
+                            src="/iptv_logo.png"
+                            alt="IPTV Expert Logo"
+                            className="w-full h-auto relative z-10 rounded-2xl drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]"
+                        />
                     </div>
-                    <span className="text-xl font-black italic tracking-tighter bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">IPTV EXPERT</span>
                     <p className="text-gray-500 text-[10px] font-medium tracking-wider uppercase mt-1">Web Player</p>
                 </div>
 

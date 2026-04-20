@@ -11,15 +11,15 @@ export default function HeroSection({ onLoginClick }) {
 
             <div className="container mx-auto relative z-10 flex flex-col items-center text-center">
 
-                {/* Rounded Hero Image (Restored) */}
-                <div className="mb-8 md:mb-12 relative animate-fade-in-up w-full max-w-[260px] md:max-w-[480px]">
+                {/* Main Logo */}
+                <div className="mb-8 md:mb-12 relative animate-fade-in-up w-full max-w-[220px] md:max-w-[320px]">
                     {/* Shadow Glow Background */}
-                    <div className="absolute -inset-4 md:-inset-8 bg-neon-purple/40 blur-3xl rounded-full" />
+                    <div className="absolute -inset-6 bg-neon-purple/30 blur-3xl rounded-full" />
                     
                     <img 
-                        src="/hero_rounded.png" 
-                        alt="IPTV Expert Interface" 
-                        className="w-full h-auto relative z-10 drop-shadow-[0_0_50px_rgba(168,85,247,0.5)] rounded-full border-4 border-white/10" 
+                        src="/iptv_logo.png" 
+                        alt="IPTV Expert Logo" 
+                        className="w-full h-auto relative z-10 drop-shadow-[0_0_40px_rgba(168,85,247,0.6)] rounded-3xl" 
                     />
                 </div>
 
