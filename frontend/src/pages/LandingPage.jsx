@@ -36,8 +36,8 @@ export default function LandingPage() {
             {/* Imagem de Fundo Premium */}
             <div className="absolute inset-0 z-0">
                 <img 
-                    src="/banner_iptv.png" 
-                    className="w-full h-full object-cover opacity-30 scale-105" 
+                    src="/premium_bg.png" 
+                    className="w-full h-full object-cover opacity-20 scale-105" 
                     alt="background" 
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-background/90 to-background z-10" />
