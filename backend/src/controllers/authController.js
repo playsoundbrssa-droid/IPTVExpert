@@ -181,8 +181,12 @@ exports.googleSupabaseLogin = async (req, res) => {
         const token = generateToken(user);
         res.json({ token, user: sanitizeUser(user) });
     } catch (error) {
-        console.error('[AUTH] Erro no login Supabase:', error);
-        res.status(500).json({ message: 'Erro ao sincronizar login com o servidor.' });
+        console.error('[AUTH] Erro no login Supabase:', error.message);
+        if (error.stack) console.error(error.stack);
+        res.status(500).json({ 
+            message: 'Erro ao sincronizar login com o servidor.',
+            detail: error.message 
+        });
     }
 };
 

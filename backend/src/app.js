@@ -13,6 +13,17 @@ dotenv.config();
 
 const User = require('./models/User');
 
+// --- ERROS GLOBAIS (Para logs do terminal) ---
+process.on('unhandledRejection', (reason, promise) => {
+    console.error(' [31m[FATAL] Unhandled Rejection at: [39m', promise, ' [31mreason: [39m', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error(' [31m[FATAL] Uncaught Exception: [39m', err);
+    // Em produção, você pode querer fechar o servidor com calma
+    // process.exit(1); 
+});
+
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const playlistRoutes = require('./routes/playlist');

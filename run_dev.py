@@ -12,8 +12,8 @@ import time
 import threading
 from pathlib import Path
 
-# Caminhos dos projetos
-BASE_DIR = Path("/Users/danilomedeiros/Documents/SITE/iptv-expert-web")
+# Caminhos dos projetos (calculados a partir do local deste script)
+BASE_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = BASE_DIR / "backend"
 FRONTEND_DIR = BASE_DIR / "frontend"
 
