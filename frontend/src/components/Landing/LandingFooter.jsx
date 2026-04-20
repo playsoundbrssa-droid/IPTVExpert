@@ -3,19 +3,22 @@ import { FiTwitter, FiGithub, FiInstagram, FiTv } from 'react-icons/fi';
 
 export default function LandingFooter() {
     return (
-        <footer className="py-16 px-6 border-t border-white/5">
+        <footer className="py-12 md:py-16 px-4 md:px-6 border-t border-white/5">
             <div className="container mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-                    <div className="col-span-1 md:col-span-1">
-                        <div className="flex items-center mb-6 origin-left">
-                            <div className="w-36 md:w-48 overflow-hidden flex items-center justify-center rounded-xl hover:scale-105 transition-all">
-                                <img src="/logo_banner.png" alt="IPTV Expert Logo" className="w-full h-auto object-contain scale-[1.02]" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-10 md:mb-16">
+                    <div className="col-span-2 md:col-span-1">
+                        <div className="flex items-center gap-2 mb-4 md:mb-6">
+                            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                                <FiTv size={20} className="text-white" />
                             </div>
+                            <span className="text-lg font-black italic tracking-tighter bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
+                                IPTV EXPERT
+                            </span>
                         </div>
-                        <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                        <p className="text-gray-500 text-xs md:text-sm leading-relaxed mb-4 md:mb-6">
                             A plataforma definitiva para organizar e assistir seu conteúdo favorito com design e tecnologia de ponta.
                         </p>
-                        <div className="flex gap-4">
+                        <div className="flex gap-3">
                             <a href="#" className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"><FiTwitter /></a>
                             <a href="#" className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"><FiGithub /></a>
                             <a href="#" className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"><FiInstagram /></a>
