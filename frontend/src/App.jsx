@@ -9,7 +9,6 @@ import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
 import AuthScreen from './components/Auth/AuthScreen';
-import ImportModal from './components/PlaylistModal/ImportModal';
 import { useUserStore } from './stores/useUserStore';
 import { usePlaylistStore } from './stores/usePlaylistStore';
 import { useEffect, useState } from 'react';
@@ -28,7 +27,6 @@ function App() {
     const { isAuthenticated, init, user } = useUserStore();
     const { currentStream } = usePlayerStore();
     const { loadFromStorage } = usePlaylistStore();
-    const [showImport, setShowImport] = useState(false);
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
@@ -66,7 +64,7 @@ function App() {
                 <div className="flex h-screen overflow-hidden bg-background relative pt-safe">
                 {/* Desktop Sidebar (hidden on mobile) */}
                 <div className="hidden md:flex flex-shrink-0 h-full">
-                    <Sidebar onImportClick={() => setShowImport(true)} />
+                    <Sidebar />
                 </div>
                 
                 {/* Mobile Header (hidden on desktop) */}
@@ -78,12 +76,6 @@ function App() {
                             className="w-32 h-auto rounded-lg drop-shadow-md"
                         />
                     </div>
-                    <button 
-                        onClick={() => setShowImport(true)}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95 transition-all text-white"
-                    >
-                        <FiPlus size={18} />
-                    </button>
                 </header>
 
                 {/* Main Content Area */}
@@ -106,7 +98,6 @@ function App() {
                 <MobileBottomNav />
 
                 {currentStream && <VideoPlayer />}
-                <ImportModal isOpen={showImport} onClose={() => setShowImport(false)} />
                 <MediaDetailModal />
             </div>
             )}

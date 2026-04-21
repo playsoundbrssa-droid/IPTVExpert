@@ -7,6 +7,8 @@ import { FiUser, FiLogOut, FiSettings, FiGlobe, FiPlayCircle, FiList, FiTrash2, 
 import { applyTheme } from '../hooks/useTheme';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import ImportModal from '../components/PlaylistModal/ImportModal';
+import { FiPlus } from 'react-icons/fi';
 
 const TYPE_LABELS = {
     m3u: { label: 'M3U URL', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
@@ -62,6 +64,7 @@ function FooterLink({ icon: Icon, label, href = "#" }) {
 export default function SettingsPage() {
     const navigate = useNavigate();
     const { user, logout } = useUserStore();
+    const [showImport, setShowImport] = useState(false);
     const { playlists, activePlaylistId, removePlaylist, setActivePlaylist, renamePlaylist, updatePlaylistStats } = usePlaylistManagerStore();
     const { channelsList, moviesList, seriesList, isLoaded: playlistIsLoaded } = usePlaylistStore();
     const [editingId, setEditingId] = useState(null);
@@ -261,7 +264,13 @@ export default function SettingsPage() {
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg mb-1">Nenhuma playlist salva</h3>
-                                <p className="text-gray-500 text-sm">Importe uma lista M3U, Xtream ou link HLS usando o botão <strong className="text-white">+ Adicionar</strong> na barra lateral.</p>
+                                <p className="text-gray-500 text-sm mb-4">Importe uma lista M3U, conexão Xtream ou link HLS para começar.</p>
+                                <button
+                                    onClick={() => setShowImport(true)}
+                                    className="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-primary/80 transition-all shadow-lg shadow-primary/20"
+                                >
+                                    <FiPlus size={16} /> Importar Mídia
+                                </button>
                             </div>
                             <div className="flex items-center gap-2 mt-2 p-3 bg-primary/10 border border-primary/20 rounded-2xl">
                                 <FiAlertCircle className="text-primary shrink-0" />
@@ -270,7 +279,15 @@ export default function SettingsPage() {
                         </div>
                     ) : (
                         <>
-                            <p className="text-sm text-gray-500">{playlists.length} playlist(s) salva(s) — clique em uma para ativar.</p>
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm text-gray-500">{playlists.length} playlist(s) salva(s) — clique em uma para ativar.</p>
+                                <button
+                                    onClick={() => setShowImport(true)}
+                                    className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+                                >
+                                    <FiPlus size={14} /> Importar Nova
+                                </button>
+                            </div>
                             {playlists.map((playlist) => {
                                 const isActive = playlist.id === activePlaylistId;
                                 const typeInfo = TYPE_LABELS[playlist.type] || TYPE_LABELS.m3u;
@@ -531,6 +548,8 @@ export default function SettingsPage() {
                     IPTV Expert Web v2.0.4 · Open Source Media Player
                 </p>
             </div>
+
+            <ImportModal isOpen={showImport} onClose={() => setShowImport(false)} />
         </div>
     );
 }
