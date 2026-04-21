@@ -485,15 +485,15 @@ export default function VideoPlayer() {
             </div>
 
             {/* INFO DO CANAL NO CANTO ESQUERDO CENTRAL (Reduzido no Mobile para não chocar com o centro) */}
-            <div className={`absolute top-4 md:top-1/2 md:-translate-y-1/2 left-4 md:left-12 z-50 transition-all duration-700 flex flex-col gap-1 md:gap-3 origin-top-left scale-[0.6] md:scale-100 ${showControls ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute top-4 lg:top-1/2 lg:-translate-y-1/2 left-4 lg:left-12 z-50 transition-all duration-700 flex flex-col gap-1 lg:gap-3 origin-top-left scale-[0.6] lg:scale-100 ${showControls ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0 pointer-events-none'}`}>
                 {stream.logo && (
-                    <div className="w-10 h-10 md:w-16 md:h-16 bg-black/40 backdrop-blur-md rounded-2xl p-1.5 md:p-2 border border-white/10 shadow-2xl mb-1 md:mb-2">
+                    <div className="w-10 h-10 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-2xl p-1.5 lg:p-2 border border-white/10 shadow-2xl mb-1 lg:mb-2">
                         <img src={stream.logo} className="w-full h-full object-contain drop-shadow-lg" alt="logo" />
                     </div>
                 )}
                 
-                <div className="flex flex-col gap-1 w-[260px] md:w-[400px]">
-                    <h2 className="text-xl md:text-3xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
+                <div className="flex flex-col gap-1 w-[260px] lg:w-[400px]">
+                    <h2 className="text-xl lg:text-3xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
                         {stream.name}
                     </h2>
                     
@@ -543,7 +543,7 @@ export default function VideoPlayer() {
             </div>
 
             {/* BOTÕES DE AÇÃO NO CANTO SUPERIOR DIREITO */}
-            <div className={`absolute top-6 right-6 md:top-10 md:right-10 z-[60] transition-all duration-700 flex items-center gap-3 md:gap-4 ${showControls ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute top-6 right-6 lg:top-10 lg:right-10 z-[60] transition-all duration-700 flex items-center gap-3 lg:gap-4 ${showControls ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
                 <button 
                     onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
                     className={`p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
@@ -593,32 +593,32 @@ export default function VideoPlayer() {
             )}
 
             {/* NOVO LAYOUT DE CONTROLES (ESTILO FOTO) - TRANSPARÊNCIA TOTAL */}
-            <div className={`absolute bottom-0 left-0 w-full p-4 md:p-10 z-50 transition-all duration-700 ${showControls ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute bottom-0 left-0 w-full p-4 lg:p-10 z-50 transition-all duration-700 ${showControls ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
                 
 
                 {/* 1. LINHA SUPERIOR: NAVEGAÇÃO PRINCIPAL (CENTRALIZADA) */}
-                <div className="flex items-center justify-center max-w-4xl mx-auto mb-4 md:mb-8">
+                <div className="flex items-center justify-center max-w-4xl mx-auto mb-4 lg:mb-8">
                     {/* Bloco Central: Skip, Play, Skip */}
-                    <div className="flex items-center gap-8 md:gap-16">
+                    <div className="flex items-center gap-8 lg:gap-16">
                         <button onClick={playPrev} className="text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-75">
-                            <FiSkipBack className="w-6 h-6 md:w-8 md:h-8" />
+                            <FiSkipBack className="w-6 h-6 lg:w-8 lg:h-8" />
                         </button>
 
                         <button 
                             onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
                             className="text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-75 flex items-center justify-center"
                         >
-                            {isPlaying ? <FiPause className="w-10 h-10 md:w-14 md:h-14" /> : <FiPlay className="w-10 h-10 md:w-14 md:h-14 ml-1 md:ml-2" />}
+                            {isPlaying ? <FiPause className="w-10 h-10 lg:w-14 lg:h-14" /> : <FiPlay className="w-10 h-10 lg:w-14 lg:h-14 ml-1 lg:ml-2" />}
                         </button>
 
                         <button onClick={playNext} className="text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-75">
-                            <FiSkipForward className="w-6 h-6 md:w-8 md:h-8" />
+                            <FiSkipForward className="w-6 h-6 lg:w-8 lg:h-8" />
                         </button>
                     </div>
                 </div>
 
                 {/* 2. LINHA CENTRAL: BARRA DE PROGRESSO (VERMELHA) */}
-                <div className="relative group/progress max-w-4xl mx-auto mb-4 md:mb-8">
+                <div className="relative group/progress max-w-4xl mx-auto mb-4 lg:mb-8">
                     {/* Barra de Fundo */}
                     <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
                         <div 
@@ -657,9 +657,9 @@ export default function VideoPlayer() {
                 </div>
 
                 {/* 3. LINHA INFERIOR: AÇÕES EXTRAS (SHARE, COMMENT, DOWNLOAD) */}
-                <div className="flex items-center justify-center gap-4 md:gap-14">
+                <div className="flex items-center justify-center gap-4 lg:gap-14">
                     {/* Controle de Volume Profissional (Movido para Baixo) */}
-                    <div className="hidden md:flex items-center gap-3 w-40 group/vol mr-4">
+                    <div className="hidden lg:flex items-center gap-3 w-40 group/vol mr-4">
                         <button 
                             onClick={() => {
                                 if (videoRef.current) {
@@ -735,7 +735,7 @@ export default function VideoPlayer() {
             </div>
 
             {/* PAINEL DE EPG COMPLETO (GAVETA LATERAL) */}
-            <div className={`absolute top-0 right-0 w-full md:w-[400px] h-full bg-black/40 backdrop-blur-3xl border-l border-white/10 z-[150] transition-all duration-500 transform ${showFullEpg ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className={`absolute top-0 right-0 w-full lg:w-[400px] h-full bg-black/40 backdrop-blur-3xl border-l border-white/10 z-[150] transition-all duration-500 transform ${showFullEpg ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="flex flex-col h-full pt-32 pb-20 px-8">
                     <div className="flex items-center justify-between mb-8">
                         <div>
