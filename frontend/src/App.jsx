@@ -73,7 +73,7 @@ function App() {
                         <img
                             src="/new_logo_banner.jpg"
                             alt="IPTV Expert"
-                            className="w-32 h-auto rounded-lg drop-shadow-md"
+                            className="h-10 w-auto object-contain rounded-lg drop-shadow-md"
                         />
                     </div>
                 </header>
