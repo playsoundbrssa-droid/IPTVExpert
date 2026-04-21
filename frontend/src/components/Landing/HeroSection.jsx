@@ -12,14 +12,11 @@ export default function HeroSection({ onLoginClick }) {
             <div className="container mx-auto relative z-10 flex flex-col items-center text-center">
 
                 {/* Main Logo */}
-                <div className="mb-8 md:mb-12 relative animate-fade-in-up w-full max-w-[220px] md:max-w-[320px]">
-                    {/* Shadow Glow Background */}
-                    <div className="absolute -inset-6 bg-neon-purple/30 blur-3xl rounded-full" />
-                    
+                <div className="mb-8 md:mb-12 relative animate-fade-in-up w-full max-w-[280px] md:max-w-[420px]">
                     <img 
-                        src="/iptv_logo.png" 
+                        src="/new_logo_banner.jpg" 
                         alt="IPTV Expert Logo" 
-                        className="w-full h-auto relative z-10 drop-shadow-[0_0_40px_rgba(168,85,247,0.6)] rounded-3xl logo-blend" 
+                        className="w-full h-auto relative z-10 drop-shadow-xl rounded-xl" 
                     />
                 </div>
 

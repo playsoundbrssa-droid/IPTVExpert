@@ -41,12 +41,11 @@ function App() {
     if (!ready) {
         return (
             <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
-                <div className="relative">
-                    <div className="absolute -inset-4 bg-neon-purple/30 blur-3xl rounded-full animate-pulse" />
+                <div className="mb-4">
                     <img
-                        src="/iptv_logo.png"
+                        src="/new_logo_banner.jpg"
                         alt="IPTV Expert"
-                        className="relative w-24 h-24 rounded-2xl drop-shadow-[0_0_30px_rgba(168,85,247,0.7)] animate-pulse logo-blend"
+                        className="relative w-48 h-auto rounded-2xl drop-shadow-xl animate-pulse"
                     />
                 </div>
                 <div className="text-primary text-sm font-semibold tracking-widest uppercase opacity-60">Carregando...</div>
@@ -72,15 +71,12 @@ function App() {
                 
                 {/* Mobile Header (hidden on desktop) */}
                 <header className="md:hidden absolute top-0 left-0 right-0 h-16 bg-[#0A0A0A]/80 backdrop-blur-3xl border-b border-white/5 z-40 flex items-center justify-between px-4 mt-safe">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center">
                         <img
-                            src="/iptv_logo.png"
+                            src="/new_logo_banner.jpg"
                             alt="IPTV Expert"
-                            className="w-8 h-8 rounded-xl object-cover drop-shadow-[0_0_6px_rgba(168,85,247,0.5)] logo-blend"
+                            className="w-32 h-auto rounded-lg drop-shadow-md"
                         />
-                        <h1 className="text-lg font-black bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent italic tracking-tighter">
-                            IPTV Expert
-                        </h1>
                     </div>
                     <button 
                         onClick={() => setShowImport(true)}

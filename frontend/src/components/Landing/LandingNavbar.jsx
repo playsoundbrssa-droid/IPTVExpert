@@ -6,9 +6,11 @@ export default function LandingNavbar({ onLoginClick }) {
         <nav className="fixed top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-xl border-b border-white/5">
             <div className="container mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <span className="text-lg md:text-xl font-black italic tracking-tighter bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-                        IPTV EXPERT
-                    </span>
+                    <img
+                        src="/new_logo_banner.jpg"
+                        alt="IPTV Expert"
+                        className="h-8 md:h-10 w-auto rounded-md drop-shadow-md"
+                    />
                 </div>
 
                 <div className="flex items-center gap-3">

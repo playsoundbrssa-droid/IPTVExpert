@@ -7,15 +7,12 @@ export default function LandingFooter() {
             <div className="container mx-auto">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-10 md:mb-16">
                     <div className="col-span-2 md:col-span-1">
-                        <div className="flex items-center gap-2 mb-4 md:mb-6">
+                        <div className="flex items-center mb-4 md:mb-6">
                             <img
-                                src="/iptv_logo.png"
+                                src="/new_logo_banner.jpg"
                                 alt="IPTV Expert"
-                                className="w-10 h-10 rounded-xl object-cover drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] logo-blend"
+                                className="w-40 h-auto rounded-lg drop-shadow-md"
                             />
-                            <span className="text-base font-black italic tracking-tighter bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-                                IPTV EXPERT
-                            </span>
                         </div>
                         <p className="text-gray-500 text-xs md:text-sm leading-relaxed mb-4 md:mb-6">
                             A plataforma definitiva para organizar e assistir seu conteúdo favorito com design e tecnologia de ponta.
