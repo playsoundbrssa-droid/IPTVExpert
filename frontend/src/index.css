@@ -267,8 +267,3 @@ html {
 /* Touch improvements for mobile */
 * { -webkit-tap-highlight-color: transparent; }
 button, a { touch-action: manipulation; }
-
-/* Logo image — removes dark PNG background on any dark surface */
-.logo-blend {
-    mix-blend-mode: screen;
-}
