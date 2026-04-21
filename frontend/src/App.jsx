@@ -67,19 +67,8 @@ function App() {
                     <Sidebar />
                 </div>
                 
-                {/* Mobile Header (hidden on desktop) */}
-                <header className="md:hidden absolute top-0 left-0 right-0 h-16 bg-[#0A0A0A]/80 backdrop-blur-3xl border-b border-white/5 z-40 flex items-center justify-between px-4 mt-safe">
-                    <div className="flex items-center">
-                        <img
-                            src="/new_logo_banner.jpg"
-                            alt="IPTV Expert"
-                            className="h-10 w-auto object-contain rounded-lg drop-shadow-md"
-                        />
-                    </div>
-                </header>
-
                 {/* Main Content Area */}
-                <main className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pt-20 md:pt-6 pb-24 md:pb-6 px-4 md:px-6 relative z-10 transition-all duration-300">
+                <main className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pt-6 pb-24 md:pb-6 px-4 md:px-6 relative z-10 transition-all duration-300">
                     <Routes>
                         <Route path="/" element={<LiveTvPage />} />
                         <Route path="/live-tv" element={<LiveTvPage />} />
