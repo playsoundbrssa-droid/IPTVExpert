@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import { supabase } from '../services/supabase';
+import { usePlaylistManagerStore } from './usePlaylistManagerStore';
+import { usePlaylistStore } from './usePlaylistStore';
 
 export const useUserStore = create((set, get) => ({
     user: null,
@@ -46,6 +48,8 @@ export const useUserStore = create((set, get) => ({
                 api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                 const { data } = await api.get('/auth/me');
                 set({ user: data.user, token, isAuthenticated: true });
+                // Fetch cloud playlists async
+                usePlaylistManagerStore.getState().syncWithCloud();
             } catch {
                 localStorage.removeItem('token');
                 delete api.defaults.headers.common['Authorization'];
@@ -62,6 +66,8 @@ export const useUserStore = create((set, get) => ({
             localStorage.setItem('token', data.token);
             api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
             set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+            // Fetch cloud playlists async
+            usePlaylistManagerStore.getState().syncWithCloud();
             return { success: true };
         } catch (error) {
             set({ loading: false });
@@ -77,6 +83,7 @@ export const useUserStore = create((set, get) => ({
             localStorage.setItem('token', data.token);
             api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
             set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+            usePlaylistManagerStore.getState().syncWithCloud();
             return { success: true };
         } catch (error) {
             set({ loading: false });
@@ -92,6 +99,7 @@ export const useUserStore = create((set, get) => ({
             localStorage.setItem('token', data.token);
             api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
             set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+            usePlaylistManagerStore.getState().syncWithCloud();
             return { success: true };
         } catch (error) {
             set({ loading: false });
@@ -116,6 +124,7 @@ export const useUserStore = create((set, get) => ({
             localStorage.setItem('token', data.token);
             api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
             set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+            usePlaylistManagerStore.getState().syncWithCloud();
             return { success: true };
         } catch (error) {
             console.error('[AUTH] Erro na sincronização backend:', error.response?.data || error.message);
@@ -130,6 +139,10 @@ export const useUserStore = create((set, get) => ({
         localStorage.removeItem('token');
         delete api.defaults.headers.common['Authorization'];
         set({ user: null, token: null, isAuthenticated: false });
+        
+        // Wipe local device lists so next user doesn't see them
+        usePlaylistManagerStore.getState().clearLocalPlaylists();
+        usePlaylistStore.getState().clearPlaylist();
     },
 
     // Check if user is admin

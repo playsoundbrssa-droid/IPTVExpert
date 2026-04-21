@@ -53,6 +53,7 @@ app.use(express.text({ type: 'text/*', limit: '50mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/playlist', playlistRoutes);
+app.use('/api/user/playlists', require('./routes/userPlaylists'));
 app.use('/api/proxy', proxyRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/xtream', xtreamRoutes);

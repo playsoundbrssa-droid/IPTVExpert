@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { api } from '../services/api';
 
 // O manager salva apenas CONFIGURAÇÕES LEVES para re-importar depois
 // Nunca salva os dados completos da lista (que podem ser 50MB+)
@@ -26,12 +27,16 @@ export const usePlaylistManagerStore = create(
                     playlists: [...state.playlists, entry],
                     activePlaylistId: id
                 }));
+
+                // Async Sync to Cloud
+                api.post('/user/playlists', entry).catch(err => console.error('[SYNC] Error saving:', err));
+
                 return entry;
             },
 
             updatePlaylistStats: (id, stats) => {
-                set((state) => ({
-                    playlists: state.playlists.map(p => 
+                set((state) => {
+                    const newPlaylists = state.playlists.map(p => 
                         p.id === id ? { 
                             ...p, 
                             total: stats.total || p.total,
@@ -41,8 +46,16 @@ export const usePlaylistManagerStore = create(
                             epgUrl:        stats.epgUrl ?? p.epgUrl,
                             epgCacheKey:   stats.epgCacheKey ?? p.epgCacheKey
                         } : p
-                    )
-                }));
+                    );
+                    
+                    // Sync updated entry to cloud
+                    const updatedEntry = newPlaylists.find(p => p.id === id);
+                    if (updatedEntry) {
+                        api.post('/user/playlists', updatedEntry).catch(e => console.error('[SYNC] Error updating:', e));
+                    }
+                    
+                    return { playlists: newPlaylists };
+                });
             },
 
             removePlaylist: (id) => {
@@ -55,6 +68,8 @@ export const usePlaylistManagerStore = create(
                             : state.activePlaylistId
                     };
                 });
+                // Sync to cloud
+                api.delete(`/user/playlists/${id}`).catch(err => console.error('[SYNC] Error deleting:', err));
             },
 
             setActivePlaylist: (id) => set({ activePlaylistId: id }),
@@ -65,11 +80,51 @@ export const usePlaylistManagerStore = create(
             },
 
             renamePlaylist: (id, newName) => {
-                set((state) => ({
-                    playlists: state.playlists.map(p =>
+                set((state) => {
+                    const newPlaylists = state.playlists.map(p =>
                         p.id === id ? { ...p, name: newName } : p
-                    )
-                }));
+                    );
+                    
+                    const updatedEntry = newPlaylists.find(p => p.id === id);
+                    if (updatedEntry) {
+                        api.post('/user/playlists', updatedEntry).catch(e => console.error('[SYNC] Error renaming:', e));
+                    }
+                    
+                    return { playlists: newPlaylists };
+                });
+            },
+
+            // Load playlists from cloud and override local
+            syncWithCloud: async () => {
+                try {
+                    const { data } = await api.get('/user/playlists');
+                    if (data && data.playlists) {
+                        set((state) => {
+                            const newPlaylists = data.playlists;
+                            let newActiveId = state.activePlaylistId;
+                            
+                            // Adjust active ID if we have items
+                            if (newPlaylists.length > 0 && !newPlaylists.some(p => p.id === newActiveId)) {
+                                newActiveId = newPlaylists[0].id;
+                            } else if (newPlaylists.length === 0) {
+                                newActiveId = null;
+                            }
+                            
+                            return {
+                                playlists: newPlaylists,
+                                activePlaylistId: newActiveId
+                            };
+                        });
+                        console.log('[SYNC] Playlists sincronizadas com a nuvem.');
+                    }
+                } catch (error) {
+                    console.error('[SYNC] Erro ao sincronizar a nuvem:', error);
+                }
+            },
+            
+            // Wipe local lists when logging out
+            clearLocalPlaylists: () => {
+                set({ playlists: [], activePlaylistId: null });
             }
         }),
         { name: 'iptv-playlist-manager' }
