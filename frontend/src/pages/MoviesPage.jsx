@@ -108,7 +108,7 @@ export default function MoviesPage() {
             />
 
             {/* Grid Area */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-6">
                 {visibleMovies.map((m, idx) => (
                     <MediaCard 
                         key={`${m.id}-${idx}`} 

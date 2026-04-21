@@ -546,13 +546,13 @@ export default function VideoPlayer() {
             <div className={`absolute top-6 right-6 md:top-10 md:right-10 z-[60] transition-all duration-700 flex items-center gap-3 md:gap-4 ${showControls ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
                 <button 
                     onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
-                    className={`p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/40 hover:text-white'}`}
+                    className={`p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
                 >
                     <FiHeart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
                 </button>
                 <button 
                     onClick={() => setCurrentStream(null)} 
-                    className="p-3 text-white/40 hover:text-white transition-all transform hover:rotate-90"
+                    className="p-3 text-white/80 hover:text-white transition-all transform hover:rotate-90"
                 >
                     <FiX size={24} />
                 </button>
@@ -600,18 +600,18 @@ export default function VideoPlayer() {
                 <div className="flex items-center justify-center max-w-4xl mx-auto mb-8">
                     {/* Bloco Central: Skip, Play, Skip */}
                     <div className="flex items-center gap-10 md:gap-16">
-                        <button onClick={playPrev} className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-75">
+                        <button onClick={playPrev} className="text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-75">
                             <FiSkipBack size={32} />
                         </button>
 
                         <button 
                             onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
-                            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-75 flex items-center justify-center"
+                            className="text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-75 flex items-center justify-center"
                         >
                             {isPlaying ? <FiPause size={56} /> : <FiPlay size={56} className="ml-1" />}
                         </button>
 
-                        <button onClick={playNext} className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-75">
+                        <button onClick={playNext} className="text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-75">
                             <FiSkipForward size={32} />
                         </button>
                     </div>
@@ -667,7 +667,7 @@ export default function VideoPlayer() {
                                     setIsMuted(!isMuted);
                                 }
                             }} 
-                            className="text-white/30 hover:text-white transition-all"
+                            className="text-white/80 hover:text-white transition-all"
                         >
                             {isMuted || volume === 0 ? <FiVolumeX size={18} /> : <FiVolume2 size={18} />}
                         </button>
@@ -684,13 +684,13 @@ export default function VideoPlayer() {
                                     }
                                 }
                             }}
-                            className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-white"
+                            className="w-full h-1 bg-white/30 rounded-full appearance-none cursor-pointer accent-white"
                         />
                     </div>
 
                     <button 
                         onClick={() => setShowFullEpg(!showFullEpg)}
-                        className={`flex flex-col items-center gap-1.5 transition-all group ${showFullEpg ? 'text-white' : 'text-white/30 hover:text-white'}`}
+                        className={`flex flex-col items-center gap-1.5 transition-all group ${showFullEpg ? 'text-white' : 'text-white/80 hover:text-white'}`}
                     >
                         <FiClock size={20} className="group-hover:scale-110 transition-transform" />
                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">EPG</span>
@@ -702,7 +702,7 @@ export default function VideoPlayer() {
                             navigator.clipboard.writeText(rawUrl);
                             toast.success('Link copiado!');
                         }}
-                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-white transition-all group"
+                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
                     >
                         <FiShare2 size={20} className="group-hover:scale-110 transition-transform" />
                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">Share</span>
@@ -710,7 +710,7 @@ export default function VideoPlayer() {
 
                     <button 
                         onClick={() => toast('Comentários em breve!', { icon: '💬' })}
-                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-white transition-all group"
+                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
                     >
                         <FiMessageSquare size={20} className="group-hover:scale-110 transition-transform" />
                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">Comment</span>
@@ -718,7 +718,7 @@ export default function VideoPlayer() {
 
                     <button 
                         onClick={handleDownload}
-                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-white transition-all group"
+                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
                     >
                         <FiDownload size={20} className="group-hover:scale-110 transition-transform" />
                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">Download</span>
@@ -726,7 +726,7 @@ export default function VideoPlayer() {
 
                     <button 
                         onClick={handleFullscreen}
-                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-white transition-all group"
+                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
                     >
                         <FiMaximize size={20} className="group-hover:scale-110 transition-transform" />
                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">Maximize</span>

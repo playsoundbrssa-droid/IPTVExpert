@@ -48,19 +48,22 @@ export default function MediaCard({ item, type, playlist = [] }) {
         }
     };
 
+    const isVOD = type === 'movie' || type === 'series';
+
     return (
         <div 
             onClick={handlePlay}
-            className="group relative bg-surface/30 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-primary/20"
+            className="group relative bg-surface/30 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-300 active:scale-[0.98] md:hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-primary/20 flex flex-col h-full"
         >
             {/* Poster / Logo Area */}
-            <div className="aspect-video md:aspect-[2/3] relative bg-black/40 flex items-center justify-center p-4">
+            <div className={`${isVOD ? 'aspect-[2/3]' : 'aspect-[16/9]'} relative bg-black/40 flex items-center justify-center shrink-0`}>
                 {item.logo ? (
                     <img 
                         src={item.logo} 
                         alt={item.name} 
-                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                        className={`w-full h-full ${isVOD ? 'object-cover' : 'object-contain p-4'} group-hover:scale-110 transition-transform duration-500`}
                         loading="lazy"
+                        decoding="async"
                     />
                 ) : (
                     <div className="text-gray-600 text-4xl font-bold uppercase">{item.name.charAt(0)}</div>
@@ -107,8 +110,8 @@ export default function MediaCard({ item, type, playlist = [] }) {
             </div>
 
             {/* Info Area */}
-            <div className="p-4 bg-gradient-to-t from-black/80 to-transparent">
-                <h3 className="font-bold text-sm text-white truncate group-hover:text-primary transition-colors">
+            <div className="p-3 md:p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex-1 flex flex-col justify-end">
+                <h3 className="font-bold text-xs md:text-sm text-white line-clamp-2 md:truncate group-hover:text-primary transition-colors leading-tight">
                     {item.name}
                 </h3>
             </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import LandingNavbar from '../components/Landing/LandingNavbar';
+
 import HeroSection from '../components/Landing/HeroSection';
 import LandingFooter from '../components/Landing/LandingFooter';
 import AuthScreen from '../components/Auth/AuthScreen';
@@ -44,8 +44,7 @@ export default function LandingPage() {
             </div>
 
             <div className="relative z-20">
-                <LandingNavbar onLoginClick={toggleLogin} />
-            
+
             <main>
                 <HeroSection onLoginClick={toggleLogin} />
             </main>

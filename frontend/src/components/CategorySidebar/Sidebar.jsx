@@ -21,7 +21,7 @@ export default function Sidebar({ onImportClick }) {
                     <img
                         src="/new_logo_banner.jpg"
                         alt="IPTV Expert Logo"
-                        className="relative w-40 h-auto rounded-xl drop-shadow-xl"
+                        className="relative w-28 h-auto rounded-xl drop-shadow-xl"
                     />
                 </div>
                 <p className="text-[10px] text-gray-400 font-bold tracking-[0.2em] uppercase">Web Player</p>
