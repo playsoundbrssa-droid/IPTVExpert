@@ -38,7 +38,7 @@ function App() {
 
     if (!ready) {
         return (
-            <div className="h-[100dvh] flex flex-col items-center justify-center bg-background gap-4">
+            <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
                 <div className="mb-4">
                     <img
                         src="/new_logo_banner.jpg"
