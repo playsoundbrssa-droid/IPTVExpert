@@ -38,7 +38,7 @@ function App() {
 
     if (!ready) {
         return (
-            <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
+            <div className="h-[100dvh] flex flex-col items-center justify-center bg-background gap-4">
                 <div className="mb-4">
                     <img
                         src="/new_logo_banner.jpg"
@@ -61,7 +61,7 @@ function App() {
                     <Route path="*" element={<LandingPage />} />
                 </Routes>
             ) : (
-                <div className="flex h-screen overflow-hidden bg-background relative pt-safe">
+                <div className="flex h-[100dvh] overflow-hidden bg-background relative pt-safe">
                 {/* Desktop Sidebar (hidden on mobile) */}
                 <div className="hidden md:flex flex-shrink-0 h-full">
                     <Sidebar />
