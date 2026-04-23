@@ -15,7 +15,7 @@ import {
     FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
     FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiDownload, FiSkipBack, FiSkipForward, FiMenu,
-    FiShare2, FiMessageSquare, FiClock
+    FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
@@ -42,6 +42,10 @@ export default function VideoPlayer() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
+    const [showComments, setShowComments] = useState(false);
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [isMinimized, setIsMinimized] = useState(false);
     const controlsTimeout = useRef(null);
     const mainContainerRef = useRef(null);
 
@@ -128,6 +132,56 @@ export default function VideoPlayer() {
             document.removeEventListener('keydown', unlockAudio);
         };
     }, [isMuted]);
+
+    // Sync isPlaying store state with video element
+    useEffect(() => {
+        if (!videoRef.current || !currentStream) return;
+        if (isPlaying) {
+            videoRef.current.play().catch(err => {
+                if (err.name !== 'AbortError') console.error("[PLAYER] Auto-play failed:", err);
+            });
+        } else {
+            videoRef.current.pause();
+        }
+    }, [isPlaying, currentStream]);
+
+    // Carregar comentários locais
+    useEffect(() => {
+        if (currentStream) {
+            const saved = localStorage.getItem(`comments_${currentStream.id}`);
+            setComments(saved ? JSON.parse(saved) : []);
+        }
+    }, [currentStream]);
+
+    const handleAddComment = (e) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+        
+        const comment = {
+            id: Date.now(),
+            text: newComment,
+            user: 'Você',
+            date: new Date().toISOString()
+        };
+        
+        const updated = [comment, ...comments];
+        setComments(updated);
+        setNewComment('');
+        localStorage.setItem(`comments_${currentStream.id}`, JSON.stringify(updated));
+        toast.success('Comentário enviado!');
+    };
+
+    const handleCast = () => {
+        if (videoRef.current?.remote) {
+            videoRef.current.remote.prompt().catch(() => {
+                toast.error('O seu navegador não suporta espelhamento nativo.');
+            });
+        } else if (videoRef.current?.webkitShowPlaybackTargetPicker) {
+            videoRef.current.webkitShowPlaybackTargetPicker();
+        } else {
+            toast.error('O espelhamento não é suportado neste navegador.');
+        }
+    };
 
     const init = useCallback((attempt = 0) => {
         if (!currentStream || !videoRef.current) return;
@@ -467,14 +521,23 @@ export default function VideoPlayer() {
     return (
         <div 
             ref={mainContainerRef}
-            className={`fixed inset-0 z-[200] bg-black flex items-center justify-center overflow-hidden font-sans transition-all duration-500 ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            className={`fixed z-[200] bg-black flex items-center justify-center overflow-hidden font-sans transition-all duration-500 
+                ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+                ${isMinimized ? 'bottom-6 right-6 w-80 h-48 rounded-3xl shadow-2xl border border-white/10' : 'inset-0'}`}
         >
             {/* O Vídeo deve estar sempre centralizado */}
             <div className="relative w-full h-full flex items-center justify-center">
                 <video
                     ref={videoRef}
                     className="w-full h-full object-contain cursor-pointer"
-                    onClick={() => { if (showControls) setShowControls(true); else togglePlay(); }}
+                    onClick={(e) => { 
+                        e.stopPropagation();
+                        if (isMinimized) {
+                            setIsMinimized(false);
+                        } else {
+                            togglePlay(); 
+                        }
+                    }}
                     onWaiting={() => setIsBuffering(true)}
                     onPlaying={() => setIsBuffering(false)}
                     onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
@@ -501,9 +564,6 @@ export default function VideoPlayer() {
                         <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none drop-shadow-md">
                             {stream.group || 'Geral'}
                         </span>
-                        {stream.type === 'channel' && (
-                            <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
-                        )}
                     </div>
                     
                     {/* UI de EPG Dinâmico */}
@@ -555,6 +615,12 @@ export default function VideoPlayer() {
                     className="p-3 text-white/80 hover:text-white transition-all transform hover:rotate-90"
                 >
                     <FiX size={24} />
+                </button>
+                <button 
+                    onClick={() => setIsMinimized(!isMinimized)} 
+                    className="p-3 text-white/80 hover:text-white transition-all"
+                >
+                    <FiMinimize2 size={24} />
                 </button>
             </div>
 
@@ -709,11 +775,19 @@ export default function VideoPlayer() {
                     </button>
 
                     <button 
-                        onClick={() => toast('Comentários em breve!', { icon: '💬' })}
-                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
+                        onClick={() => { setShowComments(!showComments); setShowFullEpg(false); }}
+                        className={`flex flex-col items-center gap-1.5 transition-all group ${showComments ? 'text-white' : 'text-white/80 hover:text-white'}`}
                     >
                         <FiMessageSquare size={20} className="group-hover:scale-110 transition-transform" />
                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">Comment</span>
+                    </button>
+
+                    <button 
+                        onClick={handleCast}
+                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
+                    >
+                        <FiAirplay size={20} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">Cast</span>
                     </button>
 
                     <button 
@@ -783,6 +857,51 @@ export default function VideoPlayer() {
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
+
+            {/* PAINEL DE COMENTÁRIOS (GAVETA LATERAL) */}
+            <div className={`absolute top-0 right-0 w-full lg:w-[400px] h-full bg-black/40 backdrop-blur-3xl border-l border-white/10 z-[150] transition-all duration-500 transform ${showComments ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="flex flex-col h-full pt-32 pb-20 px-8">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-white font-black text-2xl tracking-tighter uppercase">Comentários</h3>
+                            <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">O que estão dizendo agora</p>
+                        </div>
+                        <button onClick={() => setShowComments(false)} className="p-2 text-white/40 hover:text-white transition-all">
+                            <FiX size={24} />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-6">
+                        {comments.length > 0 ? comments.map((c) => (
+                            <div key={c.id} className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-[10px] font-black text-primary uppercase">{c.user}</span>
+                                    <span className="text-[9px] text-gray-500">{new Date(c.date).toLocaleTimeString()}</span>
+                                </div>
+                                <p className="text-sm text-gray-200">{c.text}</p>
+                            </div>
+                        )) : (
+                            <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                                <FiMessageSquare size={48} className="mb-4" />
+                                <p className="text-sm font-bold uppercase tracking-widest">Seja o primeiro a<br/>comentar!</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <form onSubmit={handleAddComment} className="mt-6 flex gap-2">
+                        <input 
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Escreva algo..."
+                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-primary/50 transition-all"
+                        />
+                        <button type="submit" className="px-6 py-3 bg-primary text-white font-bold rounded-xl text-sm hover:scale-105 transition-all active:scale-95 shadow-lg shadow-primary/20">
+                            Enviar
+                        </button>
+                    </form>
                 </div>
             </div>
 
