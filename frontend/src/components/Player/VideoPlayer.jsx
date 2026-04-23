@@ -15,7 +15,7 @@ import {
     FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
     FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiDownload, FiSkipBack, FiSkipForward, FiMenu,
-    FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2
+    FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2, FiMaximize2
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
