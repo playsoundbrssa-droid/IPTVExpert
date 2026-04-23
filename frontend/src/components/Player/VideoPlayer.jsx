@@ -702,7 +702,9 @@ export default function VideoPlayer() {
             </div>
 
             {/* BOTÕES DE AÇÃO NO CANTO SUPERIOR DIREITO */}
-            <div className={`absolute top-6 right-6 lg:top-10 lg:right-10 z-[60] transition-all duration-700 flex items-center gap-3 lg:gap-4 ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute z-[60] transition-all duration-700 flex items-center 
+                ${isMinimized ? 'top-2 right-2 gap-1' : 'top-6 right-6 lg:top-10 lg:right-10 gap-3 lg:gap-4'}
+                ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
                 {!isMinimized && (
                     <button 
                         onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
@@ -711,17 +713,19 @@ export default function VideoPlayer() {
                         <FiHeart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
                     </button>
                 )}
-                <button 
-                    onClick={() => setCurrentStream(null)} 
-                    className="p-3 text-white/80 hover:text-white transition-all transform hover:rotate-90"
-                >
-                    <FiX size={24} />
-                </button>
+                
                 <button 
                     onClick={() => setIsMinimized(!isMinimized)} 
-                    className="p-3 text-white/80 hover:text-white transition-all"
+                    className={`${isMinimized ? 'p-1.5' : 'p-3'} text-white/80 hover:text-white transition-all transform hover:scale-110 bg-black/20 rounded-lg backdrop-blur-sm`}
                 >
-                    <FiMinimize2 size={24} />
+                    {isMinimized ? <FiMaximize2 size={18} /> : <FiMinimize2 size={24} />}
+                </button>
+
+                <button 
+                    onClick={() => setCurrentStream(null)} 
+                    className={`${isMinimized ? 'p-1.5' : 'p-3'} text-white/80 hover:text-white transition-all transform hover:rotate-90 bg-black/20 rounded-lg backdrop-blur-sm`}
+                >
+                    <FiX size={isMinimized ? 20 : 24} />
                 </button>
             </div>
 
