@@ -29,7 +29,7 @@ export const usePlaylistManagerStore = create(
                 }));
 
                 // Async Sync to Cloud
-                api.post('/user/playlists', entry).catch(err => console.error('[SYNC] Error saving:', err));
+                api.post('/user-playlists', entry).catch(err => console.error('[SYNC] Error saving:', err));
 
                 return entry;
             },
@@ -51,7 +51,7 @@ export const usePlaylistManagerStore = create(
                     // Sync updated entry to cloud
                     const updatedEntry = newPlaylists.find(p => p.id === id);
                     if (updatedEntry) {
-                        api.post('/user/playlists', updatedEntry).catch(e => console.error('[SYNC] Error updating:', e));
+                        api.post('/user-playlists', updatedEntry).catch(e => console.error('[SYNC] Error updating:', e));
                     }
                     
                     return { playlists: newPlaylists };
@@ -69,7 +69,7 @@ export const usePlaylistManagerStore = create(
                     };
                 });
                 // Sync to cloud
-                api.delete(`/user/playlists/${id}`).catch(err => console.error('[SYNC] Error deleting:', err));
+                api.delete(`/user-playlists/${id}`).catch(err => console.error('[SYNC] Error deleting:', err));
             },
 
             setActivePlaylist: (id) => set({ activePlaylistId: id }),
@@ -87,7 +87,7 @@ export const usePlaylistManagerStore = create(
                     
                     const updatedEntry = newPlaylists.find(p => p.id === id);
                     if (updatedEntry) {
-                        api.post('/user/playlists', updatedEntry).catch(e => console.error('[SYNC] Error renaming:', e));
+                        api.post('/user-playlists', updatedEntry).catch(e => console.error('[SYNC] Error renaming:', e));
                     }
                     
                     return { playlists: newPlaylists };
@@ -97,7 +97,7 @@ export const usePlaylistManagerStore = create(
             // Load playlists from cloud and override local
             syncWithCloud: async () => {
                 try {
-                    const { data } = await api.get('/user/playlists');
+                    const { data } = await api.get('/user-playlists');
                     if (data && data.playlists) {
                         set((state) => {
                             const newPlaylists = data.playlists;

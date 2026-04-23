@@ -46,6 +46,9 @@ export default function VideoPlayer() {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
+    const [position, setPosition] = useState({ x: 24, y: 24 }); // de baixo para cima, de direita para esquerda
+    const [isDragging, setIsDragging] = useState(false);
+    const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
     const controlsTimeout = useRef(null);
     const mainContainerRef = useRef(null);
 
@@ -172,16 +175,61 @@ export default function VideoPlayer() {
     };
 
     const handleCast = () => {
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        
         if (videoRef.current?.remote) {
             videoRef.current.remote.prompt().catch(() => {
-                toast.error('O seu navegador não suporta espelhamento nativo.');
+                if (!isSafari) {
+                    toast('Para espelhamento via AirPlay, utilize o navegador Safari.', { icon: '📺' });
+                } else {
+                    toast.error('O seu navegador não suporta espelhamento nativo.');
+                }
             });
         } else if (videoRef.current?.webkitShowPlaybackTargetPicker) {
             videoRef.current.webkitShowPlaybackTargetPicker();
         } else {
-            toast.error('O espelhamento não é suportado neste navegador.');
+            if (!isSafari) {
+                toast('O espelhamento nativo (AirPlay) requer o Safari. Para Chrome, utilize a função de transmitir do próprio navegador.', { icon: '📺', duration: 5000 });
+            } else {
+                toast.error('O espelhamento não é suportado neste navegador.');
+            }
         }
     };
+
+    const handleMouseDown = (e) => {
+        if (!isMinimized) return;
+        setIsDragging(true);
+        dragRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            initialX: position.x,
+            initialY: position.y
+        };
+    };
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+            // No modo fixo bottom-right, X aumenta para a esquerda e Y aumenta para cima
+            const dx = dragRef.current.startX - e.clientX;
+            const dy = dragRef.current.startY - e.clientY;
+            
+            setPosition({
+                x: Math.max(10, dragRef.current.initialX + dx),
+                y: Math.max(10, dragRef.current.initialY + dy)
+            });
+        };
+        const handleMouseUp = () => setIsDragging(false);
+
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging]);
 
     const init = useCallback((attempt = 0) => {
         if (!currentStream || !videoRef.current) return;
@@ -521,9 +569,15 @@ export default function VideoPlayer() {
     return (
         <div 
             ref={mainContainerRef}
-            className={`fixed z-[200] bg-black flex items-center justify-center overflow-hidden font-sans transition-all duration-500 
+            onMouseDown={handleMouseDown}
+            style={isMinimized ? { 
+                bottom: `${position.y}px`, 
+                right: `${position.x}px`,
+                cursor: isDragging ? 'grabbing' : 'grab'
+            } : {}}
+            className={`fixed z-[200] bg-black flex items-center justify-center overflow-hidden font-sans transition-all duration-300 
                 ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-                ${isMinimized ? 'bottom-6 right-6 w-80 h-48 rounded-3xl shadow-2xl border border-white/10' : 'inset-0'}`}
+                ${isMinimized ? 'w-80 h-48 rounded-3xl shadow-2xl border border-white/10 active:scale-95' : 'inset-0'}`}
         >
             {/* O Vídeo deve estar sempre centralizado */}
             <div className="relative w-full h-full flex items-center justify-center">
@@ -754,13 +808,7 @@ export default function VideoPlayer() {
                         />
                     </div>
 
-                    <button 
-                        onClick={() => setShowFullEpg(!showFullEpg)}
-                        className={`flex flex-col items-center gap-1.5 transition-all group ${showFullEpg ? 'text-white' : 'text-white/80 hover:text-white'}`}
-                    >
-                        <FiClock size={20} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">EPG</span>
-                    </button>
+
 
                     <button 
                         onClick={() => {
