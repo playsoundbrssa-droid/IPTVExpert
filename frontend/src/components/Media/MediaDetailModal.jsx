@@ -3,6 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { FiX, FiPlay, FiHeart, FiStar, FiCalendar, FiClock, FiDownload, FiChevronDown } from 'react-icons/fi';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
+import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
 import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import { getSeriesBaseName } from '../../utils/seriesUtils';
 import api from '../../services/api';
@@ -11,22 +12,62 @@ import toast from 'react-hot-toast';
 export default function MediaDetailModal() {
     const { selectedMediaDetails, setSelectedMediaDetails, favorites, addFavorite, removeFavorite, seriesList, seriesGroups } = usePlaylistStore();
     const { setCurrentStream } = usePlayerStore();
+    const { getActivePlaylist } = usePlaylistManagerStore();
     
     const [metadata, setMetadata] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [loadingEpisodes, setLoadingEpisodes] = useState(false);
     const [selectedSeason, setSelectedSeason] = useState(1);
+    const [xtreamEpisodes, setXtreamEpisodes] = useState(null);
 
     const isFavorite = favorites.some(f => f.id === selectedMediaDetails?.id);
 
     useEffect(() => {
         if (selectedMediaDetails) {
             fetchMetadata();
+            if (selectedMediaDetails.type === 'series') {
+                fetchEpisodes();
+            }
             // Reset season to 1 when changing media
             setSelectedSeason(1);
+            setXtreamEpisodes(null);
         } else {
             setMetadata(null);
+            setXtreamEpisodes(null);
         }
     }, [selectedMediaDetails]);
+
+    const fetchEpisodes = async () => {
+        if (!selectedMediaDetails || selectedMediaDetails.type !== 'series') return;
+        
+        // Se for Xtream, precisamos buscar os episódios no backend
+        if (selectedMediaDetails.id?.startsWith('xtream_series_')) {
+            setLoadingEpisodes(true);
+            try {
+                const activePlaylist = getActivePlaylist();
+                if (activePlaylist && activePlaylist.type === 'xtream') {
+                    const seriesId = selectedMediaDetails.id.replace('xtream_series_', '');
+                    const response = await api.get('/media/episodes', {
+                        params: {
+                            ...activePlaylist.config,
+                            series_id: seriesId
+                        }
+                    });
+                    setXtreamEpisodes(response.data);
+                    
+                    // Se tivermos episódios, definimos a temporada inicial como a primeira disponível
+                    if (response.data && response.data.length > 0) {
+                        const firstSeason = Math.min(...response.data.map(ep => ep.season || 1));
+                        setSelectedSeason(firstSeason);
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao buscar episódios Xtream:', error);
+            } finally {
+                setLoadingEpisodes(false);
+            }
+        }
+    };
 
     const fetchMetadata = async () => {
         setLoading(true);
@@ -49,8 +90,25 @@ export default function MediaDetailModal() {
     const episodesBySeason = useMemo(() => {
         if (!selectedMediaDetails) return null;
         
-        // Se já passamos a lista consolidada, usamos ela, 
-        // caso contrário, buscamos na lista global de séries
+        // Prioridade 1: Episódios vindos do Xtream (carregados via API)
+        if (xtreamEpisodes) {
+            const seasonsMap = {};
+            xtreamEpisodes.forEach(ep => {
+                const s = ep.season || 1;
+                if (!seasonsMap[s]) seasonsMap[s] = [];
+                seasonsMap[s].push({
+                    ...ep,
+                    order: ep.episode || 1
+                });
+            });
+            // Ordenar
+            Object.keys(seasonsMap).forEach(s => {
+                seasonsMap[s].sort((a, b) => a.order - b.order);
+            });
+            return seasonsMap;
+        }
+
+        // Prioridade 2: Episódios já embutidos ou encontrados por nome (M3U)
         let siblings = selectedMediaDetails.allEpisodes;
 
         if (!siblings) {
@@ -59,7 +117,7 @@ export default function MediaDetailModal() {
         }
 
         return organizeBySeasons(siblings);
-    }, [selectedMediaDetails, seriesList]);
+    }, [selectedMediaDetails, seriesList, xtreamEpisodes]);
 
     const seasons = useMemo(() => {
         return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => a-b) : [];
@@ -212,24 +270,29 @@ export default function MediaDetailModal() {
                                                     )}
                                                 </p>
                                             </div>
-
+                                            
                                             {/* Season & Episode List (Only for Series) */}
-                                            {selectedMediaDetails.type === 'series' && seasons.length > 0 && (
+                                            {selectedMediaDetails.type === 'series' && (
                                                 <div className="space-y-6 pt-6 border-t border-white/5">
                                                     <div className="flex items-center justify-between">
-                                                        <h3 className="text-2xl font-black">Episódios</h3>
-                                                        <div className="relative group/select">
-                                                            <select 
-                                                                value={selectedSeason}
-                                                                onChange={(e) => setSelectedSeason(e.target.value)}
-                                                                className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
-                                                            >
-                                                                {seasons.map(s => (
-                                                                    <option key={s} value={s} className="bg-surface text-white">Temporada {s}</option>
-                                                                ))}
-                                                            </select>
-                                                            <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
+                                                        <div className="flex items-center gap-3">
+                                                            <h3 className="text-2xl font-black">Episódios</h3>
+                                                            {loadingEpisodes && <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />}
                                                         </div>
+                                                        {seasons.length > 0 && (
+                                                            <div className="relative group/select">
+                                                                <select 
+                                                                    value={selectedSeason}
+                                                                    onChange={(e) => setSelectedSeason(e.target.value)}
+                                                                    className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
+                                                                >
+                                                                    {seasons.map(s => (
+                                                                        <option key={s} value={s} className="bg-surface text-white">Temporada {s}</option>
+                                                                    ))}
+                                                                </select>
+                                                                <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
