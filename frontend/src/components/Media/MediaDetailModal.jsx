@@ -26,11 +26,14 @@ export default function MediaDetailModal() {
         if (selectedMediaDetails) {
             fetchMetadata();
             if (selectedMediaDetails.type === 'series') {
+                // Reset season to 1 and clear previous episodes
+                setSelectedSeason('1');
+                setXtreamEpisodes(null);
                 fetchEpisodes();
+            } else {
+                setSelectedSeason('1');
+                setXtreamEpisodes(null);
             }
-            // Reset season to 1 when changing media
-            setSelectedSeason(1);
-            setXtreamEpisodes(null);
         } else {
             setMetadata(null);
             setXtreamEpisodes(null);
@@ -58,7 +61,7 @@ export default function MediaDetailModal() {
                     // Se tivermos episódios, definimos a temporada inicial como a primeira disponível
                     if (response.data && response.data.length > 0) {
                         const firstSeason = Math.min(...response.data.map(ep => ep.season || 1));
-                        setSelectedSeason(firstSeason);
+                        setSelectedSeason(String(firstSeason)); // Sempre string para bater com o select
                     }
                 }
             } catch (error) {
@@ -94,7 +97,7 @@ export default function MediaDetailModal() {
         if (xtreamEpisodes) {
             const seasonsMap = {};
             xtreamEpisodes.forEach(ep => {
-                const s = ep.season || 1;
+                const s = String(ep.season || 1); // Usar string como chave
                 if (!seasonsMap[s]) seasonsMap[s] = [];
                 seasonsMap[s].push({
                     ...ep,
@@ -116,7 +119,13 @@ export default function MediaDetailModal() {
             siblings = seriesList.filter(s => getSeriesBaseName(s.name) === currentBaseName);
         }
 
-        return organizeBySeasons(siblings);
+        const organized = organizeBySeasons(siblings);
+        // Garantir que as chaves sejam strings
+        const stringified = {};
+        Object.keys(organized).forEach(k => {
+            stringified[String(k)] = organized[k];
+        });
+        return stringified;
     }, [selectedMediaDetails, seriesList, xtreamEpisodes]);
 
     const seasons = useMemo(() => {
