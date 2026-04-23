@@ -38,6 +38,7 @@ export default function VideoPlayer() {
     const [isMuted, setIsMuted] = useState(false);
     const [volume, setVolume] = useState(1);
     const [epgInfo, setEpgInfo] = useState(null);
+    const [loadingEpg, setLoadingEpg] = useState(false);
     const [showFullEpg, setShowFullEpg] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
@@ -576,8 +577,11 @@ export default function VideoPlayer() {
                 } catch (error) {
                     console.error("[EPG] Erro ao buscar programação:", error);
                     setEpgInfo(null);
+                } finally {
+                    setLoadingEpg(false);
                 }
             };
+            setLoadingEpg(true);
             fetchEPG();
         } else {
             setEpgInfo(null);
@@ -689,6 +693,13 @@ export default function VideoPlayer() {
                     </div>
                     
                     {/* UI de EPG Dinâmico */}
+                    {loadingEpg && !epgInfo && (
+                        <div className="mt-3 animate-pulse bg-white/5 backdrop-blur-md p-3 rounded-2xl border border-white/5 flex items-center gap-3">
+                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                            <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Sincronizando Grade...</p>
+                        </div>
+                    )}
+                    
                     {epgInfo?.current && (
                         <div className="mt-3 space-y-2 animate-fade-in bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl">
                             <p className="text-sm font-bold text-white line-clamp-2 md:line-clamp-1 flex items-center gap-2 uppercase tracking-tighter shadow-sm">
