@@ -664,11 +664,11 @@ export default function VideoPlayer() {
                 />
 
                 {/* BOTÃO DE PLAY CENTRAL (APARECE NO MINIMIZADO OU QUANDO PAUSADO) */}
-                <div className={`absolute inset-0 flex items-center justify-center z-[55] transition-all duration-300 
-                    ${(isMinimized || !isPlaying || showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div className={`absolute inset-0 flex items-center justify-center z-[55] transition-all duration-300 pointer-events-none 
+                    ${(isMinimized || !isPlaying || showControls) ? 'opacity-100' : 'opacity-0'}`}>
                     <button 
                         onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-                        className="p-4 lg:p-6 bg-black/40 backdrop-blur-xl rounded-full text-white border border-white/10 hover:scale-110 active:scale-95 transition-all shadow-2xl"
+                        className="p-4 lg:p-6 bg-black/40 backdrop-blur-xl rounded-full text-white border border-white/10 hover:scale-110 active:scale-95 transition-all shadow-2xl pointer-events-auto"
                     >
                         {isPlaying ? <FiPause size={isMinimized ? 24 : 40} /> : <FiPlay size={isMinimized ? 24 : 40} />}
                     </button>
@@ -741,6 +741,15 @@ export default function VideoPlayer() {
                         className={`p-2 lg:p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
                     >
                         <FiHeart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                )}
+
+                {!isMinimized && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
+                        className="p-2 lg:p-3 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all"
+                    >
+                        <FiMinimize2 size={20} />
                     </button>
                 )}
                 
