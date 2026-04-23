@@ -158,8 +158,11 @@ router.get('/stream', async (req, res) => {
             res.send(rewrittenLines.join('\n'));
         } else {
             // Se for stream de vídeo real (.ts, .mp4, etc.)
-            const range = req.headers.range;
-            const proxyHeaders = { ...commonHeaders };
+            const proxyHeaders = { 
+                ...commonHeaders,
+                'X-Forwarded-For': req.ip || req.headers['x-forwarded-for'],
+                'X-Real-IP': req.headers['x-real-ip']
+            };
             
             if (range) {
                 proxyHeaders.Range = range;
@@ -202,9 +205,16 @@ router.get('/stream', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('[PROXY ERROR URL]', req.query.url);
-        console.error('[PROXY ERROR MSG]', error.message);
-        res.status(error.response?.status || 500).send('Proxy Stream Error');
+        const statusCode = error.response?.status || 500;
+        console.error(`[PROXY ERROR] Status: ${statusCode} | URL: ${req.query.url}`);
+        console.error(`[PROXY ERROR MSG] ${error.message}`);
+        
+        // Retornar mensagem mais clara para o frontend
+        res.status(statusCode).json({ 
+            error: 'Erro no servidor de transmissão (Upstream)', 
+            details: error.message,
+            code: statusCode
+        });
     }
 });
 
