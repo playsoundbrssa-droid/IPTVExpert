@@ -22,6 +22,7 @@ export const getSeriesBaseName = (name) => {
         
         // 4. Limpeza de caracteres residuais no final
         .replace(/\s*[-|–—:._(]+\s*$/, '') // Trailing dashes, pipes, colons etc
+        .replace(/\s*[Hh][Dd][Rr]$/, '') // HDR tags
         .trim();
 };
 

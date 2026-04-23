@@ -116,7 +116,25 @@ export default function MediaDetailModal() {
 
         if (!siblings) {
             const currentBaseName = getSeriesBaseName(selectedMediaDetails.name);
+            
+            // Busca inicial por nome base
             siblings = seriesList.filter(s => getSeriesBaseName(s.name) === currentBaseName);
+            
+            // Se encontrar apenas 1 e tiver um grupo, tenta buscar no grupo por nomes que começam igual
+            if (siblings.length === 1 && selectedMediaDetails.group) {
+                const groupItems = seriesList.filter(s => s.group === selectedMediaDetails.group);
+                // Pegamos os primeiros 10 caracteres do nome limpo como prefixo de busca
+                const prefix = currentBaseName.substring(0, 10).toLowerCase();
+                if (prefix.length >= 4) {
+                    const groupSiblings = groupItems.filter(s => 
+                        getSeriesBaseName(s.name).toLowerCase().startsWith(prefix) ||
+                        s.name.toLowerCase().startsWith(currentBaseName.toLowerCase())
+                    );
+                    if (groupSiblings.length > 1) {
+                        siblings = groupSiblings;
+                    }
+                }
+            }
         }
 
         const organized = organizeBySeasons(siblings);
