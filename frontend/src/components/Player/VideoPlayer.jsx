@@ -46,6 +46,7 @@ export default function VideoPlayer() {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [position, setPosition] = useState({ x: 24, y: 24 }); // de baixo para cima, de direita para esquerda
     const [isDragging, setIsDragging] = useState(false);
     const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
@@ -198,21 +199,14 @@ export default function VideoPlayer() {
 
     const handleMouseDown = (e) => {
         if (!isMinimized) return;
-        setIsDragging(true);
-        dragRef.current = {
-            startX: e.clientX,
-            startY: e.clientY,
-            initialX: position.x,
-            initialY: position.y
-        };
-    };
-
     useEffect(() => {
         const handleMouseMove = (e) => {
             if (!isDragging) return;
-            // No modo fixo bottom-right, X aumenta para a esquerda e Y aumenta para cima
-            const dx = dragRef.current.startX - e.clientX;
-            const dy = dragRef.current.startY - e.clientY;
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            const dx = dragRef.current.startX - clientX;
+            const dy = dragRef.current.startY - clientY;
             
             setPosition({
                 x: Math.max(10, dragRef.current.initialX + dx),
@@ -224,12 +218,74 @@ export default function VideoPlayer() {
         if (isDragging) {
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
+            window.addEventListener('touchmove', handleMouseMove);
+            window.addEventListener('touchend', handleMouseUp);
         }
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('touchmove', handleMouseMove);
+            window.removeEventListener('touchend', handleMouseUp);
         };
     }, [isDragging]);
+
+    useEffect(() => {
+        const handler = () => {
+            setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement));
+        };
+        document.addEventListener('fullscreenchange', handler);
+        document.addEventListener('webkitfullscreenchange', handler);
+        document.addEventListener('mozfullscreenchange', handler);
+        document.addEventListener('MSFullscreenChange', handler);
+        return () => {
+            document.removeEventListener('fullscreenchange', handler);
+            document.removeEventListener('webkitfullscreenchange', handler);
+            document.removeEventListener('mozfullscreenchange', handler);
+            document.removeEventListener('MSFullscreenChange', handler);
+        };
+    }, []);
+
+    const handleFullscreen = () => {
+        const container = mainContainerRef.current;
+        if (!container) return;
+
+        if (!isFullscreen) {
+            if (container.requestFullscreen) {
+                container.requestFullscreen();
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else if (container.mozRequestFullScreen) {
+                container.mozRequestFullScreen();
+            } else if (container.msRequestFullscreen) {
+                container.msRequestFullscreen();
+            } else if (videoRef.current?.webkitEnterFullscreen) {
+                videoRef.current.webkitEnterFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+    };
+
+    const handleMouseDown = (e) => {
+        if (!isMinimized) return;
+        setIsDragging(true);
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        dragRef.current = {
+            startX: clientX,
+            startY: clientY,
+            initialX: position.x,
+            initialY: position.y
+        };
+    };
 
     const init = useCallback((attempt = 0) => {
         if (!currentStream || !videoRef.current) return;
@@ -536,22 +592,8 @@ export default function VideoPlayer() {
         toast.success('Download iniciado...');
     };
 
-    const handleFullscreen = () => {
-        const container = mainContainerRef.current;
-        if (!container) return;
-
-        if (container.requestFullscreen) {
-            container.requestFullscreen();
-        } else if (container.webkitRequestFullscreen) {
-            container.webkitRequestFullscreen();
-        } else if (container.mozRequestFullScreen) {
-            container.mozRequestFullScreen();
-        } else if (container.msRequestFullscreen) {
-            container.msRequestFullscreen();
-        } else if (videoRef.current?.webkitEnterFullscreen) {
-            // Fallback para iOS
-            videoRef.current.webkitEnterFullscreen();
-        }
+    const handleFullscreenOld = () => {
+        // Esta função foi substituída pela handleFullscreen moderna acima
     };
 
     const formatTime = (seconds) => {
@@ -570,14 +612,16 @@ export default function VideoPlayer() {
         <div 
             ref={mainContainerRef}
             onMouseDown={handleMouseDown}
+            onTouchStart={handleMouseDown}
             style={isMinimized ? { 
                 bottom: `${position.y}px`, 
                 right: `${position.x}px`,
-                cursor: isDragging ? 'grabbing' : 'grab'
+                cursor: isDragging ? 'grabbing' : 'grab',
+                touchAction: 'none'
             } : {}}
             className={`fixed z-[200] bg-black flex items-center justify-center overflow-hidden font-sans transition-all duration-300 
                 ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-                ${isMinimized ? 'w-80 h-48 rounded-3xl shadow-2xl border border-white/10 active:scale-95' : 'inset-0'}`}
+                ${isMinimized ? 'w-64 h-36 lg:w-80 lg:h-48 rounded-3xl shadow-2xl border border-white/10' : 'inset-0'}`}
         >
             {/* O Vídeo deve estar sempre centralizado */}
             <div className="relative w-full h-full flex items-center justify-center">
@@ -602,7 +646,9 @@ export default function VideoPlayer() {
             </div>
 
             {/* INFO DO CANAL NO CANTO ESQUERDO CENTRAL (Reduzido no Mobile para não chocar com o centro) */}
-            <div className={`absolute top-4 lg:top-1/2 lg:-translate-y-1/2 left-4 lg:left-12 z-50 transition-all duration-700 flex flex-col gap-1 lg:gap-3 origin-top-left scale-[0.6] lg:scale-100 ${showControls ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0 pointer-events-none'}`}>
+            {/* INFO DO CANAL NO CANTO ESQUERDO CENTRAL */}
+            <div className={`absolute top-4 lg:top-1/2 lg:-translate-y-1/2 left-4 lg:left-12 z-50 transition-all duration-700 flex flex-col gap-1 lg:gap-3 origin-top-left scale-[0.6] lg:scale-100 
+                ${(showControls && !isMinimized) ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0 pointer-events-none'}`}>
                 {stream.logo && (
                     <div className="w-10 h-10 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-2xl p-1.5 lg:p-2 border border-white/10 shadow-2xl mb-1 lg:mb-2">
                         <img src={stream.logo} className="w-full h-full object-contain drop-shadow-lg" alt="logo" />
@@ -657,13 +703,15 @@ export default function VideoPlayer() {
             </div>
 
             {/* BOTÕES DE AÇÃO NO CANTO SUPERIOR DIREITO */}
-            <div className={`absolute top-6 right-6 lg:top-10 lg:right-10 z-[60] transition-all duration-700 flex items-center gap-3 lg:gap-4 ${showControls ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
-                <button 
-                    onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
-                    className={`p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
-                >
-                    <FiHeart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
-                </button>
+            <div className={`absolute top-6 right-6 lg:top-10 lg:right-10 z-[60] transition-all duration-700 flex items-center gap-3 lg:gap-4 ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
+                {!isMinimized && (
+                    <button 
+                        onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
+                        className={`p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
+                    >
+                        <FiHeart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                )}
                 <button 
                     onClick={() => setCurrentStream(null)} 
                     className="p-3 text-white/80 hover:text-white transition-all transform hover:rotate-90"
@@ -713,7 +761,8 @@ export default function VideoPlayer() {
             )}
 
             {/* NOVO LAYOUT DE CONTROLES (ESTILO FOTO) - TRANSPARÊNCIA TOTAL */}
-            <div className={`absolute bottom-0 left-0 w-full p-4 lg:p-10 z-50 transition-all duration-700 ${showControls ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute bottom-0 left-0 w-full p-4 lg:p-10 z-50 transition-all duration-700 
+                ${(showControls && !isMinimized) ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
                 
 
                 {/* 1. LINHA SUPERIOR: NAVEGAÇÃO PRINCIPAL (CENTRALIZADA) */}
@@ -850,8 +899,8 @@ export default function VideoPlayer() {
                         onClick={handleFullscreen}
                         className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
                     >
-                        <FiMaximize size={20} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">Maximize</span>
+                        {isFullscreen ? <FiMinimize2 size={20} className="group-hover:scale-110 transition-transform" /> : <FiMaximize size={20} className="group-hover:scale-110 transition-transform" />}
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">{isFullscreen ? 'Sair' : 'Maximize'}</span>
                     </button>
                 </div>
             </div>
