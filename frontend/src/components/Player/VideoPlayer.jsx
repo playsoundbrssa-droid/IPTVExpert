@@ -197,8 +197,7 @@ export default function VideoPlayer() {
         }
     };
 
-    const handleMouseDown = (e) => {
-        if (!isMinimized) return;
+
     useEffect(() => {
         const handleMouseMove = (e) => {
             if (!isDragging) return;
