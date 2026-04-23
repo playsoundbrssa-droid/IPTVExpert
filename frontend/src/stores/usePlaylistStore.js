@@ -150,4 +150,4 @@ export const usePlaylistStore = create((set, get) => ({
         localStorage.setItem('iptv_favorites', JSON.stringify(newFavorites));
         return { favorites: newFavorites };
     })
-});
+}));
