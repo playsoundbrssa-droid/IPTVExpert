@@ -634,7 +634,8 @@ export default function VideoPlayer() {
                 cursor: isDragging ? 'grabbing' : 'grab',
                 touchAction: 'none'
             } : {}}
-            className={`fixed z-[200] bg-black flex items-center justify-center overflow-hidden font-sans transition-all duration-300 
+            className={`fixed z-[200] bg-black flex items-center justify-center overflow-hidden font-sans 
+                ${!isDragging ? 'transition-all duration-300' : ''}
                 ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
                 ${isMinimized ? 'w-64 h-36 lg:w-80 lg:h-48 rounded-3xl shadow-2xl border border-white/10' : 'inset-0'}`}
         >
@@ -661,6 +662,17 @@ export default function VideoPlayer() {
                     playsInline
                     crossOrigin="anonymous"
                 />
+
+                {/* BOTÃO DE PLAY CENTRAL (APARECE NO MINIMIZADO OU QUANDO PAUSADO) */}
+                <div className={`absolute inset-0 flex items-center justify-center z-[55] transition-all duration-300 
+                    ${(isMinimized || !isPlaying || showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                        className="p-4 lg:p-6 bg-black/40 backdrop-blur-xl rounded-full text-white border border-white/10 hover:scale-110 active:scale-95 transition-all shadow-2xl"
+                    >
+                        {isPlaying ? <FiPause size={isMinimized ? 24 : 40} /> : <FiPlay size={isMinimized ? 24 : 40} />}
+                    </button>
+                </div>
             </div>
 
             {/* INFO DO CANAL NO CANTO ESQUERDO CENTRAL (Reduzido no Mobile para não chocar com o centro) */}
@@ -721,26 +733,32 @@ export default function VideoPlayer() {
             </div>
 
             {/* BOTÕES DE AÇÃO NO CANTO SUPERIOR DIREITO */}
-            <div className={`absolute top-6 right-6 lg:top-10 lg:right-10 z-[60] transition-all duration-700 flex items-center gap-3 lg:gap-4 ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute top-4 right-4 lg:top-8 lg:right-8 z-[60] transition-all duration-700 flex items-center gap-2 lg:gap-4 
+                ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
                 {!isMinimized && (
                     <button 
                         onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
-                        className={`p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
+                        className={`p-2 lg:p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
                     >
                         <FiHeart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
                     </button>
                 )}
+                
+                {isMinimized && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleFullscreen(); setIsMinimized(false); }}
+                        className="p-2 lg:p-3 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all"
+                    >
+                        <FiMaximize size={20} />
+                    </button>
+                )}
+
                 <button 
-                    onClick={() => setCurrentStream(null)} 
-                    className="p-3 text-white/80 hover:text-white transition-all transform hover:rotate-90"
+                    onClick={(e) => { e.stopPropagation(); setCurrentStream(null); }} 
+                    className="p-2 lg:p-3 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all transform hover:rotate-90"
                 >
                     <FiX size={24} />
                 </button>
-                <button 
-                    onClick={() => setIsMinimized(!isMinimized)} 
-                    className="p-3 text-white/80 hover:text-white transition-all"
-                >
-                    <FiMinimize2 size={24} />
                 </button>
             </div>
 
