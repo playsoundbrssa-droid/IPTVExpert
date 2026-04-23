@@ -33,6 +33,7 @@ const proxyRoutes = require('./routes/proxy');
 const statsRoutes = require('./routes/stats');
 const xtreamRoutes = require('./routes/xtream');
 const mediaRoutes = require('./routes/media');
+const userPlaylistRoutes = require('./routes/userPlaylists');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -53,7 +54,7 @@ app.use(express.text({ type: 'text/*', limit: '50mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/playlist', playlistRoutes);
-app.use('/api/user-playlists', require('./routes/userPlaylists'));
+app.use('/api/user-playlists', userPlaylistRoutes);
 app.use('/api/proxy', proxyRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/xtream', xtreamRoutes);

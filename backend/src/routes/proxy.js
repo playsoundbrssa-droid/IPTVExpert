@@ -108,13 +108,23 @@ router.get('/stream', async (req, res) => {
         // Determinar se é manifest M3U8
         const isM3u8 = finalTarget.includes('.m3u8') || finalTarget.includes('type=m3u8');
 
+        let origin = '';
+        try {
+            origin = new URL(finalTarget).origin;
+        } catch (e) {
+            console.warn('[PROXY] Invalid URL for origin:', finalTarget);
+        }
+
         const commonHeaders = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
             'Accept': '*/*',
-            'Connection': 'keep-alive',
-            'Referer': new URL(finalTarget).origin + '/',
-            'Origin': new URL(finalTarget).origin
+            'Connection': 'keep-alive'
         };
+
+        if (origin) {
+            commonHeaders['Referer'] = origin + '/';
+            commonHeaders['Origin'] = origin;
+        }
 
         if (isM3u8) {
             // Se for playlist, baixar como texto e reescrever os links internos
