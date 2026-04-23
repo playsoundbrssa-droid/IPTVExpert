@@ -179,38 +179,45 @@ export default function VideoPlayer() {
         const video = videoRef.current;
         if (!video) return;
 
-        // 1. Tentar AirPlay (Safari/iOS) - Prioridade máxima para ecossistema Apple
-        if (video.webkitShowPlaybackTargetPicker) {
-            video.webkitShowPlaybackTargetPicker();
-            return;
+        // 1. Tentar AirPlay (Safari/iOS) - Prioridade máxima
+        // O Safari exige que a chamada seja síncrona a partir de um clique
+        try {
+            if (video.webkitShowPlaybackTargetPicker) {
+                video.webkitShowPlaybackTargetPicker();
+                return;
+            }
+        } catch (e) {
+            console.warn("[AIRPLAY] Erro ao abrir picker:", e);
         }
 
-        // 2. Tentar API de Controle Remoto (Padrão moderno para Chrome/Android)
-        if (video.remote && video.remote.state !== 'disabled') {
+        // 2. Tentar API de Controle Remoto (Chrome/Android)
+        // Tentamos o prompt mesmo que o estado pareça desabilitado, pois alguns navegadores mentem
+        if (video.remote) {
             video.remote.prompt().catch((err) => {
-                if (err.name === 'NotAllowedError') return; // Silenciar se o usuário apenas cancelou o menu
+                if (err.name === 'NotAllowedError') return;
                 
                 const ua = navigator.userAgent.toLowerCase();
                 const isChrome = /chrome/.test(ua) && !/edge|opr/.test(ua);
                 
                 if (isChrome) {
-                    toast('No Chrome, use o menu lateral (⋮) > Transmitir para ver na sua TV.', { icon: '📺', duration: 6000 });
+                    toast('No Chrome, use o menu (⋮) > Transmitir para ver na sua TV.', { icon: '📺', duration: 6000 });
                 } else {
-                    toast.error('O seu navegador não permitiu abrir o menu de espelhamento.');
+                    // Se falhar o prompt, tentamos a Presentation API como último recurso
+                    if (window.PresentationRequest) {
+                        const presentationRequest = new PresentationRequest([video.src]);
+                        presentationRequest.start().catch(() => {
+                            toast.error('O seu dispositivo não suporta espelhamento nativo.');
+                        });
+                    } else {
+                        toast.error('O espelhamento nativo não pôde ser iniciado.');
+                    }
                 }
             });
             return;
         }
 
-        // 3. Orientações de Fallback por Dispositivo
-        const ua = navigator.userAgent.toLowerCase();
-        if (/iphone|ipad|ipod/.test(ua)) {
-            toast('No iPhone, use o navegador Safari para ativar o AirPlay nativo.', { icon: '📺', duration: 5000 });
-        } else if (/android/.test(ua)) {
-            toast('No Android, use o menu do Chrome > Transmitir para espelhar.', { icon: '📺', duration: 5000 });
-        } else {
-            toast('O espelhamento nativo requer suporte do navegador (Safari para AirPlay ou Chrome para Cast).', { icon: '📺', duration: 5000 });
-        }
+        // 3. Fallback Informativo Final
+        toast('Para espelhar, use a função nativa de transmitir do seu navegador.', { icon: '📺', duration: 5000 });
     };
 
 
