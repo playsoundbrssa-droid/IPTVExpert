@@ -663,16 +663,7 @@ export default function VideoPlayer() {
                     crossOrigin="anonymous"
                 />
 
-                {/* BOTÃO DE PLAY CENTRAL (APARECE NO MINIMIZADO OU QUANDO PAUSADO) */}
-                <div className={`absolute inset-0 flex items-center justify-center z-[55] transition-all duration-300 pointer-events-none 
-                    ${(isMinimized || !isPlaying || showControls) ? 'opacity-100' : 'opacity-0'}`}>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-                        className="p-4 lg:p-6 bg-black/40 backdrop-blur-xl rounded-full text-white border border-white/10 hover:scale-110 active:scale-95 transition-all shadow-2xl pointer-events-auto"
-                    >
-                        {isPlaying ? <FiPause size={isMinimized ? 24 : 40} /> : <FiPlay size={isMinimized ? 24 : 40} />}
-                    </button>
-                </div>
+
             </div>
 
             {/* INFO DO CANAL NO CANTO ESQUERDO CENTRAL (Reduzido no Mobile para não chocar com o centro) */}
@@ -738,35 +729,35 @@ export default function VideoPlayer() {
                 {!isMinimized && (
                     <button 
                         onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
-                        className={`p-2 lg:p-3 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
+                        className={`p-2 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
                     >
-                        <FiHeart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
+                        <FiHeart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
                     </button>
                 )}
 
                 {!isMinimized && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
-                        className="p-2 lg:p-3 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all"
+                        className="p-2 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all"
                     >
-                        <FiMinimize2 size={20} />
+                        <FiMinimize2 size={18} />
                     </button>
                 )}
                 
                 {isMinimized && (
                     <button 
-                        onClick={(e) => { e.stopPropagation(); handleFullscreen(); setIsMinimized(false); }}
-                        className="p-2 lg:p-3 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all"
+                        onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
+                        className="p-1.5 bg-black/40 backdrop-blur-md rounded-lg text-white/80 hover:text-white border border-white/10 transition-all"
                     >
-                        <FiMaximize size={20} />
+                        <FiMaximize size={14} />
                     </button>
                 )}
 
                 <button 
                     onClick={(e) => { e.stopPropagation(); setCurrentStream(null); }} 
-                    className="p-2 lg:p-3 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all transform hover:rotate-90"
+                    className={`p-1.5 lg:p-2 bg-black/40 backdrop-blur-md rounded-lg lg:rounded-xl text-white/80 hover:text-white border border-white/10 transition-all transform hover:rotate-90`}
                 >
-                    <FiX size={24} />
+                    <FiX size={isMinimized ? 16 : 20} />
                 </button>
 
             </div>
@@ -871,9 +862,9 @@ export default function VideoPlayer() {
                 </div>
 
                 {/* 3. LINHA INFERIOR: AÇÕES EXTRAS (SHARE, COMMENT, DOWNLOAD) */}
-                <div className="flex items-center justify-center gap-4 lg:gap-14">
+                <div className="flex items-center justify-center gap-4 lg:gap-10">
                     {/* Controle de Volume Profissional (Movido para Baixo) */}
-                    <div className="hidden lg:flex items-center gap-3 w-40 group/vol mr-4">
+                    <div className="hidden lg:flex items-center gap-3 w-32 group/vol mr-4">
                         <button 
                             onClick={() => {
                                 if (videoRef.current) {
@@ -881,9 +872,9 @@ export default function VideoPlayer() {
                                     setIsMuted(!isMuted);
                                 }
                             }} 
-                            className="text-white/80 hover:text-white transition-all"
+                            className="text-white/60 hover:text-white transition-all"
                         >
-                            {isMuted || volume === 0 ? <FiVolumeX size={18} /> : <FiVolume2 size={18} />}
+                            {isMuted || volume === 0 ? <FiVolumeX size={16} /> : <FiVolume2 size={16} />}
                         </button>
                         <input 
                             type="range" min="0" max="1" step="0.05" value={isMuted ? 0 : volume}
@@ -910,42 +901,42 @@ export default function VideoPlayer() {
                             navigator.clipboard.writeText(rawUrl);
                             toast.success('Link copiado!');
                         }}
-                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
+                        className="flex flex-col items-center gap-1 text-white/60 hover:text-white transition-all group"
                     >
-                        <FiShare2 size={20} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">Share</span>
+                        <FiShare2 size={18} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em]">Share</span>
                     </button>
 
                     <button 
                         onClick={() => { setShowComments(!showComments); setShowFullEpg(false); }}
-                        className={`flex flex-col items-center gap-1.5 transition-all group ${showComments ? 'text-white' : 'text-white/80 hover:text-white'}`}
+                        className={`flex flex-col items-center gap-1 transition-all group ${showComments ? 'text-white' : 'text-white/60 hover:text-white'}`}
                     >
-                        <FiMessageSquare size={20} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">Comment</span>
+                        <FiMessageSquare size={18} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em]">Comment</span>
                     </button>
 
                     <button 
                         onClick={handleCast}
-                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
+                        className="flex flex-col items-center gap-1 text-white/60 hover:text-white transition-all group"
                     >
-                        <FiAirplay size={20} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">Cast</span>
+                        <FiAirplay size={18} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em]">Cast</span>
                     </button>
 
                     <button 
                         onClick={handleDownload}
-                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
+                        className="flex flex-col items-center gap-1 text-white/60 hover:text-white transition-all group"
                     >
-                        <FiDownload size={20} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">Download</span>
+                        <FiDownload size={18} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em]">Download</span>
                     </button>
 
                     <button 
                         onClick={handleFullscreen}
-                        className="flex flex-col items-center gap-1.5 text-white/80 hover:text-white transition-all group"
+                        className="flex flex-col items-center gap-1 text-white/60 hover:text-white transition-all group"
                     >
-                        {isFullscreen ? <FiMinimize2 size={20} className="group-hover:scale-110 transition-transform" /> : <FiMaximize size={20} className="group-hover:scale-110 transition-transform" />}
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">{isFullscreen ? 'Sair' : 'Maximize'}</span>
+                        {isFullscreen ? <FiMinimize2 size={18} className="group-hover:scale-110 transition-transform" /> : <FiMaximize size={18} className="group-hover:scale-110 transition-transform" />}
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em]">{isFullscreen ? 'Sair' : 'Maximize'}</span>
                     </button>
                 </div>
             </div>
