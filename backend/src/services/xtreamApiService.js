@@ -7,33 +7,36 @@ const dns = require('dns');
 // Usamos instâncias limpas de axios para evitar loops de DNS
 const resolveDoh = async (hostname) => {
     const cleanHost = hostname.trim().split(':')[0]; 
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost; // Se já for IP, retorna
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost; 
 
     const providers = [
-        { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, headers: { 'accept': 'application/dns-json' } },
-        { url: `https://dns.google/resolve?name=${cleanHost}&type=A`, headers: { 'accept': 'application/json' } }
+        { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, host: '1.1.1.1' },
+        { url: `https://8.8.8.8/resolve?name=${cleanHost}&type=A`, host: 'dns.google' },
+        { url: `https://9.9.9.9/dns-query?name=${cleanHost}&type=A`, host: 'dns.quad9.net' }
     ];
 
     for (const provider of providers) {
         try {
-            // Chamada DoH usando agentes padrão para evitar recursão
             const response = await axios.get(provider.url, { 
-                headers: provider.headers,
+                headers: { 
+                    'accept': 'application/dns-json',
+                    'Host': provider.host 
+                },
                 timeout: 5000,
                 httpAgent: new http.Agent(),
-                httpsAgent: new https.Agent()
+                httpsAgent: new https.Agent({ rejectUnauthorized: false })
             });
 
             const data = response.data;
             if (data && data.Answer) {
                 const firstA = data.Answer.find(a => a.type === 1);
                 if (firstA) {
-                    console.log(`[XTREAM DNS DoH] ✅ Resolvido (${cleanHost}): ${firstA.data}`);
+                    console.log(`[XTREAM DNS DoH] ✅ Resolvido (${cleanHost}) via ${provider.host}: ${firstA.data}`);
                     return firstA.data;
                 }
             }
         } catch (error) {
-            console.warn(`[XTREAM DNS DoH WARN] Provedor ${provider.url.split('/')[2]} indisponível.`);
+            console.warn(`[XTREAM DNS DoH WARN] Provedor ${provider.host} falhou.`);
         }
     }
     return null;

@@ -153,9 +153,21 @@ export default function MediaDetailModal() {
     if (!selectedMediaDetails) return null;
 
     const handlePlay = (episode = null) => {
-        const itemToPlay = episode || selectedMediaDetails;
-        setCurrentStream(itemToPlay, []);
-        setSelectedMediaDetails(null); // Fechar modal ao dar play
+        let itemToPlay = episode || selectedMediaDetails;
+        
+        // Se for uma série e não houver episódio selecionado, pegamos o primeiro da lista
+        if (!episode && selectedMediaDetails.type === 'series') {
+            const firstSeasonNum = seasons[0];
+            const firstEpisode = episodesBySeason[firstSeasonNum]?.[0];
+            if (firstEpisode) {
+                itemToPlay = firstEpisode;
+            }
+        }
+
+        if (itemToPlay) {
+            setCurrentStream(itemToPlay, []);
+            setSelectedMediaDetails(null); // Fechar modal ao dar play
+        }
     };
 
     const toggleFavorite = () => {
