@@ -15,7 +15,7 @@ import {
     FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
     FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiDownload, FiSkipBack, FiSkipForward, FiMenu,
-    FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2, FiMaximize2
+    FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
@@ -176,24 +176,40 @@ export default function VideoPlayer() {
     };
 
     const handleCast = () => {
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        
-        if (videoRef.current?.remote) {
-            videoRef.current.remote.prompt().catch(() => {
-                if (!isSafari) {
-                    toast('Para espelhamento via AirPlay, utilize o navegador Safari.', { icon: '📺' });
+        const video = videoRef.current;
+        if (!video) return;
+
+        // 1. Tentar AirPlay (Safari/iOS)
+        if (video.webkitShowPlaybackTargetPicker) {
+            video.webkitShowPlaybackTargetPicker();
+            return;
+        }
+
+        // 2. Tentar API de Controle Remoto (Padrão moderno)
+        if (video.remote && video.remote.state !== 'disabled') {
+            video.remote.prompt().catch((err) => {
+                console.error("[CAST] Remote prompt error:", err);
+                const ua = navigator.userAgent.toLowerCase();
+                if (ua.includes('chrome') && ua.includes('android')) {
+                    toast('Utilize a opção "Transmitir" no menu do Chrome para espelhar.', { icon: '📺' });
                 } else {
-                    toast.error('O seu navegador não suporta espelhamento nativo.');
+                    toast.error('Não foi possível iniciar o espelhamento.');
                 }
             });
-        } else if (videoRef.current?.webkitShowPlaybackTargetPicker) {
-            videoRef.current.webkitShowPlaybackTargetPicker();
+            return;
+        }
+
+        // 3. Fallback com orientações por dispositivo
+        const ua = navigator.userAgent.toLowerCase();
+        const isiOS = /iphone|ipad|ipod/.test(ua);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+
+        if (isiOS && !isSafari) {
+            toast('No iPhone, o AirPlay nativo requer o uso do navegador Safari.', { icon: '📺', duration: 5000 });
+        } else if (ua.includes('android')) {
+            toast('No Android, use o menu do Chrome > Transmitir para ver na TV.', { icon: '📺', duration: 5000 });
         } else {
-            if (!isSafari) {
-                toast('O espelhamento nativo (AirPlay) requer o Safari. Para Chrome, utilize a função de transmitir do próprio navegador.', { icon: '📺', duration: 5000 });
-            } else {
-                toast.error('O espelhamento não é suportado neste navegador.');
-            }
+            toast.error('O seu navegador não possui suporte a espelhamento nativo.');
         }
     };
 
@@ -627,6 +643,9 @@ export default function VideoPlayer() {
                 <video
                     ref={videoRef}
                     className="w-full h-full object-contain cursor-pointer"
+                    x-webkit-airplay="allow"
+                    webkit-playsinline="true"
+                    airplay="allow"
                     onClick={(e) => { 
                         e.stopPropagation();
                         if (isMinimized) {
@@ -702,9 +721,7 @@ export default function VideoPlayer() {
             </div>
 
             {/* BOTÕES DE AÇÃO NO CANTO SUPERIOR DIREITO */}
-            <div className={`absolute z-[60] transition-all duration-700 flex items-center 
-                ${isMinimized ? 'top-2 right-2 gap-1' : 'top-6 right-6 lg:top-10 lg:right-10 gap-3 lg:gap-4'}
-                ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute top-6 right-6 lg:top-10 lg:right-10 z-[60] transition-all duration-700 flex items-center gap-3 lg:gap-4 ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
                 {!isMinimized && (
                     <button 
                         onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
@@ -713,19 +730,17 @@ export default function VideoPlayer() {
                         <FiHeart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
                     </button>
                 )}
-                
-                <button 
-                    onClick={() => setIsMinimized(!isMinimized)} 
-                    className={`${isMinimized ? 'p-1.5' : 'p-3'} text-white/80 hover:text-white transition-all transform hover:scale-110 bg-black/20 rounded-lg backdrop-blur-sm`}
-                >
-                    {isMinimized ? <FiMaximize2 size={18} /> : <FiMinimize2 size={24} />}
-                </button>
-
                 <button 
                     onClick={() => setCurrentStream(null)} 
-                    className={`${isMinimized ? 'p-1.5' : 'p-3'} text-white/80 hover:text-white transition-all transform hover:rotate-90 bg-black/20 rounded-lg backdrop-blur-sm`}
+                    className="p-3 text-white/80 hover:text-white transition-all transform hover:rotate-90"
                 >
-                    <FiX size={isMinimized ? 20 : 24} />
+                    <FiX size={24} />
+                </button>
+                <button 
+                    onClick={() => setIsMinimized(!isMinimized)} 
+                    className="p-3 text-white/80 hover:text-white transition-all"
+                >
+                    <FiMinimize2 size={24} />
                 </button>
             </div>
 
