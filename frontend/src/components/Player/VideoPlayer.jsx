@@ -759,7 +759,7 @@ export default function VideoPlayer() {
                 >
                     <FiX size={24} />
                 </button>
-                </button>
+
             </div>
 
             {/* Overlays Cinematográficos Removidos para Transparência Total */}
