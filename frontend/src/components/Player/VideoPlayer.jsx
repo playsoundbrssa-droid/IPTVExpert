@@ -690,35 +690,42 @@ export default function VideoPlayer() {
 
                     {/* UI de EPG Dinâmico */}
                     {epgInfo?.current && (
-                        <div className="mt-3 space-y-2 animate-fade-in bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl">
-                            <p className="text-sm font-bold text-white line-clamp-2 md:line-clamp-1 flex items-center gap-2 uppercase tracking-tighter shadow-sm">
-                                <span className="text-[9px] px-2 py-1 bg-red-600 rounded text-white font-black animate-pulse flex-shrink-0">
-                                    AO VIVO
-                                </span>
-                                <span className="truncate">{epgInfo.current.title}</span>
-                            </p>
-
-                            {/* Barra de Progresso do Programa */}
-                            {(() => {
-                                const now = new Date();
-                                const start = new Date(epgInfo.current.start);
-                                const end = new Date(epgInfo.current.end);
-                                const total = end - start;
-                                const elapsed = now - start;
-                                const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
-
-                                return (
-                                    <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mt-1 shadow-inner">
-                                        <div className="h-full bg-white transition-all duration-500 rounded-full drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]" style={{ width: `${progress}%` }} />
+                        <div className="mt-3 animate-fade-in bg-black/50 backdrop-blur-xl p-4 lg:p-5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-w-full">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-3 w-full">
+                                    <div className="flex-shrink-0 bg-red-600 px-2 py-0.5 rounded-md shadow-[0_0_10px_rgba(220,38,38,0.3)] animate-pulse">
+                                        <span className="text-[9px] text-white font-black uppercase tracking-tight whitespace-nowrap">Ao Vivo</span>
                                     </div>
-                                );
-                            })()}
+                                    <h3 className="text-white text-sm lg:text-base font-bold truncate leading-tight flex-1 min-w-0">
+                                        {epgInfo.current.title}
+                                    </h3>
+                                </div>
+                                
+                                {/* Barra de Progresso do Programa */}
+                                {(() => {
+                                    const now = new Date();
+                                    const start = new Date(epgInfo.current.start);
+                                    const end = new Date(epgInfo.current.end);
+                                    const total = end - start;
+                                    const elapsed = now - start;
+                                    const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
+                                    
+                                    return (
+                                        <div className="relative w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-1 shadow-inner">
+                                            <div className="absolute top-0 left-0 h-full bg-white transition-all duration-500 rounded-full" style={{ width: `${progress}%` }} />
+                                        </div>
+                                    );
+                                })()}
 
-                            {epgInfo.next && (
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate mt-2">
-                                    <span className="text-white/60">Próximo:</span> {epgInfo.next.title}
-                                </p>
-                            )}
+                                <div className="flex justify-between items-center mt-1">
+                                    {epgInfo.next && (
+                                        <div className="flex items-center gap-2 max-w-full min-w-0">
+                                            <span className="text-[9px] text-white/40 font-black uppercase tracking-widest flex-shrink-0">A Seguir</span>
+                                            <span className="text-[10px] text-gray-400 font-bold truncate min-w-0">{epgInfo.next.title}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -761,7 +768,19 @@ export default function VideoPlayer() {
                     <FiX size={isMinimized ? 16 : 20} />
                 </button>
 
+                {/* INFO "A SEGUIR" NO CANTO SUPERIOR DIREITO */}
+                {epgInfo?.next && !isMinimized && (
+                    <div className="hidden md:flex flex-col items-end mr-4 animate-fade-in pointer-events-none">
+                        <span className="text-[9px] text-white/40 font-black uppercase tracking-[0.2em] mb-0.5">A Seguir</span>
+                        <div className="flex items-center gap-3">
+                             <h4 className="text-white text-base lg:text-lg font-black tracking-tight drop-shadow-xl">{epgInfo.next.title}</h4>
+                             {stream.logo && <img src={stream.logo} className="w-6 h-6 lg:w-8 lg:h-8 object-contain opacity-80" alt="" />}
+                        </div>
+                    </div>
+                )}
             </div>
+
+
 
             {/* Overlays Cinematográficos Removidos para Transparência Total */}
             <div className={`absolute inset-0 bg-black/10 transition-opacity duration-1000 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'}`} />
