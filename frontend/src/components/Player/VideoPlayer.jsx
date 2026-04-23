@@ -179,38 +179,37 @@ export default function VideoPlayer() {
         const video = videoRef.current;
         if (!video) return;
 
-        // 1. Tentar AirPlay (Safari/iOS)
+        // 1. Tentar AirPlay (Safari/iOS) - Prioridade máxima para ecossistema Apple
         if (video.webkitShowPlaybackTargetPicker) {
             video.webkitShowPlaybackTargetPicker();
             return;
         }
 
-        // 2. Tentar API de Controle Remoto (Padrão moderno)
+        // 2. Tentar API de Controle Remoto (Padrão moderno para Chrome/Android)
         if (video.remote && video.remote.state !== 'disabled') {
             video.remote.prompt().catch((err) => {
-                if (err.name === 'NotAllowedError') return; // Ignorar se o usuário apenas cancelou a seleção
-                console.error("[CAST] Remote prompt error:", err);
+                if (err.name === 'NotAllowedError') return; // Silenciar se o usuário apenas cancelou o menu
+                
                 const ua = navigator.userAgent.toLowerCase();
-                if (ua.includes('chrome') && ua.includes('android')) {
-                    toast('Utilize a opção "Transmitir" no menu do Chrome para espelhar.', { icon: '📺' });
+                const isChrome = /chrome/.test(ua) && !/edge|opr/.test(ua);
+                
+                if (isChrome) {
+                    toast('No Chrome, use o menu lateral (⋮) > Transmitir para ver na sua TV.', { icon: '📺', duration: 6000 });
                 } else {
-                    toast.error('Não foi possível iniciar o espelhamento.');
+                    toast.error('O seu navegador não permitiu abrir o menu de espelhamento.');
                 }
             });
             return;
         }
 
-        // 3. Fallback com orientações por dispositivo
+        // 3. Orientações de Fallback por Dispositivo
         const ua = navigator.userAgent.toLowerCase();
-        const isiOS = /iphone|ipad|ipod/.test(ua);
-        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-
-        if (isiOS && !isSafari) {
-            toast('No iPhone, o AirPlay nativo requer o uso do navegador Safari.', { icon: '📺', duration: 5000 });
-        } else if (ua.includes('android')) {
-            toast('No Android, use o menu do Chrome > Transmitir para ver na TV.', { icon: '📺', duration: 5000 });
+        if (/iphone|ipad|ipod/.test(ua)) {
+            toast('No iPhone, use o navegador Safari para ativar o AirPlay nativo.', { icon: '📺', duration: 5000 });
+        } else if (/android/.test(ua)) {
+            toast('No Android, use o menu do Chrome > Transmitir para espelhar.', { icon: '📺', duration: 5000 });
         } else {
-            toast.error('O seu navegador não possui suporte a espelhamento nativo.');
+            toast('O espelhamento nativo requer suporte do navegador (Safari para AirPlay ou Chrome para Cast).', { icon: '📺', duration: 5000 });
         }
     };
 
