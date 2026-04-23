@@ -302,7 +302,8 @@ export default function VideoPlayer() {
         };
     };
 
-    const init = useCallback((attempt = 0) => {
+    const init = useCallback((attemptInput = 0) => {
+        const attempt = typeof attemptInput === 'number' ? attemptInput : 0;
         if (!currentStream || !videoRef.current) return;
         
         const rawUrl = currentStream.streamUrl || currentStream.url || '';

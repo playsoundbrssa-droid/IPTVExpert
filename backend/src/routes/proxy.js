@@ -5,25 +5,40 @@ const https   = require('https');
 const dns     = require('dns');
 const router  = express.Router();
 
-// ── DoH Resolver (igual ao m3uParserService) ─────────────────────────────────
+// ── DNS Cache & Optimization ────────────────────────────────────────────────
+const dnsCache = new Map();
+
 const resolveDoh = async (hostname) => {
     const cleanHost = hostname.trim().split(':')[0];
     if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost;
+    
+    // Check Cache
+    if (dnsCache.has(cleanHost)) return dnsCache.get(cleanHost);
 
     const providers = [
         { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, headers: { accept: 'application/dns-json' } },
         { url: `https://dns.google/resolve?name=${cleanHost}&type=A`, headers: { accept: 'application/json' } }
     ];
-    for (const p of providers) {
-        try {
-            const r = await axios.get(p.url, {
-                headers: p.headers, timeout: 5000,
+
+    try {
+        // Tentar resolver em paralelo com timeout curto (3s)
+        const results = await Promise.any(providers.map(p => 
+            axios.get(p.url, {
+                headers: p.headers, timeout: 3000,
                 httpAgent: new http.Agent(), httpsAgent: new https.Agent()
-            });
-            const a = r.data?.Answer?.find(x => x.type === 1);
-            if (a) { console.log(`[PROXY DoH] ✅ ${cleanHost} → ${a.data}`); return a.data; }
-        } catch (_) {}
-    }
+            }).then(r => {
+                const a = r.data?.Answer?.find(x => x.type === 1);
+                if (a) return a.data;
+                throw new Error('Not found');
+            })
+        ));
+
+        if (results) {
+            console.log(`[PROXY DoH] ✅ ${cleanHost} → ${results}`);
+            dnsCache.set(cleanHost, results);
+            return results;
+        }
+    } catch (_) {}
     return null;
 };
 
@@ -38,8 +53,8 @@ const customLookup = (hostname, options, callback) => {
 };
 
 const proxyAgents = {
-    httpAgent:  new http.Agent ({ lookup: customLookup, keepAlive: true }),
-    httpsAgent: new https.Agent({ lookup: customLookup, keepAlive: true, rejectUnauthorized: false })
+    httpAgent:  new http.Agent ({ lookup: customLookup, keepAlive: true, maxSockets: 100 }),
+    httpsAgent: new https.Agent({ lookup: customLookup, keepAlive: true, maxSockets: 100, rejectUnauthorized: false })
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
