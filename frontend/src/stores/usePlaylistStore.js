@@ -129,7 +129,25 @@ export const usePlaylistStore = create((set, get) => ({
         idbDel('currentPlaylist');
     },
 
-    favorites: [],
-    addFavorite: (item) => set((state) => ({ favorites: [...state.favorites, item] })),
-    removeFavorite: (id) => set((state) => ({ favorites: state.favorites.filter(f => f.id !== id) }))
-}));
+    favorites: (() => {
+        try {
+            return JSON.parse(localStorage.getItem('iptv_favorites') || '[]');
+        } catch {
+            return [];
+        }
+    })(),
+
+    addFavorite: (item) => set((state) => {
+        // Evita duplicatas por ID
+        if (state.favorites.some(f => f.id === item.id)) return state;
+        const newFavorites = [...state.favorites, item];
+        localStorage.setItem('iptv_favorites', JSON.stringify(newFavorites));
+        return { favorites: newFavorites };
+    }),
+
+    removeFavorite: (id) => set((state) => {
+        const newFavorites = state.favorites.filter(f => f.id !== id);
+        localStorage.setItem('iptv_favorites', JSON.stringify(newFavorites));
+        return { favorites: newFavorites };
+    })
+});
