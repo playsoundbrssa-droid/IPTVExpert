@@ -45,7 +45,14 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: function (origin, callback) {
+        // Permitir requests sem origin (como mobile apps, curl, etc) e qualquer origin para facilitar.
+        // Em produção restrita, você limitaria isso.
+        callback(null, true);
+    },
+    credentials: true // Permite envio de cookies de sessão
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.text({ type: 'text/*', limit: '50mb' }));
