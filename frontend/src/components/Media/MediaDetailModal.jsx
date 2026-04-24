@@ -21,8 +21,6 @@ export default function MediaDetailModal() {
     useEffect(() => {
         if (selectedMediaDetails) {
             fetchMetadata();
-            // Reset season to 1 when changing media
-            setSelectedSeason(1);
         } else {
             setMetadata(null);
         }
@@ -62,14 +60,29 @@ export default function MediaDetailModal() {
     }, [selectedMediaDetails, seriesList]);
 
     const seasons = useMemo(() => {
-        return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => a-b) : [];
+        return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => parseInt(a)-parseInt(b)) : [];
     }, [episodesBySeason]);
+
+    useEffect(() => {
+        if (seasons.length > 0) {
+            // Se a temporada 1 existe, começa por ela. Se não, pega a primeira disponível.
+            if (seasons.includes("1")) {
+                setSelectedSeason(1);
+            } else {
+                setSelectedSeason(parseInt(seasons[0]));
+            }
+        }
+    }, [seasons]);
 
     if (!selectedMediaDetails) return null;
 
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;
-        setCurrentStream(itemToPlay, []);
+        
+        // Passar todos os episódios como a playlist atual para o player
+        const allEpisodes = selectedMediaDetails.allEpisodes || [];
+        setCurrentStream(itemToPlay, allEpisodes);
+        
         setSelectedMediaDetails(null); // Fechar modal ao dar play
     };
 

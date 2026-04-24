@@ -15,8 +15,9 @@ import {
     FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
     FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiDownload, FiSkipBack, FiSkipForward, FiMenu,
-    FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2
+    FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2, FiLayers, FiChevronDown
 } from 'react-icons/fi';
+import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
@@ -47,6 +48,8 @@ export default function VideoPlayer() {
     const [newComment, setNewComment] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showSeasons, setShowSeasons] = useState(false);
+    const [selectedSeason, setSelectedSeason] = useState(1);
     const [position, setPosition] = useState({ x: 24, y: 24 }); // de baixo para cima, de direita para esquerda
     const [isDragging, setIsDragging] = useState(false);
     const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
@@ -66,6 +69,22 @@ export default function VideoPlayer() {
             videoRef.current.load();
         }
     }, []);
+
+    // Agrupamento de Episódios para o Drawer
+    const episodesBySeason = useMemo(() => {
+        if (!currentStream || currentStream.type !== 'series') return null;
+        return organizeBySeasons(playlist);
+    }, [currentStream, playlist]);
+
+    const seasons = useMemo(() => {
+        return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => parseInt(a)-parseInt(b)) : [];
+    }, [episodesBySeason]);
+
+    useEffect(() => {
+        if (seasons.length > 0 && !seasons.includes(String(selectedSeason))) {
+            setSelectedSeason(parseInt(seasons[0]));
+        }
+    }, [seasons, selectedSeason]);
 
     const getStreamUrl = useCallback(() => {
         if (!currentStream) return '';
@@ -938,6 +957,16 @@ export default function VideoPlayer() {
                         {isFullscreen ? <FiMinimize2 size={18} className="group-hover:scale-110 transition-transform" /> : <FiMaximize size={18} className="group-hover:scale-110 transition-transform" />}
                         <span className="text-[8px] font-black uppercase tracking-[0.2em]">{isFullscreen ? 'Sair' : 'Maximize'}</span>
                     </button>
+
+                    {currentStream?.type === 'series' && (
+                        <button 
+                            onClick={() => { setShowSeasons(!showSeasons); setShowComments(false); setShowFullEpg(false); }}
+                            className={`flex flex-col items-center gap-1 transition-all group ${showSeasons ? 'text-primary' : 'text-white/60 hover:text-white'}`}
+                        >
+                            <FiLayers size={18} className="group-hover:scale-110 transition-transform" />
+                            <span className="text-[8px] font-black uppercase tracking-[0.2em]">Episódios</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -1035,6 +1064,67 @@ export default function VideoPlayer() {
                             Enviar
                         </button>
                     </form>
+                </div>
+            </div>
+
+            {/* PAINEL DE TEMPORADAS E EPISÓDIOS (GAVETA LATERAL) */}
+            <div className={`absolute top-0 right-0 w-full lg:w-[400px] h-full bg-black/40 backdrop-blur-3xl border-l border-white/10 z-[150] transition-all duration-500 transform ${showSeasons ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="flex flex-col h-full pt-32 pb-20 px-8">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-white font-black text-2xl tracking-tighter uppercase">Temporadas</h3>
+                            <div className="relative mt-2">
+                                <select 
+                                    value={selectedSeason}
+                                    onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
+                                    className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold text-white focus:outline-none focus:border-primary/50 transition-all cursor-pointer w-full"
+                                >
+                                    {seasons.map(s => (
+                                        <option key={s} value={s} className="bg-surface text-white">Temporada {s}</option>
+                                    ))}
+                                </select>
+                                <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
+                            </div>
+                        </div>
+                        <button onClick={() => setShowSeasons(false)} className="p-2 text-white/40 hover:text-white transition-all">
+                            <FiX size={24} />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-3">
+                        {episodesBySeason && episodesBySeason[selectedSeason]?.map((ep) => {
+                            const isCurrent = ep.id === currentStream.id;
+                            return (
+                                <button 
+                                    key={ep.id}
+                                    onClick={() => {
+                                        setCurrentStream(ep, playlist);
+                                        if (window.innerWidth < 1024) setShowSeasons(false);
+                                    }}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all w-full text-left group/ep ${
+                                        isCurrent 
+                                        ? 'bg-primary border-primary shadow-lg shadow-primary/20' 
+                                        : 'bg-white/5 border-white/5 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black shrink-0 ${
+                                        isCurrent ? 'bg-white text-primary' : 'bg-white/10 text-primary'
+                                    }`}>
+                                        {ep.order || '•'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className={`font-bold text-sm truncate ${isCurrent ? 'text-white' : 'text-gray-300'}`}>
+                                            {ep.name}
+                                        </div>
+                                        <div className={`text-[9px] font-black uppercase ${isCurrent ? 'text-white/60' : 'text-gray-500'}`}>
+                                            {isCurrent ? 'REPRODUZINDO AGORA' : 'ASSISTIR EPISÓDIO'}
+                                        </div>
+                                    </div>
+                                    <FiPlay className={`transition-all ${isCurrent ? 'text-white' : 'text-gray-600 opacity-0 group-hover/ep:opacity-100'}`} />
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
