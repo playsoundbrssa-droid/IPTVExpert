@@ -101,8 +101,8 @@ const categorizeItem = (item) => {
 
     // 1. PADRÕES DE SÉRIES (Prioridade Máxima)
     const seriesPatterns = [
-        /s\d{2}e\d{2}/i,
-        /\d{1,2}x\d{1,2}/i,
+        /s\d{1,2}\s*e\d{1,2}/i,
+        /\d{1,2}\s*x\s*\d{1,2}/i,
         /temporada|season/i,
         /episodio|episode/i,
         /novela/i,
