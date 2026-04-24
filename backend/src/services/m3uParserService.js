@@ -95,15 +95,14 @@ const categorizeItem = (item) => {
     const name = String(item.name || '').toLowerCase();
     const url = String(item.url || '').toLowerCase();
 
-    // 1. PADRÕES DE SÉRIES (Prioridade Máxima - Ultra Inclusivo)
+    // 1. PADRÕES DE SÉRIES (Prioridade Máxima)
     const seriesPatterns = [
-        /[sS]\s*\d+\s*[eE]\s*\d+/i,             // S01E01, S01 E01, S1 E1, S1E1
-        /\d{1,2}\s*[xX]\s*\d{1,2}/i,           // 1x01, 1 x 01, 1X1
-        /(?:temporada|season|temp|seas|t|s)\s*\d+/i, // Temporada 1, Temp 1, T1, S1
-        /(?:epis[oó]dio|episode|capitulo|capítulo|ep|ep\.|e)\s*\d+/i, // Ep 1, Ep.1, E1
-        /[sS]\d{1,2}\s*[eE]\d{1,2}/i,          // S1E1, S01E01
-        /\b[sS]\d{1,2}\b/i,                    // Apenas S01 no nome
-        /novela|programa de tv|miniss[eé]rie/i
+        /s\d{2}e\d{2}/i,
+        /\d{1,2}x\d{1,2}/i,
+        /temporada|season/i,
+        /episodio|episode/i,
+        /novela/i,
+        /programa de tv/i
     ];
     const matchesSeriesPattern = seriesPatterns.some(pattern => pattern.test(name));
     if (matchesSeriesPattern) return 'series';
