@@ -11,9 +11,9 @@ if (typeof window !== 'undefined' && mpegjs.LoggingControl) {
 
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
-import {
-    FiX, FiPlay, FiPause, FiMaximize, FiVolume2,
-    FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight,
+import { 
+    FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
+    FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiDownload, FiSkipBack, FiSkipForward, FiMenu,
     FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2
 } from 'react-icons/fi';
@@ -26,11 +26,11 @@ export default function VideoPlayer() {
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
     const mpegPlayerRef = useRef(null);
-
+    
     // Stores
     const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev, playlist } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
-
+    
     // UI State
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
@@ -43,8 +43,6 @@ export default function VideoPlayer() {
     const [duration, setDuration] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
     const [showComments, setShowComments] = useState(false);
-    const [showEpisodes, setShowEpisodes] = useState(false);
-    const [selectedSeason, setSelectedSeason] = useState(1);
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
@@ -55,9 +53,9 @@ export default function VideoPlayer() {
     const controlsTimeout = useRef(null);
     const mainContainerRef = useRef(null);
 
-    const isFavorite = useMemo(() =>
+    const isFavorite = useMemo(() => 
         currentStream ? favorites.some(f => f.id === currentStream.id) : false
-        , [favorites, currentStream]);
+    , [favorites, currentStream]);
 
     const cleanUp = useCallback(() => {
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -73,7 +71,7 @@ export default function VideoPlayer() {
         if (!currentStream) return '';
         let url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
-
+        
         // Se o proxy estiver ativo e não for um link já proxied, envolvemos na URL de proxy do backend
         if (useProxy && !url.includes('/api/proxy/stream')) {
             const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -85,7 +83,7 @@ export default function VideoPlayer() {
 
     const handlePlayAction = useCallback(async () => {
         if (!videoRef.current) return;
-
+        
         const playVideo = async () => {
             if (!videoRef.current) return;
             try {
@@ -97,7 +95,7 @@ export default function VideoPlayer() {
                 setIsBuffering(false);
             } catch (err) {
                 if (err.name === 'AbortError') return;
-
+                
                 if (!videoRef.current) return;
                 try {
                     // Fallback para mudo (permitido pelo browser)
@@ -162,14 +160,14 @@ export default function VideoPlayer() {
     const handleAddComment = (e) => {
         e.preventDefault();
         if (!newComment.trim()) return;
-
+        
         const comment = {
             id: Date.now(),
             text: newComment,
             user: 'Você',
             date: new Date().toISOString()
         };
-
+        
         const updated = [comment, ...comments];
         setComments(updated);
         setNewComment('');
@@ -181,45 +179,38 @@ export default function VideoPlayer() {
         const video = videoRef.current;
         if (!video) return;
 
-        // 1. Tentar AirPlay (Safari/iOS) - Prioridade máxima
-        // O Safari exige que a chamada seja síncrona a partir de um clique
-        try {
-            if (video.webkitShowPlaybackTargetPicker) {
-                video.webkitShowPlaybackTargetPicker();
-                return;
-            }
-        } catch (e) {
-            console.warn("[AIRPLAY] Erro ao abrir picker:", e);
+        // 1. Tentar AirPlay (Safari/iOS)
+        if (video.webkitShowPlaybackTargetPicker) {
+            video.webkitShowPlaybackTargetPicker();
+            return;
         }
 
-        // 2. Tentar API de Controle Remoto (Chrome/Android)
-        // Tentamos o prompt mesmo que o estado pareça desabilitado, pois alguns navegadores mentem
-        if (video.remote) {
+        // 2. Tentar API de Controle Remoto (Padrão moderno)
+        if (video.remote && video.remote.state !== 'disabled') {
             video.remote.prompt().catch((err) => {
-                if (err.name === 'NotAllowedError') return;
-                
+                console.error("[CAST] Remote prompt error:", err);
                 const ua = navigator.userAgent.toLowerCase();
-                const isChrome = /chrome/.test(ua) && !/edge|opr/.test(ua);
-                
-                if (isChrome) {
-                    toast('No Chrome, use o menu (⋮) > Transmitir para ver na sua TV.', { icon: '📺', duration: 6000 });
+                if (ua.includes('chrome') && ua.includes('android')) {
+                    toast('Utilize a opção "Transmitir" no menu do Chrome para espelhar.', { icon: '📺' });
                 } else {
-                    // Se falhar o prompt, tentamos a Presentation API como último recurso
-                    if (window.PresentationRequest) {
-                        const presentationRequest = new PresentationRequest([video.src]);
-                        presentationRequest.start().catch(() => {
-                            toast.error('O seu dispositivo não suporta espelhamento nativo.');
-                        });
-                    } else {
-                        toast.error('O espelhamento nativo não pôde ser iniciado.');
-                    }
+                    toast.error('Não foi possível iniciar o espelhamento.');
                 }
             });
             return;
         }
 
-        // 3. Fallback Informativo Final
-        toast('Para espelhar, use a função nativa de transmitir do seu navegador.', { icon: '📺', duration: 5000 });
+        // 3. Fallback com orientações por dispositivo
+        const ua = navigator.userAgent.toLowerCase();
+        const isiOS = /iphone|ipad|ipod/.test(ua);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+
+        if (isiOS && !isSafari) {
+            toast('No iPhone, o AirPlay nativo requer o uso do navegador Safari.', { icon: '📺', duration: 5000 });
+        } else if (ua.includes('android')) {
+            toast('No Android, use o menu do Chrome > Transmitir para ver na TV.', { icon: '📺', duration: 5000 });
+        } else {
+            toast.error('O seu navegador não possui suporte a espelhamento nativo.');
+        }
     };
 
 
@@ -231,7 +222,7 @@ export default function VideoPlayer() {
 
             const dx = dragRef.current.startX - clientX;
             const dy = dragRef.current.startY - clientY;
-
+            
             setPosition({
                 x: Math.max(10, dragRef.current.initialX + dx),
                 y: Math.max(10, dragRef.current.initialY + dy)
@@ -311,10 +302,9 @@ export default function VideoPlayer() {
         };
     };
 
-    const init = useCallback((attemptInput = 0) => {
-        const attempt = typeof attemptInput === 'number' ? attemptInput : 0;
+    const init = useCallback((attempt = 0) => {
         if (!currentStream || !videoRef.current) return;
-
+        
         const rawUrl = currentStream.streamUrl || currentStream.url || '';
         if (!rawUrl) {
             console.error("[PLAYER] URL de transmissão vazia.");
@@ -337,7 +327,7 @@ export default function VideoPlayer() {
 
         // Lógica de Tentativas (Cadeia de Decodificadores)
         if (currentStream.type === 'channel' && !isHls) isTs = true;
-
+        
         // Ajuste baseado em tentativas de fallback
         // attempt 0: Tenta o formato detectado
         // attempt 1: Força o outro formato (TS se era HLS, ou vice-versa) ou tenta nativo
@@ -353,8 +343,8 @@ export default function VideoPlayer() {
 
         // 1. Tentar HLS.js
         if (useHls && Hls.isSupported()) {
-            const hls = new Hls({
-                enableWorker: true,
+            const hls = new Hls({ 
+                enableWorker: true, 
                 lowLatencyMode: true,
                 backBufferLength: 60,
                 manifestLoadingMaxRetry: 3
@@ -379,7 +369,7 @@ export default function VideoPlayer() {
                 }
             });
             hls.on(Hls.Events.FRAG_BUFFERED, () => setIsBuffering(false));
-        }
+        } 
         // 2. Tentar MPEG-TS (mpegts.js)
         else if (useTs && mpegjs.isSupported()) {
             try {
@@ -393,18 +383,18 @@ export default function VideoPlayer() {
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
                 mpegPlayerRef.current = mpeg;
-
+                
                 mpeg.on(mpegjs.Events.METADATA_ARRIVED, () => {
-                    handlePlayAction();
-                    setIsBuffering(false);
+                   handlePlayAction();
+                   setIsBuffering(false);
                 });
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
                     console.error(`[PLAYER] Erro MPEG-TS: ${type} - ${detail}`, info);
-
+                    
                     const errorCode = info?.code;
                     const isNetworkError = detail === mpegjs.ErrorDetails.NETWORK_TIMEOUT || errorCode === 522 || errorCode === 504 || detail === 'HttpStatusCodeInvalid';
-
+                    
                     if (isNetworkError && !useProxy) {
                         console.warn("[PLAYER] Erro de rede no TS. Ativando Proxy Pro...");
                         setUseProxy(true);
@@ -417,14 +407,14 @@ export default function VideoPlayer() {
                         setError("Erro no decodificador ou servidor de vídeo. Tente outro canal.");
                     }
                 });
-
+                
                 // Algumas streams TS demoram a emitir METADATA_ARRIVED, tentamos play logo
                 handlePlayAction();
             } catch (err) {
                 console.error("[PLAYER] Falha ao iniciar mpegts:", err);
                 init(attempt + 1);
             }
-        }
+        } 
         // 3. Fallback Nativo (Safari HLS, MP4, etc.)
         else {
             videoRef.current.src = streamUrl;
@@ -437,21 +427,7 @@ export default function VideoPlayer() {
     useEffect(() => {
         init();
         setShowFullEpg(false); // Reseta ao mudar de canal
-        setShowEpisodes(false); // Reseta ao mudar
-        setShowComments(false); // Reseta ao mudar
         
-        // Configura a temporada inicial se for série
-        if (currentStream?.episodesBySeason) {
-            const seasons = Object.keys(currentStream.episodesBySeason).sort((a,b)=>a-b);
-            if (seasons.length > 0) {
-                // Tenta achar a temporada do episódio atual
-                const currentSeasonStr = seasons.find(s => 
-                    currentStream.episodesBySeason[s].some(ep => ep.id === currentStream.id)
-                ) || seasons[0];
-                setSelectedSeason(currentSeasonStr);
-            }
-        }
-
         // Helper para decodificar texto do EPG (Xtream usa Base64 com UTF-8)
         const decodeEPGText = (str) => {
             if (!str) return '';
@@ -483,18 +459,18 @@ export default function VideoPlayer() {
                 try {
                     const manager = usePlaylistManagerStore.getState();
                     const activePlaylist = manager.getActivePlaylist();
-
+                    
                     if (activePlaylist?.type === 'xtream' && currentStream.id.startsWith('xtream_')) {
                         const streamId = currentStream.id.split('_').pop();
                         const { server, username, password } = activePlaylist.config;
-
+                        
                         const { data } = await api.get('/xtream/short-epg', {
                             params: { server, username, password, stream_id: streamId }
                         });
 
                         if (data && data.epg_listings && data.epg_listings.length > 0) {
                             const now = new Date();
-
+                            
                             let currentIndex = data.epg_listings.findIndex(item => {
                                 const start = parseEPGDate(item.start);
                                 const end = parseEPGDate(item.end);
@@ -507,7 +483,7 @@ export default function VideoPlayer() {
 
                             const nowListing = currentIndex !== -1 ? data.epg_listings[currentIndex] : data.epg_listings[0];
                             const nextListing = currentIndex !== -1 ? data.epg_listings[currentIndex + 1] : data.epg_listings[1];
-
+                            
                             if (nowListing) {
                                 setEpgInfo({
                                     current: {
@@ -543,7 +519,7 @@ export default function VideoPlayer() {
                             const listings = data.map(item => ({
                                 title: item.title,
                                 description: item.desc,
-                                start: item.start,
+                                start: item.start, 
                                 end: item.stop
                             }));
 
@@ -648,12 +624,12 @@ export default function VideoPlayer() {
     const stream = currentStream || {};
 
     return (
-        <div
+        <div 
             ref={mainContainerRef}
             onMouseDown={handleMouseDown}
             onTouchStart={handleMouseDown}
-            style={isMinimized ? {
-                bottom: `${position.y}px`,
+            style={isMinimized ? { 
+                bottom: `${position.y}px`, 
                 right: `${position.x}px`,
                 cursor: isDragging ? 'grabbing' : 'grab',
                 touchAction: 'none'
@@ -671,12 +647,12 @@ export default function VideoPlayer() {
                     x-webkit-airplay="allow"
                     webkit-playsinline="true"
                     airplay="allow"
-                    onClick={(e) => {
+                    onClick={(e) => { 
                         e.stopPropagation();
                         if (isMinimized) {
                             setIsMinimized(false);
                         } else {
-                            togglePlay();
+                            togglePlay(); 
                         }
                     }}
                     onWaiting={() => setIsBuffering(true)}
@@ -699,56 +675,49 @@ export default function VideoPlayer() {
                         <img src={stream.logo} className="w-full h-full object-contain drop-shadow-lg" alt="logo" />
                     </div>
                 )}
-
+                
                 <div className="flex flex-col gap-1 w-[260px] lg:w-[400px]">
                     <h2 className="text-xl lg:text-3xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
                         {stream.name}
                     </h2>
-
+                    
                     <div className="flex items-center gap-2 mt-1 mb-2">
                         <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none drop-shadow-md">
                             {stream.group || 'Geral'}
                         </span>
                     </div>
-
+                    
                     {/* UI de EPG Dinâmico */}
                     {epgInfo?.current && (
-                        <div className="mt-3 animate-fade-in bg-black/50 backdrop-blur-xl p-4 lg:p-5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-w-full">
-                            <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-3 w-full">
-                                    <div className="flex-shrink-0 bg-red-600 px-2 py-0.5 rounded-md shadow-[0_0_10px_rgba(220,38,38,0.3)] animate-pulse">
-                                        <span className="text-[9px] text-white font-black uppercase tracking-tight whitespace-nowrap">Ao Vivo</span>
-                                    </div>
-                                    <h3 className="text-white text-sm lg:text-base font-bold truncate leading-tight flex-1 min-w-0">
-                                        {epgInfo.current.title}
-                                    </h3>
-                                </div>
+                        <div className="mt-3 space-y-2 animate-fade-in bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl">
+                            <p className="text-sm font-bold text-white line-clamp-2 md:line-clamp-1 flex items-center gap-2 uppercase tracking-tighter shadow-sm">
+                                <span className="text-[9px] px-2 py-1 bg-red-600 rounded text-white font-black animate-pulse flex-shrink-0">
+                                    AO VIVO
+                                </span>
+                                <span className="truncate">{epgInfo.current.title}</span>
+                            </p>
+                            
+                            {/* Barra de Progresso do Programa */}
+                            {(() => {
+                                const now = new Date();
+                                const start = new Date(epgInfo.current.start);
+                                const end = new Date(epgInfo.current.end);
+                                const total = end - start;
+                                const elapsed = now - start;
+                                const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
                                 
-                                {/* Barra de Progresso do Programa */}
-                                {(() => {
-                                    const now = new Date();
-                                    const start = new Date(epgInfo.current.start);
-                                    const end = new Date(epgInfo.current.end);
-                                    const total = end - start;
-                                    const elapsed = now - start;
-                                    const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
-                                    
-                                    return (
-                                        <div className="relative w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-1 shadow-inner">
-                                            <div className="absolute top-0 left-0 h-full bg-white transition-all duration-500 rounded-full" style={{ width: `${progress}%` }} />
-                                        </div>
-                                    );
-                                })()}
+                                return (
+                                    <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mt-1 shadow-inner">
+                                        <div className="h-full bg-white transition-all duration-500 rounded-full drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]" style={{ width: `${progress}%` }} />
+                                    </div>
+                                );
+                            })()}
 
-                                <div className="flex justify-between items-center mt-1">
-                                    {epgInfo.next && (
-                                        <div className="flex items-center gap-2 max-w-full min-w-0">
-                                            <span className="text-[9px] text-white/40 font-black uppercase tracking-widest flex-shrink-0">A Seguir</span>
-                                            <span className="text-[10px] text-gray-400 font-bold truncate min-w-0">{epgInfo.next.title}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            {epgInfo.next && (
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate mt-2">
+                                    <span className="text-white/60">Próximo:</span> {epgInfo.next.title}
+                                </p>
+                            )}
                         </div>
                     )}
                 </div>
@@ -758,7 +727,7 @@ export default function VideoPlayer() {
             <div className={`absolute top-4 right-4 lg:top-8 lg:right-8 z-[60] transition-all duration-700 flex items-center gap-2 lg:gap-4 
                 ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
                 {!isMinimized && (
-                    <button
+                    <button 
                         onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
                         className={`p-2 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
                     >
@@ -767,16 +736,16 @@ export default function VideoPlayer() {
                 )}
 
                 {!isMinimized && (
-                    <button
+                    <button 
                         onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
                         className="p-2 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all"
                     >
                         <FiMinimize2 size={18} />
                     </button>
                 )}
-
+                
                 {isMinimized && (
-                    <button
+                    <button 
                         onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
                         className="p-1.5 bg-black/40 backdrop-blur-md rounded-lg text-white/80 hover:text-white border border-white/10 transition-all"
                     >
@@ -784,26 +753,14 @@ export default function VideoPlayer() {
                     </button>
                 )}
 
-                <button
-                    onClick={(e) => { e.stopPropagation(); setCurrentStream(null); }}
+                <button 
+                    onClick={(e) => { e.stopPropagation(); setCurrentStream(null); }} 
                     className={`p-1.5 lg:p-2 bg-black/40 backdrop-blur-md rounded-lg lg:rounded-xl text-white/80 hover:text-white border border-white/10 transition-all transform hover:rotate-90`}
                 >
                     <FiX size={isMinimized ? 16 : 20} />
                 </button>
 
-                {/* INFO "A SEGUIR" NO CANTO SUPERIOR DIREITO */}
-                {epgInfo?.next && !isMinimized && (
-                    <div className="hidden md:flex flex-col items-end mr-4 animate-fade-in pointer-events-none">
-                        <span className="text-[9px] text-white/40 font-black uppercase tracking-[0.2em] mb-0.5">A Seguir</span>
-                        <div className="flex items-center gap-3">
-                             <h4 className="text-white text-base lg:text-lg font-black tracking-tight drop-shadow-xl">{epgInfo.next.title}</h4>
-                             {stream.logo && <img src={stream.logo} className="w-6 h-6 lg:w-8 lg:h-8 object-contain opacity-80" alt="" />}
-                        </div>
-                    </div>
-                )}
             </div>
-
-
 
             {/* Overlays Cinematográficos Removidos para Transparência Total */}
             <div className={`absolute inset-0 bg-black/10 transition-opacity duration-1000 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'}`} />
@@ -842,7 +799,7 @@ export default function VideoPlayer() {
             {/* NOVO LAYOUT DE CONTROLES (ESTILO FOTO) - TRANSPARÊNCIA TOTAL */}
             <div className={`absolute bottom-0 left-0 w-full p-4 lg:p-10 z-50 transition-all duration-700 
                 ${(showControls && !isMinimized) ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
-
+                
 
                 {/* 1. LINHA SUPERIOR: NAVEGAÇÃO PRINCIPAL (CENTRALIZADA) */}
                 <div className="flex items-center justify-center max-w-4xl mx-auto mb-4 lg:mb-8">
@@ -852,8 +809,8 @@ export default function VideoPlayer() {
                             <FiSkipBack className="w-6 h-6 lg:w-8 lg:h-8" />
                         </button>
 
-                        <button
-                            onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
                             className="text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-75 flex items-center justify-center"
                         >
                             {isPlaying ? <FiPause className="w-10 h-10 lg:w-14 lg:h-14" /> : <FiPlay className="w-10 h-10 lg:w-14 lg:h-14 ml-1 lg:ml-2" />}
@@ -869,7 +826,7 @@ export default function VideoPlayer() {
                 <div className="relative group/progress max-w-4xl mx-auto mb-4 lg:mb-8">
                     {/* Barra de Fundo */}
                     <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div
+                        <div 
                             className="h-full bg-white transition-all duration-150 relative"
                             style={{ width: `${Number.isFinite(duration) ? (currentTime / (duration || 1)) * 100 : 0}%` }}
                         >
@@ -881,7 +838,7 @@ export default function VideoPlayer() {
                     </div>
                     {/* Scrubbing for Movies/Series */}
                     {duration > 0 && (
-                        <input
+                        <input 
                             type="range" min="0" max={duration} step="1" value={currentTime}
                             onChange={(e) => {
                                 const time = parseFloat(e.target.value);
@@ -894,12 +851,12 @@ export default function VideoPlayer() {
                     {/* Time labels para VOD */}
                     {duration > 0 && Number.isFinite(duration) && (
                         <div className="flex justify-between mt-2">
-                            <span className="text-[10px] font-bold text-gray-500 tracking-tighter">
+                             <span className="text-[10px] font-bold text-gray-500 tracking-tighter">
                                 {formatTime(currentTime)}
-                            </span>
-                            <span className="text-[10px] font-bold text-gray-500 tracking-tighter">
+                             </span>
+                             <span className="text-[10px] font-bold text-gray-500 tracking-tighter">
                                 {formatTime(duration)}
-                            </span>
+                             </span>
                         </div>
                     )}
                 </div>
@@ -908,18 +865,18 @@ export default function VideoPlayer() {
                 <div className="flex items-center justify-center gap-4 lg:gap-10">
                     {/* Controle de Volume Profissional (Movido para Baixo) */}
                     <div className="hidden lg:flex items-center gap-3 w-32 group/vol mr-4">
-                        <button
+                        <button 
                             onClick={() => {
                                 if (videoRef.current) {
                                     videoRef.current.muted = !isMuted;
                                     setIsMuted(!isMuted);
                                 }
-                            }}
+                            }} 
                             className="text-white/60 hover:text-white transition-all"
                         >
                             {isMuted || volume === 0 ? <FiVolumeX size={16} /> : <FiVolume2 size={16} />}
                         </button>
-                        <input
+                        <input 
                             type="range" min="0" max="1" step="0.05" value={isMuted ? 0 : volume}
                             onChange={(e) => {
                                 const val = parseFloat(e.target.value);
@@ -938,7 +895,7 @@ export default function VideoPlayer() {
 
 
 
-                    <button
+                    <button 
                         onClick={() => {
                             const rawUrl = stream.streamUrl || stream.url;
                             navigator.clipboard.writeText(rawUrl);
@@ -950,25 +907,15 @@ export default function VideoPlayer() {
                         <span className="text-[8px] font-black uppercase tracking-[0.2em]">Share</span>
                     </button>
 
-                    <button
-                        onClick={() => { setShowComments(!showComments); setShowFullEpg(false); setShowEpisodes(false); }}
+                    <button 
+                        onClick={() => { setShowComments(!showComments); setShowFullEpg(false); }}
                         className={`flex flex-col items-center gap-1 transition-all group ${showComments ? 'text-white' : 'text-white/60 hover:text-white'}`}
                     >
                         <FiMessageSquare size={18} className="group-hover:scale-110 transition-transform" />
                         <span className="text-[8px] font-black uppercase tracking-[0.2em]">Comment</span>
                     </button>
 
-                    {stream.type === 'series' && stream.episodesBySeason && (
-                        <button
-                            onClick={() => { setShowEpisodes(!showEpisodes); setShowComments(false); setShowFullEpg(false); }}
-                            className={`flex flex-col items-center gap-1 transition-all group ${showEpisodes ? 'text-white' : 'text-white/60 hover:text-white'}`}
-                        >
-                            <FiMenu size={18} className="group-hover:scale-110 transition-transform" />
-                            <span className="text-[8px] font-black uppercase tracking-[0.2em]">Episódios</span>
-                        </button>
-                    )}
-
-                    <button
+                    <button 
                         onClick={handleCast}
                         className="flex flex-col items-center gap-1 text-white/60 hover:text-white transition-all group"
                     >
@@ -976,7 +923,7 @@ export default function VideoPlayer() {
                         <span className="text-[8px] font-black uppercase tracking-[0.2em]">Cast</span>
                     </button>
 
-                    <button
+                    <button 
                         onClick={handleDownload}
                         className="flex flex-col items-center gap-1 text-white/60 hover:text-white transition-all group"
                     >
@@ -984,7 +931,7 @@ export default function VideoPlayer() {
                         <span className="text-[8px] font-black uppercase tracking-[0.2em]">Download</span>
                     </button>
 
-                    <button
+                    <button 
                         onClick={handleFullscreen}
                         className="flex flex-col items-center gap-1 text-white/60 hover:text-white transition-all group"
                     >
@@ -1010,7 +957,7 @@ export default function VideoPlayer() {
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-6">
                         {epgInfo?.full ? epgInfo.full.map((item, idx) => {
                             const isCurrent = item.startTime <= new Date() && item.endTime >= new Date();
-
+                            
                             return (
                                 <div key={idx} className={`relative p-4 rounded-2xl border transition-all ${isCurrent ? 'bg-white/10 border-white/20 shadow-2xl' : 'bg-transparent border-white/5 opacity-60'}`}>
                                     <div className="flex justify-between items-start mb-2">
@@ -1023,14 +970,14 @@ export default function VideoPlayer() {
                                     </div>
                                     <h4 className={`font-bold mb-1 ${isCurrent ? 'text-white text-base' : 'text-gray-300 text-sm'}`}>{item.title}</h4>
                                     <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">{item.description}</p>
-
+                                    
                                     {isCurrent && (
                                         <div className="mt-4 w-full h-0.5 bg-white/5 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-white transition-all duration-1000"
-                                                style={{
-                                                    width: `${Math.min(100, Math.max(0, ((new Date() - item.startTime) / (item.endTime - item.startTime)) * 100))}%`
-                                                }}
+                                            <div 
+                                                className="h-full bg-white transition-all duration-1000" 
+                                                style={{ 
+                                                    width: `${Math.min(100, Math.max(0, ((new Date() - item.startTime) / (item.endTime - item.startTime)) * 100))}%` 
+                                                }} 
                                             />
                                         </div>
                                     )}
@@ -1039,62 +986,9 @@ export default function VideoPlayer() {
                         }) : (
                             <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
                                 <FiClock size={48} className="mb-4" />
-                                <p className="text-sm font-bold uppercase tracking-widest">Nenhuma programação<br />disponível</p>
+                                <p className="text-sm font-bold uppercase tracking-widest">Nenhuma programação<br/>disponível</p>
                             </div>
                         )}
-                    </div>
-                </div>
-            </div>
-
-            {/* PAINEL DE EPISÓDIOS (SÉRIES) */}
-            <div className={`absolute top-0 right-0 w-full lg:w-[400px] h-full bg-black/40 backdrop-blur-3xl border-l border-white/10 z-[150] transition-all duration-500 transform ${showEpisodes ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="flex flex-col h-full pt-32 pb-20 px-8">
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h3 className="text-white font-black text-2xl tracking-tighter uppercase">Episódios</h3>
-                            <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">Temporadas e Capítulos</p>
-                        </div>
-                        <button onClick={() => setShowEpisodes(false)} className="p-2 text-white/40 hover:text-white transition-all">
-                            <FiX size={24} />
-                        </button>
-                    </div>
-
-                    {stream.episodesBySeason && (
-                        <div className="mb-6 relative">
-                            <select 
-                                value={selectedSeason}
-                                onChange={(e) => setSelectedSeason(e.target.value)}
-                                className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer text-white"
-                            >
-                                {Object.keys(stream.episodesBySeason).sort((a,b)=>a-b).map(s => (
-                                    <option key={s} value={s} className="bg-[#1a1a1a] text-white">Temporada {s}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
-                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-3">
-                        {stream.episodesBySeason?.[selectedSeason]?.map((ep) => {
-                            const isPlayingEpisode = currentStream?.id === ep.id;
-
-                            return (
-                                <button 
-                                    key={ep.id}
-                                    onClick={() => setCurrentStream(ep)}
-                                    className={`w-full flex items-center gap-4 p-3 rounded-2xl border transition-all text-left ${isPlayingEpisode ? 'bg-primary/20 border-primary/30 shadow-lg' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
-                                >
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black shrink-0 ${isPlayingEpisode ? 'bg-primary text-white' : 'bg-black/40 text-gray-400'}`}>
-                                        {isPlayingEpisode ? <FiPlay className="ml-1" /> : ep.order || ep.episode || '-'}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className={`font-bold truncate text-sm ${isPlayingEpisode ? 'text-primary' : 'text-white'}`}>{ep.name}</h4>
-                                        <p className="text-[10px] text-gray-500 uppercase font-black">
-                                            {isPlayingEpisode ? 'Reproduzindo' : 'Assistir'}
-                                        </p>
-                                    </div>
-                                </button>
-                            );
-                        })}
                     </div>
                 </div>
             </div>
@@ -1124,13 +1018,13 @@ export default function VideoPlayer() {
                         )) : (
                             <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
                                 <FiMessageSquare size={48} className="mb-4" />
-                                <p className="text-sm font-bold uppercase tracking-widest">Seja o primeiro a<br />comentar!</p>
+                                <p className="text-sm font-bold uppercase tracking-widest">Seja o primeiro a<br/>comentar!</p>
                             </div>
                         )}
                     </div>
 
                     <form onSubmit={handleAddComment} className="mt-6 flex gap-2">
-                        <input
+                        <input 
                             type="text"
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}

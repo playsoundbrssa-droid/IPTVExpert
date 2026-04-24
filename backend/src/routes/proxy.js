@@ -5,40 +5,25 @@ const https   = require('https');
 const dns     = require('dns');
 const router  = express.Router();
 
-// ── DNS Cache & Optimization ────────────────────────────────────────────────
-const dnsCache = new Map();
-
+// ── DoH Resolver (igual ao m3uParserService) ─────────────────────────────────
 const resolveDoh = async (hostname) => {
     const cleanHost = hostname.trim().split(':')[0];
     if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost;
-    
-    // Check Cache
-    if (dnsCache.has(cleanHost)) return dnsCache.get(cleanHost);
 
     const providers = [
         { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, headers: { accept: 'application/dns-json' } },
         { url: `https://dns.google/resolve?name=${cleanHost}&type=A`, headers: { accept: 'application/json' } }
     ];
-
-    try {
-        // Tentar resolver em paralelo com timeout curto (3s)
-        const results = await Promise.any(providers.map(p => 
-            axios.get(p.url, {
-                headers: p.headers, timeout: 3000,
+    for (const p of providers) {
+        try {
+            const r = await axios.get(p.url, {
+                headers: p.headers, timeout: 5000,
                 httpAgent: new http.Agent(), httpsAgent: new https.Agent()
-            }).then(r => {
-                const a = r.data?.Answer?.find(x => x.type === 1);
-                if (a) return a.data;
-                throw new Error('Not found');
-            })
-        ));
-
-        if (results) {
-            console.log(`[PROXY DoH] ✅ ${cleanHost} → ${results}`);
-            dnsCache.set(cleanHost, results);
-            return results;
-        }
-    } catch (_) {}
+            });
+            const a = r.data?.Answer?.find(x => x.type === 1);
+            if (a) { console.log(`[PROXY DoH] ✅ ${cleanHost} → ${a.data}`); return a.data; }
+        } catch (_) {}
+    }
     return null;
 };
 
@@ -53,8 +38,8 @@ const customLookup = (hostname, options, callback) => {
 };
 
 const proxyAgents = {
-    httpAgent:  new http.Agent ({ lookup: customLookup, keepAlive: true, maxSockets: 100 }),
-    httpsAgent: new https.Agent({ lookup: customLookup, keepAlive: true, maxSockets: 100, rejectUnauthorized: false })
+    httpAgent:  new http.Agent ({ lookup: customLookup, keepAlive: true }),
+    httpsAgent: new https.Agent({ lookup: customLookup, keepAlive: true, rejectUnauthorized: false })
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -108,23 +93,13 @@ router.get('/stream', async (req, res) => {
         // Determinar se é manifest M3U8
         const isM3u8 = finalTarget.includes('.m3u8') || finalTarget.includes('type=m3u8');
 
-        let origin = '';
-        try {
-            origin = new URL(finalTarget).origin;
-        } catch (e) {
-            console.warn('[PROXY] Invalid URL for origin:', finalTarget);
-        }
-
         const commonHeaders = {
-            'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
             'Accept': '*/*',
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
+            'Referer': new URL(finalTarget).origin + '/',
+            'Origin': new URL(finalTarget).origin
         };
-
-        if (origin) {
-            commonHeaders['Referer'] = origin + '/';
-            commonHeaders['Origin'] = origin;
-        }
 
         if (isM3u8) {
             // Se for playlist, baixar como texto e reescrever os links internos
@@ -158,11 +133,8 @@ router.get('/stream', async (req, res) => {
             res.send(rewrittenLines.join('\n'));
         } else {
             // Se for stream de vídeo real (.ts, .mp4, etc.)
-            const proxyHeaders = { 
-                ...commonHeaders,
-                'X-Forwarded-For': req.ip || req.headers['x-forwarded-for'],
-                'X-Real-IP': req.headers['x-real-ip']
-            };
+            const range = req.headers.range;
+            const proxyHeaders = { ...commonHeaders };
             
             if (range) {
                 proxyHeaders.Range = range;
@@ -205,16 +177,9 @@ router.get('/stream', async (req, res) => {
         }
 
     } catch (error) {
-        const statusCode = error.response?.status || 500;
-        console.error(`[PROXY ERROR] Status: ${statusCode} | URL: ${req.query.url}`);
-        console.error(`[PROXY ERROR MSG] ${error.message}`);
-        
-        // Retornar mensagem mais clara para o frontend
-        res.status(statusCode).json({ 
-            error: 'Erro no servidor de transmissão (Upstream)', 
-            details: error.message,
-            code: statusCode
-        });
+        console.error('[PROXY ERROR URL]', req.query.url);
+        console.error('[PROXY ERROR MSG]', error.message);
+        res.status(error.response?.status || 500).send('Proxy Stream Error');
     }
 });
 
@@ -262,39 +227,6 @@ router.get('/download', async (req, res) => {
     } catch (error) {
         console.error('[DOWNLOAD PROXY ERROR]', error.message);
         res.status(error.response?.status || 500).send('Download Proxy Error');
-    }
-});
-
-router.get('/image', async (req, res) => {
-    try {
-        const targetUrl = req.query.url;
-        if (!targetUrl) {
-            return res.status(400).json({ error: 'URL is required' });
-        }
-
-        const response = await axios({
-            method: 'GET',
-            url: targetUrl,
-            responseType: 'stream',
-            ...proxyAgents,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'image/*,*/*;q=0.8'
-            },
-            timeout: 10000
-        });
-
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache 1 dia
-        
-        if (response.headers['content-type']) {
-            res.setHeader('Content-Type', response.headers['content-type']);
-        }
-        
-        response.data.pipe(res);
-    } catch (error) {
-        console.error('[IMAGE PROXY ERROR]', error.message);
-        res.status(error.response?.status || 500).send('Image Proxy Error');
     }
 });
 

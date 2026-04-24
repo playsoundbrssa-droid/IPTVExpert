@@ -11,7 +11,7 @@ const userPlaylistController = {
     // Buscar todas playlists do usuário
     getPlaylists: async (req, res) => {
         try {
-            const userId = req.userId;
+            const userId = req.user.id;
             const sql = formatQuery('SELECT * FROM user_playlists WHERE user_id = ? ORDER BY createdAt ASC');
             const result = await db.query(sql, [userId]);
             
@@ -37,7 +37,7 @@ const userPlaylistController = {
     // Salvar ou atualizar playlist
     savePlaylist: async (req, res) => {
         try {
-            const userId = req.userId;
+            const userId = req.user.id;
             const { id, name, type, total, config, channelsCount, moviesCount, seriesCount } = req.body;
             
             if (!id || !name || !type || !config) {
@@ -78,7 +78,7 @@ const userPlaylistController = {
     // Deletar playlist
     deletePlaylist: async (req, res) => {
         try {
-            const userId = req.userId;
+            const userId = req.user.id;
             const clientId = req.params.id;
             
             const delSql = formatQuery('DELETE FROM user_playlists WHERE client_id = ? AND user_id = ?');

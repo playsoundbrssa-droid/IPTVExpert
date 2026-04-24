@@ -33,7 +33,6 @@ const proxyRoutes = require('./routes/proxy');
 const statsRoutes = require('./routes/stats');
 const xtreamRoutes = require('./routes/xtream');
 const mediaRoutes = require('./routes/media');
-const userPlaylistRoutes = require('./routes/userPlaylists');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -45,13 +44,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // Middleware
-app.use(cors({
-    origin: function (origin, callback) {
-        // Reflete a origem exata do request. Para requests sem origin (curl, mobile) permite tudo.
-        callback(null, origin || '*');
-    },
-    credentials: true // Permite envio de cookies de sessão
-}));
+app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.text({ type: 'text/*', limit: '50mb' }));
@@ -60,7 +53,7 @@ app.use(express.text({ type: 'text/*', limit: '50mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/playlist', playlistRoutes);
-app.use('/api/user-playlists', userPlaylistRoutes);
+app.use('/api/user-playlists', require('./routes/userPlaylists'));
 app.use('/api/proxy', proxyRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/xtream', xtreamRoutes);

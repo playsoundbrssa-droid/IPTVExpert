@@ -9,37 +9,33 @@ const crypto = require('crypto');
 // Usamos instâncias limpas de axios para evitar loops de DNS
 const resolveDoh = async (hostname) => {
     const cleanHost = hostname.trim().split(':')[0]; 
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost; 
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost; // Se já for IP, retorna
 
-    // Usamos IPs diretos para os provedores de DoH para evitar depender do DNS do sistema para resolver o próprio DNS
     const providers = [
-        { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, host: '1.1.1.1' },
-        { url: `https://8.8.8.8/resolve?name=${cleanHost}&type=A`, host: 'dns.google' },
-        { url: `https://9.9.9.9/dns-query?name=${cleanHost}&type=A`, host: 'dns.quad9.net' }
+        { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, headers: { 'accept': 'application/dns-json' } },
+        { url: `https://dns.google/resolve?name=${cleanHost}&type=A`, headers: { 'accept': 'application/json' } }
     ];
 
     for (const provider of providers) {
         try {
+            // Chamada DoH usando agentes padrão do Node para evitar recursão
             const response = await axios.get(provider.url, { 
-                headers: { 
-                    'accept': 'application/dns-json',
-                    'Host': provider.host 
-                },
+                headers: provider.headers,
                 timeout: 5000,
                 httpAgent: new http.Agent(),
-                httpsAgent: new https.Agent({ rejectUnauthorized: false }) // Importante para IPs
+                httpsAgent: new https.Agent()
             });
 
             const data = response.data;
             if (data && data.Answer) {
                 const firstA = data.Answer.find(a => a.type === 1);
                 if (firstA) {
-                    console.log(`[DNS DoH] ✅ Resolvido (${cleanHost}) via ${provider.host}: ${firstA.data}`);
+                    console.log(`[DNS DoH] ✅ Resolvido (${cleanHost}): ${firstA.data}`);
                     return firstA.data;
                 }
             }
         } catch (error) {
-            console.warn(`[DNS DoH WARN] Provedor ${provider.host} falhou.`);
+            console.warn(`[DNS DoH WARN] Provedor ${provider.url.split('/')[2]} indisponível.`);
         }
     }
     return null;
@@ -101,8 +97,8 @@ const categorizeItem = (item) => {
 
     // 1. PADRÕES DE SÉRIES (Prioridade Máxima)
     const seriesPatterns = [
-        /s\d{1,2}\s*e\d{1,2}/i,
-        /\d{1,2}\s*x\s*\d{1,2}/i,
+        /s\d{2}e\d{2}/i,
+        /\d{1,2}x\d{1,2}/i,
         /temporada|season/i,
         /episodio|episode/i,
         /novela/i,

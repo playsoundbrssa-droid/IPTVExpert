@@ -5,8 +5,8 @@ export const getSeriesBaseName = (name) => {
     if (!name) return '';
     return name
         // 1. Remove padrões de episódios e tudo que vem depois
-        .replace(/\s*[sS]\d+\s*[eE]\d+.*/i, '') // S01E01 ou S01 E01
-        .replace(/\s*(\d{1,2}\s*x\s*\d{1,2}|x\s*\d{1,2}).*/i, '') // 1x01, 1 x 01 ou x01
+        .replace(/\s*[sS]\d+[eE]\d+.*/i, '') // S01E01
+        .replace(/\s*(\d{1,2}x\d{1,2}|x\d{1,2}).*/i, '') // 1x01 ou x01
         .replace(/\s*Temporada\s*\d+.*/i, '') // Temporada 1
         .replace(/\s*Season\s*\d+.*/i, '')    // Season 1
         .replace(/\s*Episódio\s*\d+.*/i, '')  // Episódio 1
@@ -22,7 +22,6 @@ export const getSeriesBaseName = (name) => {
         
         // 4. Limpeza de caracteres residuais no final
         .replace(/\s*[-|–—:._(]+\s*$/, '') // Trailing dashes, pipes, colons etc
-        .replace(/\s*[Hh][Dd][Rr]$/, '') // HDR tags
         .trim();
 };
 

@@ -3,7 +3,6 @@ import { Dialog, Transition } from '@headlessui/react';
 import { FiX, FiPlay, FiHeart, FiStar, FiCalendar, FiClock, FiDownload, FiChevronDown } from 'react-icons/fi';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
-import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
 import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import { getSeriesBaseName } from '../../utils/seriesUtils';
 import api from '../../services/api';
@@ -12,65 +11,22 @@ import toast from 'react-hot-toast';
 export default function MediaDetailModal() {
     const { selectedMediaDetails, setSelectedMediaDetails, favorites, addFavorite, removeFavorite, seriesList, seriesGroups } = usePlaylistStore();
     const { setCurrentStream } = usePlayerStore();
-    const { getActivePlaylist } = usePlaylistManagerStore();
     
     const [metadata, setMetadata] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [loadingEpisodes, setLoadingEpisodes] = useState(false);
     const [selectedSeason, setSelectedSeason] = useState(1);
-    const [xtreamEpisodes, setXtreamEpisodes] = useState(null);
 
     const isFavorite = favorites.some(f => f.id === selectedMediaDetails?.id);
 
     useEffect(() => {
         if (selectedMediaDetails) {
             fetchMetadata();
-            if (selectedMediaDetails.type === 'series') {
-                // Reset season to 1 and clear previous episodes
-                setSelectedSeason('1');
-                setXtreamEpisodes(null);
-                fetchEpisodes();
-            } else {
-                setSelectedSeason('1');
-                setXtreamEpisodes(null);
-            }
+            // Reset season to 1 when changing media
+            setSelectedSeason(1);
         } else {
             setMetadata(null);
-            setXtreamEpisodes(null);
         }
     }, [selectedMediaDetails]);
-
-    const fetchEpisodes = async () => {
-        if (!selectedMediaDetails || selectedMediaDetails.type !== 'series') return;
-        
-        // Se for Xtream, precisamos buscar os episódios no backend
-        if (selectedMediaDetails.id?.startsWith('xtream_series_')) {
-            setLoadingEpisodes(true);
-            try {
-                const activePlaylist = getActivePlaylist();
-                if (activePlaylist && activePlaylist.type === 'xtream') {
-                    const seriesId = selectedMediaDetails.id.replace('xtream_series_', '');
-                    const response = await api.get('/media/episodes', {
-                        params: {
-                            ...activePlaylist.config,
-                            series_id: seriesId
-                        }
-                    });
-                    setXtreamEpisodes(response.data);
-                    
-                    // Se tivermos episódios, definimos a temporada inicial como a primeira disponível
-                    if (response.data && response.data.length > 0) {
-                        const firstSeason = Math.min(...response.data.map(ep => ep.season || 1));
-                        setSelectedSeason(String(firstSeason)); // Sempre string para bater com o select
-                    }
-                }
-            } catch (error) {
-                console.error('Erro ao buscar episódios Xtream:', error);
-            } finally {
-                setLoadingEpisodes(false);
-            }
-        }
-    };
 
     const fetchMetadata = async () => {
         setLoading(true);
@@ -93,58 +49,17 @@ export default function MediaDetailModal() {
     const episodesBySeason = useMemo(() => {
         if (!selectedMediaDetails) return null;
         
-        // Prioridade 1: Episódios vindos do Xtream (carregados via API)
-        if (xtreamEpisodes) {
-            const seasonsMap = {};
-            xtreamEpisodes.forEach(ep => {
-                const s = String(ep.season || 1); // Usar string como chave
-                if (!seasonsMap[s]) seasonsMap[s] = [];
-                seasonsMap[s].push({
-                    ...ep,
-                    order: ep.episode || 1
-                });
-            });
-            // Ordenar
-            Object.keys(seasonsMap).forEach(s => {
-                seasonsMap[s].sort((a, b) => a.order - b.order);
-            });
-            return seasonsMap;
-        }
-
-        // Prioridade 2: Episódios já embutidos ou encontrados por nome (M3U)
+        // Se já passamos a lista consolidada, usamos ela, 
+        // caso contrário, buscamos na lista global de séries
         let siblings = selectedMediaDetails.allEpisodes;
 
         if (!siblings) {
             const currentBaseName = getSeriesBaseName(selectedMediaDetails.name);
-            
-            // Busca inicial por nome base
             siblings = seriesList.filter(s => getSeriesBaseName(s.name) === currentBaseName);
-            
-            // Se encontrar apenas 1 e tiver um grupo, tenta buscar no grupo por nomes que começam igual
-            if (siblings.length === 1 && selectedMediaDetails.group) {
-                const groupItems = seriesList.filter(s => s.group === selectedMediaDetails.group);
-                // Pegamos os primeiros 10 caracteres do nome limpo como prefixo de busca
-                const prefix = currentBaseName.substring(0, 10).toLowerCase();
-                if (prefix.length >= 4) {
-                    const groupSiblings = groupItems.filter(s => 
-                        getSeriesBaseName(s.name).toLowerCase().startsWith(prefix) ||
-                        s.name.toLowerCase().startsWith(currentBaseName.toLowerCase())
-                    );
-                    if (groupSiblings.length > 1) {
-                        siblings = groupSiblings;
-                    }
-                }
-            }
         }
 
-        const organized = organizeBySeasons(siblings);
-        // Garantir que as chaves sejam strings
-        const stringified = {};
-        Object.keys(organized).forEach(k => {
-            stringified[String(k)] = organized[k];
-        });
-        return stringified;
-    }, [selectedMediaDetails, seriesList, xtreamEpisodes]);
+        return organizeBySeasons(siblings);
+    }, [selectedMediaDetails, seriesList]);
 
     const seasons = useMemo(() => {
         return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => a-b) : [];
@@ -153,34 +68,9 @@ export default function MediaDetailModal() {
     if (!selectedMediaDetails) return null;
 
     const handlePlay = (episode = null) => {
-        let itemToPlay = episode || selectedMediaDetails;
-        
-        // Se for uma série e não houver episódio selecionado, pegamos o primeiro da lista
-        if (!episode && selectedMediaDetails.type === 'series') {
-            const firstSeasonNum = seasons[0];
-            const firstEpisode = episodesBySeason[firstSeasonNum]?.[0];
-            if (firstEpisode) {
-                itemToPlay = firstEpisode;
-            }
-        }
-
-        if (itemToPlay) {
-            let fullPlaylist = [];
-            if (selectedMediaDetails.type === 'series' && episodesBySeason) {
-                // Junta todos os episódios de todas as temporadas em um array plano para o playNext/Prev
-                Object.keys(episodesBySeason).sort((a,b)=>a-b).forEach(s => {
-                    const seasonEps = episodesBySeason[s].map(ep => ({
-                        ...ep,
-                        episodesBySeason: episodesBySeason
-                    }));
-                    fullPlaylist.push(...seasonEps);
-                });
-                itemToPlay.episodesBySeason = episodesBySeason; // Passamos agrupado também para o player mostrar a gaveta
-            }
-            
-            setCurrentStream(itemToPlay, fullPlaylist);
-            setSelectedMediaDetails(null); // Fechar modal ao dar play
-        }
+        const itemToPlay = episode || selectedMediaDetails;
+        setCurrentStream(itemToPlay, []);
+        setSelectedMediaDetails(null); // Fechar modal ao dar play
     };
 
     const toggleFavorite = () => {
@@ -193,17 +83,7 @@ export default function MediaDetailModal() {
         }
     };
 
-    const getSecureImageUrl = (url) => {
-        if (!url) return '';
-        if (url.startsWith('http://')) {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            return `${apiUrl}/proxy/image?url=${encodeURIComponent(url)}`;
-        }
-        return url;
-    };
-
-    const backdropUrl = getSecureImageUrl(metadata?.backdropPath || selectedMediaDetails.logo);
-    const posterUrl = getSecureImageUrl(metadata?.posterPath || selectedMediaDetails.logo);
+    const backdropUrl = metadata?.backdropPath || selectedMediaDetails.logo;
 
     return (
         <Transition show={!!selectedMediaDetails} as={React.Fragment}>
@@ -263,7 +143,7 @@ export default function MediaDetailModal() {
                                         <div className="flex flex-col items-center gap-6">
                                             <div className="w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
                                                 <img 
-                                                    src={posterUrl}
+                                                    src={metadata?.posterPath || selectedMediaDetails.logo}
                                                     alt={selectedMediaDetails.name}
                                                     className="w-full h-full object-cover"
                                                 />
@@ -332,29 +212,24 @@ export default function MediaDetailModal() {
                                                     )}
                                                 </p>
                                             </div>
-                                            
+
                                             {/* Season & Episode List (Only for Series) */}
-                                            {selectedMediaDetails.type === 'series' && (
+                                            {selectedMediaDetails.type === 'series' && seasons.length > 0 && (
                                                 <div className="space-y-6 pt-6 border-t border-white/5">
                                                     <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <h3 className="text-2xl font-black">Episódios</h3>
-                                                            {loadingEpisodes && <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />}
+                                                        <h3 className="text-2xl font-black">Episódios</h3>
+                                                        <div className="relative group/select">
+                                                            <select 
+                                                                value={selectedSeason}
+                                                                onChange={(e) => setSelectedSeason(e.target.value)}
+                                                                className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
+                                                            >
+                                                                {seasons.map(s => (
+                                                                    <option key={s} value={s} className="bg-surface text-white">Temporada {s}</option>
+                                                                ))}
+                                                            </select>
+                                                            <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
                                                         </div>
-                                                        {seasons.length > 0 && (
-                                                            <div className="relative group/select">
-                                                                <select 
-                                                                    value={selectedSeason}
-                                                                    onChange={(e) => setSelectedSeason(e.target.value)}
-                                                                    className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
-                                                                >
-                                                                    {seasons.map(s => (
-                                                                        <option key={s} value={s} className="bg-surface text-white">Temporada {s}</option>
-                                                                    ))}
-                                                                </select>
-                                                                <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
-                                                            </div>
-                                                        )}
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
