@@ -265,4 +265,37 @@ router.get('/download', async (req, res) => {
     }
 });
 
+router.get('/image', async (req, res) => {
+    try {
+        const targetUrl = req.query.url;
+        if (!targetUrl) {
+            return res.status(400).json({ error: 'URL is required' });
+        }
+
+        const response = await axios({
+            method: 'GET',
+            url: targetUrl,
+            responseType: 'stream',
+            ...proxyAgents,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'image/*,*/*;q=0.8'
+            },
+            timeout: 10000
+        });
+
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache 1 dia
+        
+        if (response.headers['content-type']) {
+            res.setHeader('Content-Type', response.headers['content-type']);
+        }
+        
+        response.data.pipe(res);
+    } catch (error) {
+        console.error('[IMAGE PROXY ERROR]', error.message);
+        res.status(error.response?.status || 500).send('Image Proxy Error');
+    }
+});
+
 module.exports = router;

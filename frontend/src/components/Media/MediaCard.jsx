@@ -57,15 +57,22 @@ export default function MediaCard({ item, type, playlist = [] }) {
         >
             {/* Poster / Logo Area */}
             <div className={`${isVOD ? 'aspect-[2/3]' : 'aspect-[16/9]'} relative bg-black/40 flex items-center justify-center shrink-0`}>
-                {item.logo ? (
-                    <img 
-                        src={item.logo} 
-                        alt={item.name} 
-                        className={`w-full h-full ${isVOD ? 'object-cover' : 'object-contain p-4'} group-hover:scale-110 transition-transform duration-500`}
-                        loading="lazy"
-                        decoding="async"
-                    />
-                ) : (
+                {item.logo ? (() => {
+                    let logoUrl = item.logo;
+                    if (logoUrl.startsWith('http://')) {
+                        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+                        logoUrl = `${apiUrl}/proxy/image?url=${encodeURIComponent(logoUrl)}`;
+                    }
+                    return (
+                        <img 
+                            src={logoUrl} 
+                            alt={item.name} 
+                            className={`w-full h-full ${isVOD ? 'object-cover' : 'object-contain p-4'} group-hover:scale-110 transition-transform duration-500`}
+                            loading="lazy"
+                            decoding="async"
+                        />
+                    );
+                })() : (
                     <div className="text-gray-600 text-4xl font-bold uppercase">{item.name.charAt(0)}</div>
                 )}
                 

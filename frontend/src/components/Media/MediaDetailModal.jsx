@@ -193,7 +193,17 @@ export default function MediaDetailModal() {
         }
     };
 
-    const backdropUrl = metadata?.backdropPath || selectedMediaDetails.logo;
+    const getSecureImageUrl = (url) => {
+        if (!url) return '';
+        if (url.startsWith('http://')) {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            return `${apiUrl}/proxy/image?url=${encodeURIComponent(url)}`;
+        }
+        return url;
+    };
+
+    const backdropUrl = getSecureImageUrl(metadata?.backdropPath || selectedMediaDetails.logo);
+    const posterUrl = getSecureImageUrl(metadata?.posterPath || selectedMediaDetails.logo);
 
     return (
         <Transition show={!!selectedMediaDetails} as={React.Fragment}>
@@ -253,7 +263,7 @@ export default function MediaDetailModal() {
                                         <div className="flex flex-col items-center gap-6">
                                             <div className="w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
                                                 <img 
-                                                    src={metadata?.posterPath || selectedMediaDetails.logo}
+                                                    src={posterUrl}
                                                     alt={selectedMediaDetails.name}
                                                     className="w-full h-full object-cover"
                                                 />
