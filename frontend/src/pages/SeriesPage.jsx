@@ -47,20 +47,20 @@ export default function SeriesPage() {
     }, [searchTerm]);
 
     const consolidatedSeries = useMemo(() => {
-        // Unimos as duas listas para garantir que episódios marcados como filmes sejam capturados
         const baseList = [...(seriesList || []), ...(moviesList || [])];
         if (baseList.length === 0) return [];
 
         const seriesMap = {};
+        
+        console.log(`[DEBUG] Iniciando consolidação. Total itens: ${baseList.length}`);
+
         baseList.forEach(item => {
             const name = item.name || '';
-            
-            // Verificamos se o item tem padrão de episódio (S01, 1x01, etc)
-            // Se NÃO tiver e for da lista de filmes, ignoramos (para não misturar filmes reais)
-            const isSeriesItem = /[sS]\d+|[xX]\d+|\b(temp|ep|cap)\b/i.test(name);
-            const isOriginalSeries = seriesList?.some(s => s.id === item.id);
-            
-            if (!isSeriesItem && !isOriginalSeries) return;
+            const isEpisodePattern = /[sS]\d+|[xX]\d+|\b(temp|ep|cap|season|episode|e\d+)\b/i.test(name);
+            const isInSeriesList = seriesList?.some(s => s.id === item.id);
+
+            // Só agrupamos se parecer uma série ou se o servidor já disse que é série
+            if (!isEpisodePattern && !isInSeriesList) return;
 
             const baseName = getSeriesBaseName(name);
             if (!seriesMap[baseName]) {
@@ -69,6 +69,8 @@ export default function SeriesPage() {
             seriesMap[baseName].items.push(item);
             seriesMap[baseName].groups.add(item.group);
         });
+
+        console.log(`[DEBUG] Grupos formados:`, Object.keys(seriesMap).length);
 
         let result = Object.keys(seriesMap).map(name => {
             const groupData = seriesMap[name];
