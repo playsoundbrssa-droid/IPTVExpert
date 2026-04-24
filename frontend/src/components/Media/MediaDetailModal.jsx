@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { FiX, FiPlay, FiHeart, FiStar, FiCalendar, FiClock, FiDownload, FiChevronDown } from 'react-icons/fi';
+import { FiX, FiPlay, FiHeart, FiStar, FiCalendar, FiClock, FiDownload, FiChevronDown, FiInfo } from 'react-icons/fi';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
+import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
 import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import { getSeriesBaseName } from '../../utils/seriesUtils';
 import api from '../../services/api';
@@ -10,20 +11,34 @@ import toast from 'react-hot-toast';
 
 export default function MediaDetailModal() {
     const { selectedMediaDetails, setSelectedMediaDetails, favorites, addFavorite, removeFavorite, seriesList } = usePlaylistStore();
+    const { activePlaylistId } = usePlaylistManagerStore();
     const { setCurrentStream } = usePlayerStore();
     
     const [metadata, setMetadata] = useState(null);
+    const [dynamicEpisodes, setDynamicEpisodes] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
     const isFavorite = favorites.some(f => f.id === selectedMediaDetails?.id);
 
     useEffect(() => {
         if (selectedMediaDetails) {
             fetchMetadata();
+            
+            // Se for Xtream e não tiver episódios consolidados, buscamos no servidor
+            const isXtream = selectedMediaDetails.id?.includes('xtream_');
+            const hasNoEpisodes = !selectedMediaDetails.allEpisodes || selectedMediaDetails.allEpisodes.length <= 1;
+            
+            if (isXtream && hasNoEpisodes && activePlaylistId) {
+                fetchEpisodes();
+            } else {
+                setDynamicEpisodes(selectedMediaDetails.allEpisodes || []);
+            }
         } else {
             setMetadata(null);
+            setDynamicEpisodes([]);
         }
-    }, [selectedMediaDetails]);
+    }, [selectedMediaDetails, activePlaylistId]);
 
     const fetchMetadata = async () => {
         setLoading(true);
@@ -42,10 +57,31 @@ export default function MediaDetailModal() {
         }
     };
 
+    const fetchEpisodes = async () => {
+        setLoadingEpisodes(true);
+        try {
+            const { data } = await api.get('/media/episodes', {
+                params: {
+                    seriesId: selectedMediaDetails.id,
+                    playlistId: activePlaylistId
+                }
+            });
+            if (data.episodes) {
+                setDynamicEpisodes(data.episodes);
+            }
+        } catch (error) {
+            console.error('Falha ao buscar episódios:', error);
+            toast.error('Erro ao carregar capítulos da série.');
+        } finally {
+            setLoadingEpisodes(false);
+        }
+    };
+
     const episodesBySeason = useMemo(() => {
         if (!selectedMediaDetails || selectedMediaDetails.type !== 'series') return null;
-        return organizeBySeasons(selectedMediaDetails.allEpisodes || []);
-    }, [selectedMediaDetails]);
+        // Priorizar os episódios carregados dinamicamente (Xtream) ou os consolidados (M3U)
+        return organizeBySeasons(dynamicEpisodes.length > 0 ? dynamicEpisodes : (selectedMediaDetails.allEpisodes || []));
+    }, [selectedMediaDetails, dynamicEpisodes]);
 
     const seasons = useMemo(() => {
         return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => parseInt(a)-parseInt(b)) : [];
@@ -55,8 +91,8 @@ export default function MediaDetailModal() {
 
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;
-        const allEpisodes = selectedMediaDetails.allEpisodes || [];
-        setCurrentStream(itemToPlay, allEpisodes);
+        const allPlaylist = dynamicEpisodes.length > 0 ? dynamicEpisodes : (selectedMediaDetails.allEpisodes || []);
+        setCurrentStream(itemToPlay, allPlaylist);
         setSelectedMediaDetails(null);
     };
 
