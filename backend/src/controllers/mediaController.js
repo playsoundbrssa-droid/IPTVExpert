@@ -41,7 +41,11 @@ exports.getSeriesEpisodes = async (req, res) => {
         
         // Se for Xtream API
         if (config.serverUrl && config.username) {
-            const rawId = seriesId.replace('xtream_series_', '');
+            // Limpeza robusta do ID para pegar apenas o número (ex: 8159)
+            const rawId = seriesId.replace('series_group_', '').replace('xtream_series_', '');
+            
+            console.log(`[XTREAM EPISODES] Buscando info para ID: ${rawId} na playlist ${playlistId}`);
+            
             const info = await xtreamApiService.getSeriesInfo(
                 config.serverUrl, 
                 config.username, 
