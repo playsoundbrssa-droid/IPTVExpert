@@ -47,7 +47,8 @@ if (!fs.existsSync(dataDir)) {
 // Middleware
 app.use(cors({
     origin: function (origin, callback) {
-        callback(null, true);
+        // Reflete a origem exata do request. Para requests sem origin (curl, mobile) permite tudo.
+        callback(null, origin || '*');
     },
     credentials: true // Permite envio de cookies de sessão
 }));
