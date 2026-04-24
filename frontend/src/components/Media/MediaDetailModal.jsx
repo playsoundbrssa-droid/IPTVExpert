@@ -41,6 +41,7 @@ export default function MediaDetailModal() {
     }, [selectedMediaDetails, activePlaylistId]);
 
     const fetchMetadata = async () => {
+        if (!selectedMediaDetails?.name) return;
         setLoading(true);
         try {
             const response = await api.get('/media/metadata', {
@@ -58,6 +59,7 @@ export default function MediaDetailModal() {
     };
 
     const fetchEpisodes = async () => {
+        if (!selectedMediaDetails?.id || !activePlaylistId) return;
         setLoadingEpisodes(true);
         try {
             const { data } = await api.get('/media/episodes', {
@@ -71,7 +73,10 @@ export default function MediaDetailModal() {
             }
         } catch (error) {
             console.error('Falha ao buscar episódios:', error);
-            toast.error('Erro ao carregar capítulos da série.');
+            // Evita toast de erro repetitivo se for apenas falta de capítulos no provedor
+            if (error.response?.status !== 404) {
+                toast.error('Erro ao carregar capítulos da série.');
+            }
         } finally {
             setLoadingEpisodes(false);
         }
