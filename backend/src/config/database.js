@@ -78,14 +78,32 @@ const initializeTables = async () => {
         );
     `;
 
+    const playlistsTable = `
+        CREATE TABLE IF NOT EXISTS user_playlists (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            client_id TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            total INTEGER DEFAULT 0,
+            channelsCount INTEGER DEFAULT 0,
+            moviesCount INTEGER DEFAULT 0,
+            seriesCount INTEGER DEFAULT 0,
+            config TEXT NOT NULL,
+            createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+    `;
+
     try {
         if (process.env.DATABASE_URL) {
             await db.query(usersTable);
             await db.query(statsTable);
+            await db.query(playlistsTable);
             console.log('[DATABASE] Tabelas PostgreSQL prontas!');
         } else {
             db.exec(usersTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('BOOLEAN DEFAULT true', 'INTEGER DEFAULT 1').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             db.exec(statsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
+            db.exec(playlistsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME').replace(/REFERENCES\s+users\(id\)\s+ON\s+DELETE\s+CASCADE/g, 'REFERENCES users(id) ON DELETE CASCADE'));
             console.log('[DATABASE] Tabelas SQLite prontas!');
         }
     } catch (error) {

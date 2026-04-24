@@ -6,7 +6,7 @@ import { FiSearch, FiLayers } from 'react-icons/fi';
 import { getSeriesBaseName, getBestSeriesLogo } from '../utils/seriesUtils';
 
 export default function SeriesPage() {
-    const { seriesList, moviesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
+    const { seriesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(50);
@@ -47,64 +47,42 @@ export default function SeriesPage() {
     }, [searchTerm]);
 
     const consolidatedSeries = useMemo(() => {
-        const baseList = [...(seriesList || []), ...(moviesList || [])];
-        if (baseList.length === 0) return [];
+        let list = (selectedSeriesGroup ? seriesGroups[selectedSeriesGroup] : seriesList) || [];
+        
+        if (debouncedSearch) {
+            const lowTerm = debouncedSearch.toLowerCase();
+            if (list.length > 50000 && debouncedSearch.length < 3) return [];
+            list = list.filter(s => s.name.toLowerCase().includes(lowTerm));
+        }
 
         const seriesMap = {};
-        
-        console.log(`[DEBUG] Iniciando consolidação. Total itens: ${baseList.length}`);
-
-        baseList.forEach(item => {
-            const name = item.name || '';
-            const isEpisodePattern = /[sS]\d+|[xX]\d+|\b(temp|ep|cap|season|episode|e\d+)\b/i.test(name);
-            const isInSeriesList = seriesList?.some(s => s.id === item.id);
-
-            // Só agrupamos se parecer uma série ou se o servidor já disse que é série
-            if (!isEpisodePattern && !isInSeriesList) return;
-
-            const baseName = getSeriesBaseName(name);
+        list.forEach(item => {
+            const baseName = getSeriesBaseName(item.name);
             if (!seriesMap[baseName]) {
-                seriesMap[baseName] = { baseName, items: [], groups: new Set() };
+                seriesMap[baseName] = { baseName, items: [] };
             }
             seriesMap[baseName].items.push(item);
-            seriesMap[baseName].groups.add(item.group);
         });
 
-        console.log(`[DEBUG] Grupos formados:`, Object.keys(seriesMap).length);
-
-        let result = Object.keys(seriesMap).map(name => {
-            const groupData = seriesMap[name];
-            const representative = groupData.items.find(it => {
+        return Object.keys(seriesMap).map(name => {
+            const group = seriesMap[name];
+            const representative = group.items.find(it => {
                 if (!it.logo) return false;
                 const lowLogo = it.logo.toLowerCase();
                 return !lowLogo.includes('s0') && !lowLogo.includes('e0') && !lowLogo.includes('thumb');
-            }) || groupData.items[0];
+            }) || group.items[0];
 
             return {
                 ...representative,
                 id: `series_group_${representative.id}`,
                 name: name,
-                logo: getBestSeriesLogo(groupData.items),
-                episodeCount: groupData.items.length,
-                allEpisodes: groupData.items,
-                allGroups: Array.from(groupData.groups),
+                logo: getBestSeriesLogo(group.items),
+                episodeCount: group.items.length,
+                allEpisodes: group.items,
                 type: 'series'
             };
-        });
-
-        // Aplicar Filtro de Grupo se houver um selecionado
-        if (selectedSeriesGroup) {
-            result = result.filter(s => s.allGroups.includes(selectedSeriesGroup));
-        }
-
-        // Aplicar Filtro de Busca
-        if (debouncedSearch) {
-            const lowTerm = debouncedSearch.toLowerCase();
-            result = result.filter(s => s.name.toLowerCase().includes(lowTerm));
-        }
-
-        return result.sort((a, b) => a.name.localeCompare(b.name));
-    }, [seriesList, selectedSeriesGroup, debouncedSearch]);
+        }).sort((a, b) => a.name.localeCompare(b.name));
+    }, [seriesList, seriesGroups, selectedSeriesGroup, debouncedSearch]);
 
     const visibleSeries = useMemo(() => {
         if (!consolidatedSeries) return [];

@@ -33,45 +33,11 @@ export default function AuthScreen({ isModal = false }) {
     };
 
     const handleGoogleLogin = async () => {
-<<<<<<< HEAD:frontend/src/components/Auth/AuthScreen.jsx
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo: window.location.origin
-=======
-        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-        // Modo Demonstração (Mock Fallback) se não houver chave real configurada
-        if (!googleClientId || googleClientId === 'SEU_GOOGLE_CLIENT_ID_AQUI') {
-            toast.success('Modo Demo: Autenticando com Google Fake...');
-            // Tenta logar com email fake, se não existir, registra e loga.
-            let res = await login('demo@google.com', 'demo123');
-            if (!res?.success) {
-                await register('Usuário Google', 'demo@google.com', 'demo123');
-                res = await login('demo@google.com', 'demo123');
-            }
-            if (res?.success) {
-                toast.success('Login com Google simulado!');
-            }
-            return;
-        }
-
-        // Load Google Identity Services
-        if (!window.google?.accounts?.id) {
-            toast.error('Google Identity Services não carregou. Verifique sua conexão.');
-            return;
-        }
-
-        window.google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: async (response) => {
-                const result = await googleLogin(response.credential);
-                if (result.success) {
-                    toast.success('Login com Google realizado!');
-                } else {
-                    toast.error(result.message);
->>>>>>> parent of d3ffb22 (FULL 2):iptv-expert-web/frontend/src/components/Auth/AuthScreen.jsx
                 }
             });
 
