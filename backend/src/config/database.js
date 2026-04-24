@@ -99,11 +99,29 @@ const initializeTables = async () => {
             await db.query(usersTable);
             await db.query(statsTable);
             await db.query(playlistsTable);
+            
+            // Tenta adicionar as colunas caso a tabela já existisse antes
+            try {
+                await db.query("ALTER TABLE users ADD COLUMN googleId TEXT UNIQUE");
+            } catch (e) { /* Coluna pode já existir */ }
+            try {
+                await db.query("ALTER TABLE users ADD COLUMN avatar TEXT");
+            } catch (e) { /* Coluna pode já existir */ }
+
             console.log('[DATABASE] Tabelas PostgreSQL prontas!');
         } else {
             db.exec(usersTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('BOOLEAN DEFAULT true', 'INTEGER DEFAULT 1').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             db.exec(statsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             db.exec(playlistsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME').replace(/REFERENCES\s+users\(id\)\s+ON\s+DELETE\s+CASCADE/g, 'REFERENCES users(id) ON DELETE CASCADE'));
+            
+            // Tenta adicionar as colunas no SQLite caso a tabela já existisse antes
+            try {
+                db.exec("ALTER TABLE users ADD COLUMN googleId TEXT UNIQUE");
+            } catch (e) { /* Coluna pode já existir */ }
+            try {
+                db.exec("ALTER TABLE users ADD COLUMN avatar TEXT");
+            } catch (e) { /* Coluna pode já existir */ }
+
             console.log('[DATABASE] Tabelas SQLite prontas!');
         }
     } catch (error) {
