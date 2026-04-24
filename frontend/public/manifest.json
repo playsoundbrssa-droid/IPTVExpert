@@ -1,0 +1,17 @@
+{
+  "name": "IPTV Expert",
+  "short_name": "IPTVExpert",
+  "description": "O melhor player de IPTV Web do mundo.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#6c5ce7",
+  "icons": [
+    {
+      "src": "/new_logo_banner.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

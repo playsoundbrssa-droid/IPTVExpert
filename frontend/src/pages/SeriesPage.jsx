@@ -4,9 +4,13 @@ import MediaCard from '../components/Media/MediaCard';
 import CategoryFilter from '../components/Media/CategoryFilter';
 import { FiSearch, FiLayers } from 'react-icons/fi';
 import { getSeriesBaseName, getBestSeriesLogo } from '../utils/seriesUtils';
+import { usePlaylistManagerStore } from '../stores/usePlaylistManagerStore';
+import { useProgressStore } from '../stores/useProgressStore';
 
 export default function SeriesPage() {
     const { seriesList, moviesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
+    const { getActivePlaylist } = usePlaylistManagerStore();
+    const { fetchAllProgress } = useProgressStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(50);
@@ -45,6 +49,12 @@ export default function SeriesPage() {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // Fetch progress on load
+    React.useEffect(() => {
+        const active = getActivePlaylist();
+        if (active) fetchAllProgress(active.id);
+    }, [getActivePlaylist, fetchAllProgress]);
 
     const consolidatedSeries = useMemo(() => {
         // Unimos as duas listas para garantir que episódios marcados como filmes sejam capturados

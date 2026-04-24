@@ -1,78 +1,53 @@
+const sqlite3 = require('sqlite3').verbose();
 const { Pool } = require('pg');
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
+const isPostgres = !!process.env.DATABASE_URL;
 let db;
 
-// Se houver uma URL de banco de dados (Produção), usa PostgreSQL
-if (process.env.DATABASE_URL) {
-    // Configuração robusta de SSL para Supabase no Railway/Render
-    const poolConfig = {
+if (isPostgres) {
+    db = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: {
-            rejectUnauthorized: false
-        }
-    };
-
-    db = new Pool(poolConfig);
-    console.log('--- [DATABASE] Conectado ao PostgreSQL (Produção) ---');
+        ssl: { rejectUnauthorized: false }
+    });
 } else {
-    // Caso contrário, usa SQLite (Desenvolvimento Local)
     const dataDir = path.join(__dirname, '../../data');
-    if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-    }
-    const dbPath = path.join(dataDir, 'database.sqlite');
-    db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
-    console.log('--- [DATABASE] Conectado ao SQLite (Local) ---');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+    db = new sqlite3.Database(path.join(dataDir, 'database.sqlite'));
 }
 
-// Helper para abstrair a diferença entre os drivers (Sync vs Async)
-const query = async (text, params) => {
-    if (process.env.DATABASE_URL) {
-        return await db.query(text, params);
-    } else {
-        const stmt = db.prepare(text);
-        if (text.trim().toUpperCase().startsWith('SELECT')) {
-            const result = stmt.all(...(params || []));
-            return { rows: result, rowCount: result.length };
-        } else {
-            const result = stmt.run(...(params || []));
-            return { rowCount: result.changes, lastInsertId: result.lastInsertRowid };
-        }
-    }
+const query = (text, params) => {
+    if (isPostgres) return db.query(text, params);
+    return new Promise((resolve, reject) => {
+        db.all(text, params, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
 };
 
-// Nova função para criar as tabelas automaticamente na nuvem
 const initializeTables = async () => {
-    console.log('[DATABASE] Verificando tabelas...');
-    
     const usersTable = `
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
+            name TEXT,
             email TEXT UNIQUE NOT NULL,
             password TEXT,
-            role TEXT DEFAULT 'user',
-            googleId TEXT UNIQUE,
+            googleId TEXT,
             avatar TEXT,
+            role TEXT DEFAULT 'user',
             isActive BOOLEAN DEFAULT true,
-            createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
     `;
 
     const statsTable = `
-        CREATE TABLE IF NOT EXISTS media_stats (
+        CREATE TABLE IF NOT EXISTS stats (
             id SERIAL PRIMARY KEY,
-            media_id TEXT UNIQUE NOT NULL,
+            media_id TEXT NOT NULL,
             name TEXT NOT NULL,
             type TEXT NOT NULL,
-            logo TEXT,
-            group_name TEXT,
-            stream_url TEXT,
             views INTEGER DEFAULT 0,
             updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
@@ -94,26 +69,56 @@ const initializeTables = async () => {
         );
     `;
 
+    const progressTable = `
+        CREATE TABLE IF NOT EXISTS user_media_progress (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            media_id TEXT NOT NULL,
+            playlist_id TEXT NOT NULL,
+            current_time FLOAT DEFAULT 0,
+            duration FLOAT DEFAULT 0,
+            updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, media_id, playlist_id)
+        );
+    `;
+
+    const logsTable = `
+        CREATE TABLE IF NOT EXISTS system_logs (
+            id SERIAL PRIMARY KEY,
+            type TEXT NOT NULL,
+            message TEXT NOT NULL,
+            details TEXT,
+            createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+    `;
+
     try {
-        if (process.env.DATABASE_URL) {
+        if (isPostgres) {
             await db.query(usersTable);
             await db.query(statsTable);
             await db.query(playlistsTable);
+            await db.query(progressTable);
+            await db.query(logsTable);
             console.log('[DATABASE] Tabelas PostgreSQL prontas!');
         } else {
-            db.exec(usersTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('BOOLEAN DEFAULT true', 'INTEGER DEFAULT 1').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
-            db.exec(statsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
-            db.exec(playlistsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME').replace(/REFERENCES\s+users\(id\)\s+ON\s+DELETE\s+CASCADE/g, 'REFERENCES users(id) ON DELETE CASCADE'));
+            const run = (sql) => new Promise((resolve, reject) => {
+                db.run(sql, (err) => err ? reject(err) : resolve());
+            });
+
+            await run(usersTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('BOOLEAN DEFAULT true', 'INTEGER DEFAULT 1').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
+            await run(statsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
+            await run(playlistsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME').replace(/REFERENCES\s+users\(id\)\s+ON\s+DELETE\s+CASCADE/g, 'REFERENCES users(id) ON DELETE CASCADE'));
+            await run(progressTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME').replace(/REFERENCES\s+users\(id\)\s+ON\s+DELETE\s+CASCADE/g, 'REFERENCES users(id) ON DELETE CASCADE'));
+            await run(logsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             console.log('[DATABASE] Tabelas SQLite prontas!');
         }
     } catch (error) {
-        console.error('[DATABASE ERROR] Erro ao criar tabelas:', error.message);
+        console.error('[DATABASE] Erro ao inicializar tabelas:', error);
     }
 };
 
 module.exports = {
     query,
     initializeTables,
-    original: db,
-    isPostgres: !!process.env.DATABASE_URL
+    isPostgres
 };

@@ -3,9 +3,13 @@ import { usePlaylistStore } from '../stores/usePlaylistStore';
 import MediaCard from '../components/Media/MediaCard';
 import CategoryFilter from '../components/Media/CategoryFilter';
 import { FiSearch, FiFilm } from 'react-icons/fi';
+import { usePlaylistManagerStore } from '../stores/usePlaylistManagerStore';
+import { useProgressStore } from '../stores/useProgressStore';
 
 export default function MoviesPage() {
     const { moviesList, moviesGroups, selectedMovieGroup, setSelectedMovieGroup } = usePlaylistStore();
+    const { getActivePlaylist } = usePlaylistManagerStore();
+    const { fetchAllProgress } = useProgressStore();
     const [searchTerm, setSearchTerm] = useState('');
 
     // Prevenção de etiquetas erradas (Séries | em Filmes) vindo do provedor
@@ -32,6 +36,12 @@ export default function MoviesPage() {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // Fetch progress on load
+    React.useEffect(() => {
+        const active = getActivePlaylist();
+        if (active) fetchAllProgress(active.id);
+    }, [getActivePlaylist, fetchAllProgress]);
 
     const filteredMovies = useMemo(() => {
         let list = (selectedMovieGroup ? moviesGroups[selectedMovieGroup] : moviesList) || [];

@@ -2,12 +2,17 @@ import React from 'react';
 import { FiPlay, FiHeart, FiDownload } from 'react-icons/fi';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
+import { useProgressStore } from '../../stores/useProgressStore';
 import toast from 'react-hot-toast';
 
 export default function MediaCard({ item, type, playlist = [] }) {
     const { addFavorite, removeFavorite, favorites } = usePlaylistStore();
     const { setCurrentStream } = usePlayerStore();
     const { setSelectedMediaDetails } = usePlaylistStore();
+    const { getProgress } = useProgressStore();
+    
+    const progress = getProgress(item.id);
+    const progressPercent = progress ? Math.min(100, Math.max(0, (progress.currentTime / (progress.duration || 1)) * 100)) : 0;
     
     const isFavorite = favorites.some(f => f.id === item.id);
 
@@ -107,6 +112,16 @@ export default function MediaCard({ item, type, playlist = [] }) {
                 <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] uppercase font-bold text-gray-400">
                     {item.group}
                 </div>
+
+                {/* Watch Progress Bar */}
+                {progressPercent > 0 && (
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-white/10">
+                        <div 
+                            className="h-full bg-primary shadow-[0_0_10px_rgba(108,92,231,0.5)] transition-all duration-300"
+                            style={{ width: `${progressPercent}%` }}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Info Area */}

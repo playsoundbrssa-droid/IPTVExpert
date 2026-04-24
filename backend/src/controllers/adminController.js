@@ -1,5 +1,18 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const db = require('../config/database');
+
+// Helper to log system events
+const logEvent = async (type, message, details = null) => {
+    try {
+        const sql = db.isPostgres 
+            ? 'INSERT INTO system_logs (type, message, details) VALUES ($1, $2, $3)'
+            : 'INSERT INTO system_logs (type, message, details) VALUES (?, ?, ?)';
+        await db.query(sql, [type, message, details ? JSON.stringify(details) : null]);
+    } catch (error) {
+        console.error('[LOG] Error saving log:', error);
+    }
+};
 
 // GET /api/admin/users — List all users
 exports.listUsers = async (req, res) => {
@@ -79,9 +92,45 @@ exports.deleteUser = async (req, res) => {
         }
 
         await User.destroy({ where: { id: user.id } });
+        logEvent('DELETE_USER', `Usuário deletado: ${user.email}`, { deletedById: req.userId });
         res.json({ message: 'Usuário removido com sucesso.' });
     } catch (error) {
         console.error('[ADMIN] Erro ao deletar:', error);
         res.status(500).json({ message: 'Erro interno.' });
+    }
+};
+
+// GET /api/admin/logs — List system logs
+exports.getLogs = async (req, res) => {
+    try {
+        const sql = 'SELECT * FROM system_logs ORDER BY createdAt DESC LIMIT 100';
+        const result = await db.query(sql);
+        res.json({ logs: result.rows || result });
+    } catch (error) {
+        console.error('[ADMIN] Erro ao listar logs:', error);
+        res.status(500).json({ message: 'Erro ao buscar logs.' });
+    }
+};
+
+// GET /api/admin/stats — Dashboard summary
+exports.getStats = async (req, res) => {
+    try {
+        const usersCount = await User.count();
+        const activeUsers = await User.count({ where: { isActive: true } });
+        
+        const viewsSql = 'SELECT SUM(views) as total_views FROM stats';
+        const viewsResult = await db.query(viewsSql);
+        const totalViews = (viewsResult.rows || viewsResult)[0]?.total_views || 0;
+
+        res.json({
+            users: {
+                total: usersCount,
+                active: activeUsers
+            },
+            totalViews: parseInt(totalViews)
+        });
+    } catch (error) {
+        console.error('[ADMIN] Erro ao buscar stats:', error);
+        res.status(500).json({ message: 'Erro ao buscar estatísticas.' });
     }
 };

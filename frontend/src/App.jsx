@@ -9,6 +9,7 @@ import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
 import AuthScreen from './components/Auth/AuthScreen';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { useUserStore } from './stores/useUserStore';
 import { usePlaylistStore } from './stores/usePlaylistStore';
 import { useEffect, useState } from 'react';
@@ -58,6 +59,7 @@ function App() {
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<AuthScreen />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="*" element={<LandingPage />} />
                 </Routes>
             ) : (
@@ -77,6 +79,7 @@ function App() {
                         <Route path="/highlights" element={<HighlightsPage />} />
                         <Route path="/favorites" element={<FavoritesPage />} />
                         <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
                         {user?.role === 'admin' && (
                             <Route path="/admin" element={<AdminPage />} />
                         )}

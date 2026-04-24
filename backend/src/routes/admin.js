@@ -12,5 +12,7 @@ router.get('/users', adminController.listUsers);
 router.put('/users/:id/role', adminController.changeRole);
 router.put('/users/:id/toggle', adminController.toggleActive);
 router.delete('/users/:id', adminController.deleteUser);
+router.get('/logs', adminController.getLogs);
+router.get('/stats', adminController.getStats);
 
 module.exports = router;

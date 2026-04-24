@@ -58,6 +58,7 @@ app.use('/api/proxy', proxyRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/xtream', xtreamRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/progress', require('./routes/progress'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', port: PORT }));

@@ -21,6 +21,7 @@ import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
+import { useProgressStore } from '../../stores/useProgressStore';
 import { statsApi } from '../../api/stats';
 
 export default function VideoPlayer() {
@@ -31,6 +32,8 @@ export default function VideoPlayer() {
     // Stores
     const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev, playlist } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
+    const { saveProgress, getProgress } = useProgressStore();
+    const { getActivePlaylist } = usePlaylistManagerStore();
     
     // UI State
     const [showControls, setShowControls] = useState(true);
@@ -441,7 +444,18 @@ export default function VideoPlayer() {
             handlePlayAction();
             setIsBuffering(false);
         }
-    }, [currentStream, getStreamUrl, handlePlayAction, cleanUp]);
+
+        // --- Lógica de Retomada (Resume) ---
+        if (currentStream.type === 'movie' || currentStream.type === 'series') {
+            const playlistId = getActivePlaylist()?.id;
+            const progress = getProgress(currentStream.id);
+            if (progress && progress.currentTime > 10 && (progress.duration - progress.currentTime > 30)) {
+                console.log(`[PLAYER] Retomando em ${progress.currentTime}s`);
+                videoRef.current.currentTime = progress.currentTime;
+                toast(`Retomando de ${formatTime(progress.currentTime)}`, { icon: '🕒' });
+            }
+        }
+    }, [currentStream, getStreamUrl, handlePlayAction, cleanUp, getProgress, getActivePlaylist]);
 
     useEffect(() => {
         init();
@@ -676,7 +690,18 @@ export default function VideoPlayer() {
                     }}
                     onWaiting={() => setIsBuffering(true)}
                     onPlaying={() => setIsBuffering(false)}
-                    onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+                    onTimeUpdate={() => {
+                        const time = videoRef.current?.currentTime || 0;
+                        setCurrentTime(time);
+                        
+                        // Salvar progresso a cada 10 segundos para VOD
+                        if ((currentStream?.type === 'movie' || currentStream?.type === 'series') && Math.floor(time) % 10 === 0 && time > 5) {
+                            const playlistId = getActivePlaylist()?.id;
+                            if (playlistId) {
+                                saveProgress(playlistId, currentStream.id, time, videoRef.current?.duration || 0);
+                            }
+                        }
+                    }}
                     onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
                     playsInline
                     crossOrigin="anonymous"

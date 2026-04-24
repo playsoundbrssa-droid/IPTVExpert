@@ -137,40 +137,43 @@ exports.googleLogin = async (req, res) => {
     }
 };
 
-// POST /api/auth/google-supabase
-exports.googleSupabaseLogin = async (req, res) => {
+// POST /api/auth/social-sync (Generic for any Supabase provider)
+exports.socialSync = async (req, res) => {
     try {
-        const { user: sbUser, access_token } = req.body;
+        const { user: sbUser, provider } = req.body;
 
         if (!sbUser || !sbUser.email) {
-            return res.status(400).json({ message: 'Dados do usuário Supabase inválidos.' });
+            return res.status(400).json({ message: 'Dados do usuário social inválidos.' });
         }
 
         const email = sbUser.email;
         const name = sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email.split('@')[0];
         const picture = sbUser.user_metadata?.avatar_url || sbUser.user_metadata?.picture;
-        const googleId = sbUser.identities?.find(i => i.provider === 'google')?.id || sbUser.id;
+        
+        // Use provider-specific ID or fallback to Supabase ID
+        const socialId = sbUser.identities?.find(i => i.provider === provider)?.id || sbUser.id;
 
-        // Check if user exists by googleId or email
-        let user = await User.findOne({ where: { googleId } });
+        // Check if user exists by socialId (any provider) or email
+        // We still use googleId column for now to avoid migration, but treat it as generic socialId
+        let user = await User.findOne({ where: { googleId: socialId } });
 
         if (!user) {
             user = await User.findOne({ where: { email } });
             if (user) {
-                // Vincular Google ID à conta existente
-                await User.update({ googleId, avatar: picture || user.avatar }, { where: { id: user.id } });
+                // Link social ID to existing account
+                await User.update({ googleId: socialId, avatar: picture || user.avatar }, { where: { id: user.id } });
             } else {
                 // Create new user
                 user = await User.create({
                     name,
                     email,
-                    googleId,
+                    googleId: socialId,
                     avatar: picture,
                     password: null
                 });
             }
         } else if (picture && picture !== user.avatar) {
-            // Atualizar avatar se mudou
+            // Update avatar if changed
             await User.update({ avatar: picture }, { where: { id: user.id } });
         }
 
@@ -181,8 +184,7 @@ exports.googleSupabaseLogin = async (req, res) => {
         const token = generateToken(user);
         res.json({ token, user: sanitizeUser(user) });
     } catch (error) {
-        console.error('[AUTH] Erro no login Supabase:', error.message);
-        if (error.stack) console.error(error.stack);
+        console.error('[AUTH] Erro na sincronização social:', error.message);
         res.status(500).json({ 
             message: 'Erro ao sincronizar login com o servidor.',
             detail: error.message 
@@ -201,5 +203,42 @@ exports.getProfile = async (req, res) => {
     } catch (error) {
         console.error('[AUTH] Erro ao buscar perfil:', error);
         res.status(500).json({ message: 'Erro interno no servidor.' });
+    }
+};
+
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ where: { email } });
+        if (!user) return res.json({ message: 'Se este e-mail estiver cadastrado, você receberá um link de recuperação.' });
+        const token = jwt.sign({ id: user.id, type: 'recovery' }, process.env.JWT_SECRET || 'secret_fallback', { expiresIn: '1h' });
+        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+        console.log(`[AUTH] Link de recuperação para ${email}: ${resetLink}`);
+        res.json({ message: 'Se este e-mail estiver cadastrado, você receberá um link de recuperação.' });
+    } catch (error) {
+        console.error('[AUTH] Erro no forgot-password:', error);
+        res.status(500).json({ message: 'Erro ao processar solicitação.' });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const { token, password } = req.body;
+        if (!token || !password) return res.status(400).json({ message: 'Token e nova senha são obrigatórios.' });
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_fallback');
+        } catch (err) {
+            return res.status(401).json({ message: 'Token inválido ou expirado.' });
+        }
+        if (decoded.type !== 'recovery') return res.status(401).json({ message: 'Tipo de token inválido.' });
+        const user = await User.findByPk(decoded.id);
+        if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
+        const hashedPassword = await bcrypt.hash(password, 12);
+        await User.update({ password: hashedPassword }, { where: { id: user.id } });
+        res.json({ message: 'Senha alterada com sucesso! Você já pode fazer login.' });
+    } catch (error) {
+        console.error('[AUTH] Erro no reset-password:', error);
+        res.status(500).json({ message: 'Erro ao redefinir senha.' });
     }
 };
