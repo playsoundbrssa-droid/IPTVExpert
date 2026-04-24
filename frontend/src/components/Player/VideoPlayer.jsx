@@ -43,6 +43,8 @@ export default function VideoPlayer() {
     const [duration, setDuration] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
     const [showComments, setShowComments] = useState(false);
+    const [showEpisodes, setShowEpisodes] = useState(false);
+    const [selectedSeason, setSelectedSeason] = useState(1);
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
@@ -435,6 +437,20 @@ export default function VideoPlayer() {
     useEffect(() => {
         init();
         setShowFullEpg(false); // Reseta ao mudar de canal
+        setShowEpisodes(false); // Reseta ao mudar
+        setShowComments(false); // Reseta ao mudar
+        
+        // Configura a temporada inicial se for série
+        if (currentStream?.episodesBySeason) {
+            const seasons = Object.keys(currentStream.episodesBySeason).sort((a,b)=>a-b);
+            if (seasons.length > 0) {
+                // Tenta achar a temporada do episódio atual
+                const currentSeasonStr = seasons.find(s => 
+                    currentStream.episodesBySeason[s].some(ep => ep.id === currentStream.id)
+                ) || seasons[0];
+                setSelectedSeason(currentSeasonStr);
+            }
+        }
 
         // Helper para decodificar texto do EPG (Xtream usa Base64 com UTF-8)
         const decodeEPGText = (str) => {
@@ -935,12 +951,22 @@ export default function VideoPlayer() {
                     </button>
 
                     <button
-                        onClick={() => { setShowComments(!showComments); setShowFullEpg(false); }}
+                        onClick={() => { setShowComments(!showComments); setShowFullEpg(false); setShowEpisodes(false); }}
                         className={`flex flex-col items-center gap-1 transition-all group ${showComments ? 'text-white' : 'text-white/60 hover:text-white'}`}
                     >
                         <FiMessageSquare size={18} className="group-hover:scale-110 transition-transform" />
                         <span className="text-[8px] font-black uppercase tracking-[0.2em]">Comment</span>
                     </button>
+
+                    {stream.type === 'series' && stream.episodesBySeason && (
+                        <button
+                            onClick={() => { setShowEpisodes(!showEpisodes); setShowComments(false); setShowFullEpg(false); }}
+                            className={`flex flex-col items-center gap-1 transition-all group ${showEpisodes ? 'text-white' : 'text-white/60 hover:text-white'}`}
+                        >
+                            <FiMenu size={18} className="group-hover:scale-110 transition-transform" />
+                            <span className="text-[8px] font-black uppercase tracking-[0.2em]">Episódios</span>
+                        </button>
+                    )}
 
                     <button
                         onClick={handleCast}
@@ -1016,6 +1042,59 @@ export default function VideoPlayer() {
                                 <p className="text-sm font-bold uppercase tracking-widest">Nenhuma programação<br />disponível</p>
                             </div>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* PAINEL DE EPISÓDIOS (SÉRIES) */}
+            <div className={`absolute top-0 right-0 w-full lg:w-[400px] h-full bg-black/40 backdrop-blur-3xl border-l border-white/10 z-[150] transition-all duration-500 transform ${showEpisodes ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="flex flex-col h-full pt-32 pb-20 px-8">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-white font-black text-2xl tracking-tighter uppercase">Episódios</h3>
+                            <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">Temporadas e Capítulos</p>
+                        </div>
+                        <button onClick={() => setShowEpisodes(false)} className="p-2 text-white/40 hover:text-white transition-all">
+                            <FiX size={24} />
+                        </button>
+                    </div>
+
+                    {stream.episodesBySeason && (
+                        <div className="mb-6 relative">
+                            <select 
+                                value={selectedSeason}
+                                onChange={(e) => setSelectedSeason(e.target.value)}
+                                className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer text-white"
+                            >
+                                {Object.keys(stream.episodesBySeason).sort((a,b)=>a-b).map(s => (
+                                    <option key={s} value={s} className="bg-[#1a1a1a] text-white">Temporada {s}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-3">
+                        {stream.episodesBySeason?.[selectedSeason]?.map((ep) => {
+                            const isPlayingEpisode = currentStream?.id === ep.id;
+
+                            return (
+                                <button 
+                                    key={ep.id}
+                                    onClick={() => setCurrentStream(ep)}
+                                    className={`w-full flex items-center gap-4 p-3 rounded-2xl border transition-all text-left ${isPlayingEpisode ? 'bg-primary/20 border-primary/30 shadow-lg' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black shrink-0 ${isPlayingEpisode ? 'bg-primary text-white' : 'bg-black/40 text-gray-400'}`}>
+                                        {isPlayingEpisode ? <FiPlay className="ml-1" /> : ep.order || ep.episode || '-'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className={`font-bold truncate text-sm ${isPlayingEpisode ? 'text-primary' : 'text-white'}`}>{ep.name}</h4>
+                                        <p className="text-[10px] text-gray-500 uppercase font-black">
+                                            {isPlayingEpisode ? 'Reproduzindo' : 'Assistir'}
+                                        </p>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

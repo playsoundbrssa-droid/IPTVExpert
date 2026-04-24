@@ -165,7 +165,16 @@ export default function MediaDetailModal() {
         }
 
         if (itemToPlay) {
-            setCurrentStream(itemToPlay, []);
+            let fullPlaylist = [];
+            if (selectedMediaDetails.type === 'series' && episodesBySeason) {
+                // Junta todos os episódios de todas as temporadas em um array plano para o playNext/Prev
+                Object.keys(episodesBySeason).sort((a,b)=>a-b).forEach(s => {
+                    fullPlaylist.push(...episodesBySeason[s]);
+                });
+                itemToPlay.episodesBySeason = episodesBySeason; // Passamos agrupado também para o player mostrar a gaveta
+            }
+            
+            setCurrentStream(itemToPlay, fullPlaylist);
             setSelectedMediaDetails(null); // Fechar modal ao dar play
         }
     };
