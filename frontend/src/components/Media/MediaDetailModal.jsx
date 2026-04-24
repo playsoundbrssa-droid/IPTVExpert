@@ -169,7 +169,11 @@ export default function MediaDetailModal() {
             if (selectedMediaDetails.type === 'series' && episodesBySeason) {
                 // Junta todos os episódios de todas as temporadas em um array plano para o playNext/Prev
                 Object.keys(episodesBySeason).sort((a,b)=>a-b).forEach(s => {
-                    fullPlaylist.push(...episodesBySeason[s]);
+                    const seasonEps = episodesBySeason[s].map(ep => ({
+                        ...ep,
+                        episodesBySeason: episodesBySeason
+                    }));
+                    fullPlaylist.push(...seasonEps);
                 });
                 itemToPlay.episodesBySeason = episodesBySeason; // Passamos agrupado também para o player mostrar a gaveta
             }
