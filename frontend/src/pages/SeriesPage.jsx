@@ -6,7 +6,7 @@ import { FiSearch, FiLayers } from 'react-icons/fi';
 import { getSeriesBaseName, getBestSeriesLogo } from '../utils/seriesUtils';
 
 export default function SeriesPage() {
-    const { seriesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
+    const { seriesList, moviesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(50);
@@ -47,13 +47,22 @@ export default function SeriesPage() {
     }, [searchTerm]);
 
     const consolidatedSeries = useMemo(() => {
-        // Sempre usamos a lista GLOBAL para consolidar, para não perder episódios entre grupos
-        const baseList = seriesList || [];
+        // Unimos as duas listas para garantir que episódios marcados como filmes sejam capturados
+        const baseList = [...(seriesList || []), ...(moviesList || [])];
         if (baseList.length === 0) return [];
 
         const seriesMap = {};
         baseList.forEach(item => {
-            const baseName = getSeriesBaseName(item.name);
+            const name = item.name || '';
+            
+            // Verificamos se o item tem padrão de episódio (S01, 1x01, etc)
+            // Se NÃO tiver e for da lista de filmes, ignoramos (para não misturar filmes reais)
+            const isSeriesItem = /[sS]\d+|[xX]\d+|\b(temp|ep|cap)\b/i.test(name);
+            const isOriginalSeries = seriesList?.some(s => s.id === item.id);
+            
+            if (!isSeriesItem && !isOriginalSeries) return;
+
+            const baseName = getSeriesBaseName(name);
             if (!seriesMap[baseName]) {
                 seriesMap[baseName] = { baseName, items: [], groups: new Set() };
             }
