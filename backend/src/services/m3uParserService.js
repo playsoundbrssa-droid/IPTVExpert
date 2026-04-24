@@ -100,7 +100,7 @@ const categorizeItem = (item) => {
         /[sS]\s*\d+\s*[eE]\s*\d+/i,        // S01E01, S01 E01, S1 E1
         /\d{1,2}\s*x\s*\d{1,2}/i,          // 1x01, 1 x 01
         /(?:temporada|season)\s*\d+/i,     // Temporada 1, Season 1
-        /(?:epis[oó]dio|episode|capitulo|capítulo)\s*\d+/i, // Episódio 1, Capítulo 1
+        /(?:epis[oó]dio|episode|capitulo|capítulo|ep)\s*\d+/i, // Episódio 1, Capítulo 1, Ep 1
         /novela/i,
         /programa de tv/i
     ];
