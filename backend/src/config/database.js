@@ -1,4 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
+// const sqlite3 = require('sqlite3').verbose(); // Removido do topo para evitar erro no Render quando DATABASE_URL está presente
 const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
@@ -12,6 +12,7 @@ if (isPostgres) {
         ssl: { rejectUnauthorized: false }
     });
 } else {
+    const sqlite3 = require('sqlite3').verbose();
     const dataDir = path.join(__dirname, '../../data');
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
     db = new sqlite3.Database(path.join(dataDir, 'database.sqlite'));
