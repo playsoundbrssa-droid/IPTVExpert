@@ -11,12 +11,12 @@ const userPlaylistController = {
     // Buscar todas playlists do usuário
     getPlaylists: async (req, res) => {
         try {
-            const userId = req.user.id;
+            const userId = req.userId; // Corrigido: middleware define req.userId, não req.user.id
             const sql = formatQuery('SELECT * FROM user_playlists WHERE user_id = ? ORDER BY createdAt ASC');
             const result = await db.query(sql, [userId]);
             
             const playlists = (result.rows || result).map(p => ({
-                id: p.client_id, // Mapper client_id de volta para ID
+                id: p.client_id,
                 name: p.name,
                 type: p.type,
                 total: p.total,
@@ -37,7 +37,7 @@ const userPlaylistController = {
     // Salvar ou atualizar playlist
     savePlaylist: async (req, res) => {
         try {
-            const userId = req.user.id;
+            const userId = req.userId; // Corrigido
             const { id, name, type, total, config, channelsCount, moviesCount, seriesCount } = req.body;
             
             if (!id || !name || !type || !config) {
@@ -78,7 +78,7 @@ const userPlaylistController = {
     // Deletar playlist
     deletePlaylist: async (req, res) => {
         try {
-            const userId = req.user.id;
+            const userId = req.userId; // Corrigido
             const clientId = req.params.id;
             
             const delSql = formatQuery('DELETE FROM user_playlists WHERE client_id = ? AND user_id = ?');
