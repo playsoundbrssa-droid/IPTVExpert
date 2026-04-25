@@ -19,10 +19,10 @@ const progressController = {
 
             // Upsert progress
             const sql = formatQuery(`
-                INSERT INTO user_media_progress (user_id, media_id, playlist_id, current_time, duration, updatedAt)
+                INSERT INTO user_media_progress (user_id, media_id, playlist_id, last_position, duration, updatedAt)
                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT (user_id, media_id, playlist_id)
-                DO UPDATE SET current_time = EXCLUDED.current_time, duration = EXCLUDED.duration, updatedAt = CURRENT_TIMESTAMP
+                DO UPDATE SET last_position = EXCLUDED.last_position, duration = EXCLUDED.duration, updatedAt = CURRENT_TIMESTAMP
             `);
 
             // Fallback for SQLite which uses a different UPSERT syntax or we can just delete/insert
@@ -31,7 +31,7 @@ const progressController = {
                 const delSql = formatQuery('DELETE FROM user_media_progress WHERE user_id = ? AND media_id = ? AND playlist_id = ?');
                 await db.query(delSql, [userId, mediaId, playlistId]);
                 
-                const insSql = formatQuery('INSERT INTO user_media_progress (user_id, media_id, playlist_id, current_time, duration) VALUES (?, ?, ?, ?, ?)');
+                const insSql = formatQuery('INSERT INTO user_media_progress (user_id, media_id, playlist_id, last_position, duration) VALUES (?, ?, ?, ?, ?)');
                 await db.query(insSql, [userId, mediaId, playlistId, currentTime, duration]);
             } else {
                 await db.query(sql, [userId, mediaId, playlistId, currentTime, duration]);
@@ -50,7 +50,7 @@ const progressController = {
             const userId = req.userId;
             const { mediaId, playlistId } = req.query;
 
-            const sql = formatQuery('SELECT current_time, duration, updatedAt FROM user_media_progress WHERE user_id = ? AND media_id = ? AND playlist_id = ?');
+            const sql = formatQuery('SELECT last_position, duration, updatedAt FROM user_media_progress WHERE user_id = ? AND media_id = ? AND playlist_id = ?');
             const result = await db.query(sql, [userId, mediaId, playlistId]);
 
             const progress = (result.rows || result)[0] || null;
@@ -67,7 +67,7 @@ const progressController = {
             const userId = req.userId;
             const { playlistId } = req.query;
 
-            const sql = formatQuery('SELECT media_id, current_time, duration FROM user_media_progress WHERE user_id = ? AND playlist_id = ?');
+            const sql = formatQuery('SELECT media_id, last_position, duration FROM user_media_progress WHERE user_id = ? AND playlist_id = ?');
             const result = await db.query(sql, [userId, playlistId]);
 
             const progressList = result.rows || result;

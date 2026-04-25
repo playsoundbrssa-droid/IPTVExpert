@@ -76,7 +76,7 @@ const initializeTables = async () => {
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             media_id TEXT NOT NULL,
             playlist_id TEXT NOT NULL,
-            current_time FLOAT DEFAULT 0,
+            last_position FLOAT DEFAULT 0,
             duration FLOAT DEFAULT 0,
             updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(user_id, media_id, playlist_id)
