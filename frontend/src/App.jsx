@@ -1,26 +1,27 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/CategorySidebar/Sidebar';
-import LiveTvPage from './pages/LiveTvPage';
-import MoviesPage from './pages/MoviesPage';
-import SeriesPage from './pages/SeriesPage';
-import FavoritesPage from './pages/FavoritesPage';
-import HighlightsPage from './pages/HighlightsPage';
-import SettingsPage from './pages/SettingsPage';
-import AdminPage from './pages/AdminPage';
-import LandingPage from './pages/LandingPage';
-import AuthScreen from './components/Auth/AuthScreen';
-import ResetPasswordPage from './pages/ResetPasswordPage';
 import { useUserStore } from './stores/useUserStore';
 import { usePlaylistStore } from './stores/usePlaylistStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import VideoPlayer from './components/Player/VideoPlayer';
 import { usePlayerStore } from './stores/usePlayerStore';
 import MediaDetailModal from './components/Media/MediaDetailModal';
 import { Toaster } from 'react-hot-toast';
-
 import MobileBottomNav from './components/CategorySidebar/MobileBottomNav';
 import { FiPlus } from 'react-icons/fi';
 import { applyTheme } from './hooks/useTheme';
+
+// Lazy load de páginas — o JS de cada página só é carregado quando o usuário navega até ela
+const LiveTvPage       = lazy(() => import('./pages/LiveTvPage'));
+const MoviesPage       = lazy(() => import('./pages/MoviesPage'));
+const SeriesPage       = lazy(() => import('./pages/SeriesPage'));
+const FavoritesPage    = lazy(() => import('./pages/FavoritesPage'));
+const HighlightsPage   = lazy(() => import('./pages/HighlightsPage'));
+const SettingsPage     = lazy(() => import('./pages/SettingsPage'));
+const AdminPage        = lazy(() => import('./pages/AdminPage'));
+const LandingPage      = lazy(() => import('./pages/LandingPage'));
+const AuthScreen       = lazy(() => import('./components/Auth/AuthScreen'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
 const toasterStyle = { style: { background: '#1E1E1E', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } };
 
@@ -57,10 +58,12 @@ function App() {
         <BrowserRouter>
             {!isAuthenticated ? (
                 <Routes>
-                    <Route path="/" element={<LandingPage />} />
-                    <Route path="/login" element={<AuthScreen />} />
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
-                    <Route path="*" element={<LandingPage />} />
+                    <Suspense fallback={null}>
+                        <Route path="/" element={<LandingPage />} />
+                        <Route path="/login" element={<AuthScreen />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
+                        <Route path="*" element={<LandingPage />} />
+                    </Suspense>
                 </Routes>
             ) : (
                 <div className="flex h-[100dvh] overflow-hidden bg-background relative pt-safe">
@@ -72,17 +75,19 @@ function App() {
                 {/* Main Content Area */}
                 <main className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pt-6 pb-24 md:pb-6 px-4 md:px-6 relative z-10 transition-all duration-300">
                     <Routes>
-                        <Route path="/" element={<LiveTvPage />} />
-                        <Route path="/live-tv" element={<LiveTvPage />} />
-                        <Route path="/movies" element={<MoviesPage />} />
-                        <Route path="/series" element={<SeriesPage />} />
-                        <Route path="/highlights" element={<HighlightsPage />} />
-                        <Route path="/favorites" element={<FavoritesPage />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/reset-password" element={<ResetPasswordPage />} />
-                        {user?.role === 'admin' && (
-                            <Route path="/admin" element={<AdminPage />} />
-                        )}
+                        <Suspense fallback={null}>
+                            <Route path="/" element={<LiveTvPage />} />
+                            <Route path="/live-tv" element={<LiveTvPage />} />
+                            <Route path="/movies" element={<MoviesPage />} />
+                            <Route path="/series" element={<SeriesPage />} />
+                            <Route path="/highlights" element={<HighlightsPage />} />
+                            <Route path="/favorites" element={<FavoritesPage />} />
+                            <Route path="/settings" element={<SettingsPage />} />
+                            <Route path="/reset-password" element={<ResetPasswordPage />} />
+                            {user?.role === 'admin' && (
+                                <Route path="/admin" element={<AdminPage />} />
+                            )}
+                        </Suspense>
                     </Routes>
                 </main>
                 

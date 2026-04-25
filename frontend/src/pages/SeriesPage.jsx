@@ -57,13 +57,14 @@ export default function SeriesPage() {
     }, [getActivePlaylist, fetchAllProgress]);
 
     const consolidatedSeries = useMemo(() => {
-        // Unimos as duas listas para garantir que episódios marcados como filmes sejam capturados
         const baseList = [...(seriesList || []), ...(moviesList || [])];
         if (baseList.length === 0) return [];
 
+        // Pre-build a Set for O(1) lookup instead of O(n) Array.some() on every item
+        const seriesIdSet = new Set((seriesList || []).map(s => s.id));
+
         const seriesMap = {};
         
-        // Se houver busca, filtramos antes para performance
         let filteredList = baseList;
         if (debouncedSearch) {
             const lowTerm = debouncedSearch.toLowerCase();
@@ -73,9 +74,8 @@ export default function SeriesPage() {
         filteredList.forEach(item => {
             const name = item.name || '';
             const isEpisodePattern = /[sS]\d+|[xX]\d+|\b(temp|ep|cap|season|episode)\b/i.test(name);
-            const isInSeriesList = seriesList?.some(s => s.id === item.id);
+            const isInSeriesList = seriesIdSet.has(item.id); // O(1) lookup
 
-            // Só agrupamos se parecer uma série ou se o servidor já disse que é série
             if (!isEpisodePattern && !isInSeriesList) return;
 
             const baseName = getSeriesBaseName(name);
@@ -104,12 +104,11 @@ export default function SeriesPage() {
             };
         });
 
-        // Se houver um grupo selecionado, filtramos o resultado final
+        // Filter by selected group after building the consolidated list
         if (selectedSeriesGroup) {
-            result = result.filter(s => {
-                // Se a série consolidada tem algum episódio que pertence ao grupo selecionado
-                return s.allEpisodes.some(ep => ep.group === selectedSeriesGroup);
-            });
+            result = result.filter(s =>
+                s.allEpisodes.some(ep => ep.group === selectedSeriesGroup)
+            );
         }
 
         return result.sort((a, b) => a.name.localeCompare(b.name));
