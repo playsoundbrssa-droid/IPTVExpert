@@ -29,8 +29,7 @@ export const useUserStore = create((set, get) => ({
 
         if (initialSession && !get().isAuthenticated) {
             console.log('[AUTH] Sessão inicial detectada. Sincronizando com backend...');
-            const provider = initialSession.user.app_metadata.provider || 'google';
-            await get().socialSyncLogin(initialSession, provider);
+            await get().googleSupabaseLogin(initialSession);
         }
 
         // 3. Ouvinte para mudanças de autenticação do Supabase (Redirect flow)
@@ -39,9 +38,7 @@ export const useUserStore = create((set, get) => ({
             
             if (event === 'SIGNED_IN' && session && !get().isAuthenticated) {
                 console.log('[AUTH] Login detectado via evento. Sincronizando...');
-                // Determina o provider a partir da sessão se disponível
-                const provider = session.user.app_metadata.provider || 'google';
-                await get().socialSyncLogin(session, provider);
+                await get().googleSupabaseLogin(session);
             }
         });
 
@@ -110,15 +107,15 @@ export const useUserStore = create((set, get) => ({
         }
     },
 
-    // Social login (from Supabase Session)
-    socialSyncLogin: async (session, provider = 'google') => {
+    // Google login (from Supabase Session)
+    googleSupabaseLogin: async (session) => {
         set({ loading: true });
-        console.log(`[AUTH] Iniciando socialSyncLogin via ${provider}...`);
+        console.log('[AUTH] Iniciando googleSupabaseLogin...');
         try {
             // Envia os dados do usuário do Supabase para o nosso backend criar/vincular a conta
-            const response = await api.post('/auth/social-sync', { 
+            const response = await api.post('/auth/google-supabase', { 
                 user: session.user,
-                provider: provider
+                access_token: session.access_token 
             });
             
             const { data } = response;
@@ -132,7 +129,7 @@ export const useUserStore = create((set, get) => ({
         } catch (error) {
             console.error('[AUTH] Erro na sincronização backend:', error.response?.data || error.message);
             set({ loading: false });
-            return { success: false, message: error.response?.data?.message || 'Erro ao sincronizar login social.' };
+            return { success: false, message: error.response?.data?.message || 'Erro ao sincronizar com Supabase.' };
         }
     },
 

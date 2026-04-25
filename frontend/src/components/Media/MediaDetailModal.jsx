@@ -14,13 +14,15 @@ export default function MediaDetailModal() {
     
     const [metadata, setMetadata] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [selectedSeason, setSelectedSeason] = useState('1');
+    const [selectedSeason, setSelectedSeason] = useState(1);
 
     const isFavorite = favorites.some(f => f.id === selectedMediaDetails?.id);
 
     useEffect(() => {
         if (selectedMediaDetails) {
             fetchMetadata();
+            // Reset season to 1 when changing media
+            setSelectedSeason(1);
         } else {
             setMetadata(null);
         }
@@ -60,30 +62,14 @@ export default function MediaDetailModal() {
     }, [selectedMediaDetails, seriesList]);
 
     const seasons = useMemo(() => {
-        return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => parseInt(a)-parseInt(b)) : [];
+        return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => a-b) : [];
     }, [episodesBySeason]);
-
-    useEffect(() => {
-        if (seasons.length > 0) {
-            // Se a temporada 1 existe, começa por ela. Se não, pega a primeira disponível.
-            // Mantemos como string para coincidir com as chaves do objeto episodesBySeason
-            if (seasons.includes('1')) {
-                setSelectedSeason('1');
-            } else {
-                setSelectedSeason(seasons[0]);
-            }
-        }
-    }, [seasons]);
 
     if (!selectedMediaDetails) return null;
 
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;
-        
-        // Passar todos os episódios como a playlist atual para o player
-        const allEpisodes = selectedMediaDetails.allEpisodes || [];
-        setCurrentStream(itemToPlay, allEpisodes);
-        
+        setCurrentStream(itemToPlay, []);
         setSelectedMediaDetails(null); // Fechar modal ao dar play
     };
 
@@ -235,7 +221,7 @@ export default function MediaDetailModal() {
                                                         <div className="relative group/select">
                                                             <select 
                                                                 value={selectedSeason}
-                                                                onChange={(e) => setSelectedSeason(String(e.target.value))}
+                                                                onChange={(e) => setSelectedSeason(e.target.value)}
                                                                 className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
                                                             >
                                                                 {seasons.map(s => (

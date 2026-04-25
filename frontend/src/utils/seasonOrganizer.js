@@ -2,35 +2,20 @@
  * Utilitário para organizar uma lista plana de episódios em uma estrutura de temporadas
  */
 export const organizeBySeasons = (episodes) => {
-    if (!episodes || !Array.isArray(episodes)) return {};
     const seasons = {};
 
     episodes.forEach((ep) => {
         const name = ep.name || '';
         
-        // Prioritize explicit properties if available (some backends/m3u provide them)
-        let seasonNum = ep.season || null;
-        let episodeNum = ep.episode || null;
+        // Padrões comuns: S01E01, 1x01, Season 1 Episode 1
+        let seasonNum = 1;
+        let episodeNum = 1;
 
-        // Extraction using regex if not explicit
-        if (seasonNum === null || episodeNum === null) {
-            // Regex for Season: S01, S1, Season 1, Temporada 1, 1x01
-            const sMatch = name.match(/[sS]\s*(\d+)/) || 
-                          name.match(/(\d+)\s*x/i) || 
-                          name.match(/(?:temporada|season)\s*(\d+)/i);
-            
-            // Regex for Episode: E01, E1, Episode 1, Episódio 1, 1x01
-            const eMatch = name.match(/[eE]\s*(\d+)/) || 
-                          name.match(/x\s*(\d+)/i) || 
-                          name.match(/(?:epis[oó]dio|episode|capitulo|capítulo)\s*(\d+)/i);
+        const sMatch = name.match(/s(\d+)/i) || name.match(/(\d+)x/i) || name.match(/temporada\s+(\d+)/i);
+        const eMatch = name.match(/e(\d+)/i) || name.match(/x(\d+)/i) || name.match(/episódio\s+(\d+)/i);
 
-            if (sMatch && seasonNum === null) seasonNum = parseInt(sMatch[1]);
-            if (eMatch && episodeNum === null) episodeNum = parseInt(eMatch[1]);
-        }
-
-        // Fallback to Season 1 if not found
-        seasonNum = seasonNum || 1;
-        episodeNum = episodeNum || 0;
+        if (sMatch) seasonNum = parseInt(sMatch[1]);
+        if (eMatch) episodeNum = parseInt(eMatch[1]);
 
         if (!seasons[seasonNum]) {
             seasons[seasonNum] = [];
@@ -42,9 +27,9 @@ export const organizeBySeasons = (episodes) => {
         });
     });
 
-    // Sort episodes within each season by their order (episode number)
+    // Ordenar episódios dentro de cada temporada
     Object.keys(seasons).forEach(s => {
-        seasons[s].sort((a, b) => (a.order || 0) - (b.order || 0));
+        seasons[s].sort((a, b) => a.order - b.order);
     });
 
     return seasons;
