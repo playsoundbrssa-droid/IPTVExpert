@@ -5,13 +5,10 @@ export const getSeriesBaseName = (name) => {
     if (!name) return '';
     return name
         // 1. Remove padrões de episódios e tudo que vem depois
-        .replace(/\s*[sS]\d+[eE]\d+.*/i, '') // S01E01
-        .replace(/\s*(\d{1,2}x\d{1,2}|x\d{1,2}).*/i, '') // 1x01 ou x01
-        .replace(/\s*Temporada\s*\d+.*/i, '') // Temporada 1
-        .replace(/\s*Season\s*\d+.*/i, '')    // Season 1
-        .replace(/\s*Episódio\s*\d+.*/i, '')  // Episódio 1
-        .replace(/\s*Capítulo\s*\d+.*/i, '')  // Capítulo 1
-        .replace(/\s*Ep\s*\d+.*/i, '')        // Ep 1
+        .replace(/\s*[[({]*\s*[sS]\d+[eE]\d+.*[\])}]*$/i, '') // S01E01 com ou sem colchetes
+        .replace(/\s*[[({]*\s*(\d{1,2}x\d{1,2}|x\d{1,2}).*[\])}]*$/i, '') // 1x01
+        .replace(/\s*[[({]*\s*(Temporada|Season|T)\s*\d+.*[\])}]*$/i, '') // Temporada/Season/T + N
+        .replace(/\s*[[({]*\s*(Episódio|Capítulo|Ep|E)\s*\d+.*[\])}]*$/i, '') // Episódio/Capítulo/Ep/E + N
         
         // 2. Remove anos entre parênteses ou colchetes
         .replace(/\s*[\(\[]\s*\d{4}\s*[\)\]].*/g, '')

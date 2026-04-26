@@ -47,42 +47,58 @@ export default function SeriesPage() {
     }, [searchTerm]);
 
     const consolidatedSeries = useMemo(() => {
-        let list = (selectedSeriesGroup ? seriesGroups[selectedSeriesGroup] : seriesList) || [];
-        
-        if (debouncedSearch) {
-            const lowTerm = debouncedSearch.toLowerCase();
-            if (list.length > 50000 && debouncedSearch.length < 3) return [];
-            list = list.filter(s => s.name.toLowerCase().includes(lowTerm));
-        }
+        if (!seriesList.length && !moviesList.length) return [];
 
-        const seriesMap = {};
-        list.forEach(item => {
-            const baseName = getSeriesBaseName(item.name);
-            if (!seriesMap[baseName]) {
-                seriesMap[baseName] = { baseName, items: [] };
+        // 1. Criamos um Set para busca O(1)
+        const seriesIdSet = new Set(seriesList.map(s => s.id));
+        
+        // 2. Mapeamos TODA a lista para agrupamento (independente da busca)
+        // Isso garante que o modal de detalhes tenha acesso a todos os episódios
+        const fullList = [...seriesList, ...moviesList];
+        const globalSeriesMap = {};
+
+        fullList.forEach(item => {
+            const name = item.name || '';
+            const isEpisodePattern = /[sS]\d+|[xX]\d+|\b(temp|ep|cap|season|episode)\b/i.test(name);
+            if (!isEpisodePattern && !seriesIdSet.has(item.id)) return;
+
+            const baseName = getSeriesBaseName(name);
+            if (!globalSeriesMap[baseName]) {
+                globalSeriesMap[baseName] = [];
             }
-            seriesMap[baseName].items.push(item);
+            globalSeriesMap[baseName].push(item);
         });
 
-        return Object.keys(seriesMap).map(name => {
-            const group = seriesMap[name];
-            const representative = group.items.find(it => {
+        // 3. Geramos o resultado final baseado na busca ou no grupo selecionado
+        const lowTerm = debouncedSearch.toLowerCase();
+        
+        const result = [];
+        for (const [name, items] of Object.entries(globalSeriesMap)) {
+            // Filtro por busca: o nome da série deve conter o termo
+            if (debouncedSearch && !name.toLowerCase().includes(lowTerm)) continue;
+
+            // Filtro por grupo: ao menos um episódio deve pertencer ao grupo
+            if (selectedSeriesGroup && !items.some(ep => ep.group === selectedSeriesGroup)) continue;
+
+            const representative = items.find(it => {
                 if (!it.logo) return false;
                 const lowLogo = it.logo.toLowerCase();
                 return !lowLogo.includes('s0') && !lowLogo.includes('e0') && !lowLogo.includes('thumb');
-            }) || group.items[0];
+            }) || items[0];
 
-            return {
+            result.push({
                 ...representative,
                 id: `series_group_${representative.id}`,
                 name: name,
-                logo: getBestSeriesLogo(group.items),
-                episodeCount: group.items.length,
-                allEpisodes: group.items,
+                logo: getBestSeriesLogo(items),
+                episodeCount: items.length,
+                allEpisodes: items, // Agora contém TODOS os episódios globais daquela série
                 type: 'series'
-            };
-        }).sort((a, b) => a.name.localeCompare(b.name));
-    }, [seriesList, seriesGroups, selectedSeriesGroup, debouncedSearch]);
+            });
+        }
+
+        return result.sort((a, b) => a.name.localeCompare(b.name));
+    }, [seriesList, moviesList, selectedSeriesGroup, debouncedSearch]);
 
     const visibleSeries = useMemo(() => {
         if (!consolidatedSeries) return [];
