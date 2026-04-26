@@ -14,18 +14,18 @@ export const organizeBySeasons = (episodes) => {
 
         // 2. Se não houver propriedades explícitas, tentar detectar pelo nome (M3U)
         if (seasonNum === null) {
-            // Padrões: S01E01, 1x01, Season 1, Temporada 1, T1
+            // Busca específica por S01, S1, etc. Prioriza o final do nome ou padrões isolados
             const sMatch = name.match(/s(\d+)/i) || 
-                          name.match(/(\d+)x/i) || 
-                          name.match(/(?:temporada|season|t)\s*(\d+)/i);
+                          name.match(/(?:temporada|season|t)\s*(\d+)/i) ||
+                          name.match(/(\d+)x/i);
             seasonNum = sMatch ? parseInt(sMatch[1]) : 1;
         }
 
         if (episodeNum === null) {
-            // Padrões: E01, x01, Ep 1, Episode 1, Cap 1, E1
+            // Busca específica por E01, E1, Ep1, etc.
             const eMatch = name.match(/e(\d+)/i) || 
-                          name.match(/x(\d+)/i) || 
-                          name.match(/(?:episódio|episode|ep|capítulo|cap|e)\s*(\d+)/i);
+                          name.match(/(?:episódio|episode|ep|capítulo|cap|e)\s*(\d+)/i) ||
+                          name.match(/x(\d+)/i);
             episodeNum = eMatch ? parseInt(eMatch[1]) : (ep.order || index + 1);
         }
 

@@ -327,70 +327,71 @@ export default function MediaDetailModal() {
                                                 </p>
                                             </div>
 
-                                            {/* SEÇÃO DE TEMPORADAS E EPISÓDIOS (agora sempre visível se for série) */}
+                                            {/* SEÇÃO DE TEMPORADAS E EPISÓDIOS (Layout Premium Grid) */}
                                             {isSeries && (
-                                                <div className="space-y-6 pt-6 border-t border-white/5">
+                                                <div className="space-y-12 pt-10 border-t border-white/5">
                                                     {loadingEpisodes ? (
-                                                        <div className="py-12 flex flex-col items-center justify-center gap-4">
-                                                            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                                                            <p className="text-gray-500 font-bold animate-pulse">Buscando episódios no servidor...</p>
+                                                        <div className="py-20 flex flex-col items-center justify-center gap-6">
+                                                            <div className="w-16 h-16 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
+                                                            <div className="text-center">
+                                                                <p className="text-white font-black uppercase tracking-widest text-sm">Sincronizando Episódios</p>
+                                                            </div>
                                                         </div>
                                                     ) : seasons.length > 0 ? (
-                                                        <>
-                                                            <div className="flex items-center justify-between">
-                                                                <h3 className="text-2xl font-black">Episódios</h3>
-                                                                {seasons.length > 1 && (
-                                                                    <div className="relative group/select">
-                                                                        <select
-                                                                            value={selectedSeason}
-                                                                            onChange={(e) => setSelectedSeason(Number(e.target.value))}
-                                                                            className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
-                                                                        >
-                                                                            {seasons.map(s => (
-                                                                                <option key={s} value={s} className="bg-surface text-white">
-                                                                                    Temporada {s}
-                                                                                </option>
-                                                                            ))}
-                                                                        </select>
-                                                                        <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
+                                                        seasons.map(seasonNum => (
+                                                            <div key={seasonNum} className="space-y-6">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="w-2 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--color-primary),0.5)]" />
+                                                                        <h3 className="text-2xl font-black text-white">Temporada {seasonNum}</h3>
                                                                     </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                {episodesBySeason[selectedSeason]?.map((ep, idx) => (
-                                                                    <button
-                                                                        key={ep.id}
-                                                                        onClick={() => handlePlay(ep)}
-                                                                        className="flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group/ep text-left w-full"
-                                                                    >
-                                                                        <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-black group-hover/ep:bg-primary group-hover/ep:text-white transition-all shrink-0">
-                                                                            {/* Número do episódio com fallback */}
-                                                                            {ep.order ?? ep.episode ?? idx + 1}
-                                                                        </div>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <div className="font-bold text-white truncate group-hover/ep:text-primary transition-colors">
-                                                                                {ep.name}
-                                                                            </div>
-                                                                            <div className="text-xs text-gray-500 uppercase font-black">ASSISTIR EPISÓDIO</div>
-                                                                        </div>
-                                                                        <FiPlay className="text-gray-600 group-hover/ep:text-primary transition-all opacity-0 group-hover/ep:opacity-100" />
+                                                                    <button className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-black transition-all border border-white/10 group">
+                                                                        <FiDownload className="text-primary group-hover:scale-110 transition-transform" /> 
+                                                                        <span>Baixar temporada</span>
                                                                     </button>
-                                                                ))}
+                                                                </div>
+
+                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                                                                    {episodesBySeason[seasonNum]?.map((ep, idx) => (
+                                                                        <div 
+                                                                            key={ep.id || idx}
+                                                                            onClick={() => handlePlay(ep)}
+                                                                            className="group/card cursor-pointer space-y-3"
+                                                                        >
+                                                                            <div className="relative aspect-video rounded-2xl overflow-hidden bg-black/40 border border-white/5 group-hover/card:border-primary/50 transition-all shadow-lg">
+                                                                                <img 
+                                                                                    src={safeImageUrl(ep.logo || selectedMediaDetails.logo)} 
+                                                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110 opacity-60 group-hover/card:opacity-100"
+                                                                                    alt={ep.name}
+                                                                                />
+                                                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all duration-300 bg-black/50 backdrop-blur-[2px]">
+                                                                                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-xl transform scale-75 group-hover/card:scale-100 transition-transform">
+                                                                                        <FiPlay fill="currentColor" size={24} />
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-md rounded-lg text-[10px] font-black text-white border border-white/10">
+                                                                                    {ep.duration || '45:00'}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="space-y-1">
+                                                                                <span className="text-[10px] font-black text-primary uppercase">E{String(ep.episode || idx + 1).padStart(2, '0')}</span>
+                                                                                <h4 className="text-xs font-bold text-gray-200 line-clamp-2 group-hover/card:text-primary transition-colors">
+                                                                                    {ep.name}
+                                                                                </h4>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </>
+                                                        ))
                                                     ) : (
-                                                        <div className="py-12 text-center text-gray-500 italic flex flex-col items-center gap-4">
-                                                            <p>Nenhum episódio encontrado para esta série.</p>
-                                                            {/* Botão para tentar recarregar, se for Xtream */}
-                                                            {selectedMediaDetails.id?.includes('xtream_') && (
-                                                                <button
-                                                                    onClick={fetchXtreamSeriesInfo}
-                                                                    className="text-primary underline text-sm font-bold"
-                                                                >
-                                                                    Tentar novamente
-                                                                </button>
-                                                            )}
+                                                        <div className="py-20 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10 flex flex-col items-center gap-6">
+                                                            <div className="w-20 h-20 bg-black/40 rounded-full flex items-center justify-center text-gray-600">
+                                                                <FiPlay size={40} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-white font-black uppercase tracking-widest text-sm">Nenhum Episódio Disponível</p>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
