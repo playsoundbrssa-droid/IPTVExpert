@@ -23,8 +23,6 @@ import { applyTheme } from './hooks/useTheme';
 
 const toasterStyle = { style: { background: '#1E1E1E', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } };
 
-import Navbar from './components/Navigation/Navbar';
-
 function App() {
     const { isAuthenticated, init, user } = useUserStore();
     const { currentStream } = usePlayerStore();
@@ -56,7 +54,6 @@ function App() {
 
     return (
         <BrowserRouter>
-            <DeepLinkHandler />
             {!isAuthenticated ? (
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
@@ -64,66 +61,38 @@ function App() {
                     <Route path="*" element={<LandingPage />} />
                 </Routes>
             ) : (
-                <div className="flex flex-col h-[100dvh] overflow-hidden bg-background relative pt-safe">
-                    <Navbar />
-                    
-                    {/* Main Content Area */}
-                    <main className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pt-20 pb-24 md:pb-6 px-4 md:px-12 relative z-10 transition-all duration-300">
-                        <Routes>
-                            <Route path="/" element={<HighlightsPage />} />
-                            <Route path="/live-tv" element={<LiveTvPage />} />
-                            <Route path="/movies" element={<MoviesPage />} />
-                            <Route path="/series" element={<SeriesPage />} />
-                            <Route path="/highlights" element={<HighlightsPage />} />
-                            <Route path="/favorites" element={<FavoritesPage />} />
-                            <Route path="/settings" element={<SettingsPage />} />
-                            {user?.role === 'admin' && (
-                                <Route path="/admin" element={<AdminPage />} />
-                            )}
-                        </Routes>
-                    </main>
-                    
-                    {/* Mobile Bottom Navigation (hidden on desktop) */}
-                    <MobileBottomNav />
-
-                    {currentStream && <VideoPlayer />}
-                    <MediaDetailModal />
+                <div className="flex h-[100dvh] overflow-hidden bg-background relative pt-safe">
+                {/* Desktop Sidebar (hidden on mobile) */}
+                <div className="hidden md:flex flex-shrink-0 h-full">
+                    <Sidebar />
                 </div>
+                
+                {/* Main Content Area */}
+                <main className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pt-6 pb-24 md:pb-6 px-4 md:px-6 relative z-10 transition-all duration-300">
+                    <Routes>
+                        <Route path="/" element={<LiveTvPage />} />
+                        <Route path="/live-tv" element={<LiveTvPage />} />
+                        <Route path="/movies" element={<MoviesPage />} />
+                        <Route path="/series" element={<SeriesPage />} />
+                        <Route path="/highlights" element={<HighlightsPage />} />
+                        <Route path="/favorites" element={<FavoritesPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        {user?.role === 'admin' && (
+                            <Route path="/admin" element={<AdminPage />} />
+                        )}
+                    </Routes>
+                </main>
+                
+                {/* Mobile Bottom Navigation (hidden on desktop) */}
+                <MobileBottomNav />
+
+                {currentStream && <VideoPlayer />}
+                <MediaDetailModal />
+            </div>
             )}
             <Toaster position="top-right" toastOptions={toasterStyle} />
         </BrowserRouter>
     );
-}
-
-/**
- * DeepLinkHandler: Escuta parâmetros na URL para abrir conteúdo compartilhado
- */
-function DeepLinkHandler() {
-    const { isAuthenticated } = useUserStore();
-    const { moviesList, seriesList, channels } = usePlaylistStore();
-    const { setCurrentStream } = usePlayerStore();
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-
-        const params = new URLSearchParams(window.location.search);
-        const videoId = params.get('v');
-
-        if (videoId) {
-            // Busca em todas as listas
-            const allMedia = [...channels, ...moviesList, ...seriesList];
-            const found = allMedia.find(m => m.id === videoId);
-
-            if (found) {
-                setCurrentStream(found);
-                toast.success(`Abrindo: ${found.name}`);
-                // Limpa a URL sem recarregar a página
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }
-    }, [isAuthenticated, moviesList, seriesList, channels]);
-
-    return null;
 }
 
 export default App;
