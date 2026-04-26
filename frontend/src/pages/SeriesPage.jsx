@@ -109,14 +109,19 @@ export default function SeriesPage() {
         setVisibleCount(prev => prev + 50);
     };
 
-    if (seriesList.length === 0) {
+    // Debug logs to help identify why it's empty
+    React.useEffect(() => {
+        console.log(`[SeriesPage] Debug: seriesList=${seriesList?.length}, moviesList=${moviesList?.length}, consolidated=${consolidatedSeries?.length}`);
+    }, [seriesList, moviesList, consolidatedSeries]);
+
+    if (seriesList.length === 0 && moviesList.length === 0) {
         return (
             <div className="h-[70vh] flex flex-col items-center justify-center text-center animate-fade-in px-4">
                 <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mb-6 border border-white/10 text-gray-600">
                     <FiLayers size={40} />
                 </div>
                 <h2 className="text-2xl font-bold mb-2">Nenhuma série carregada</h2>
-                <p className="text-gray-500 max-w-xs">Sua playlist atual não contém séries identificadas.</p>
+                <p className="text-gray-500 max-w-xs">Sua playlist atual não contém séries ou filmes que possam ser agrupados.</p>
             </div>
         );
     }
