@@ -1,62 +1,49 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Hls from 'hls.js';
 import mpegjs from 'mpegts.js';
-
-// Desativar logs verbosos do mpegts.js (MSEController, etc.)
-if (typeof window !== 'undefined' && mpegjs.LoggingControl) {
-    mpegjs.LoggingControl.enableAll = false;
-    mpegjs.LoggingControl.enableError = true;
-    mpegjs.LoggingControl.enableWarn = true;
-}
-
-import { usePlayerStore } from '../../stores/usePlayerStore';
-import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { 
     FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
     FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
-    FiHeart, FiDownload, FiSkipBack, FiSkipForward, FiMenu,
-    FiShare2, FiMessageSquare, FiClock, FiAirplay, FiMinimize2
+    FiHeart, FiDownload, FiMinimize2, FiMoreVertical,
+    FiSkipBack, FiSkipForward
 } from 'react-icons/fi';
-import toast from 'react-hot-toast';
+import { usePlayerStore } from '../../stores/usePlayerStore';
+import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { api } from '../../services/api';
-import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
-import { statsApi } from '../../api/stats';
+import toast from 'react-hot-toast';
 
 export default function VideoPlayer() {
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
     const mpegPlayerRef = useRef(null);
+    const containerRef = useRef(null);
     
-    // Stores
-    const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev, playlist } = usePlayerStore();
+    // Global Stores
+    const { currentStream, setCurrentStream, isPlaying, togglePlay } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     
-    // UI State
+    // Player UI States
+    const [isMinimized, setIsMinimized] = useState(false);
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
     const [error, setError] = useState(null);
+    const [volume, setVolume] = useState(parseFloat(localStorage.getItem('player_volume')) || 1);
     const [isMuted, setIsMuted] = useState(false);
-    const [volume, setVolume] = useState(1);
-    const [epgInfo, setEpgInfo] = useState(null);
-    const [showFullEpg, setShowFullEpg] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
-    const [showComments, setShowComments] = useState(false);
-    const [comments, setComments] = useState([]);
-    const [newComment, setNewComment] = useState('');
-    const [isMinimized, setIsMinimized] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [position, setPosition] = useState({ x: 24, y: 24 }); // de baixo para cima, de direita para esquerda
+    
+    // Drag State for Floating Mode
+    const [position, setPosition] = useState({ x: 20, y: 20 });
     const [isDragging, setIsDragging] = useState(false);
-    const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
-    const controlsTimeout = useRef(null);
-    const mainContainerRef = useRef(null);
+    const dragStart = useRef({ x: 0, y: 0, initialX: 0, initialY: 0 });
 
     const isFavorite = useMemo(() => 
         currentStream ? favorites.some(f => f.id === currentStream.id) : false
     , [favorites, currentStream]);
 
+    // Limpeza de recursos
     const cleanUp = useCallback(() => {
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
         if (mpegPlayerRef.current) { mpegPlayerRef.current.destroy(); mpegPlayerRef.current = null; }
@@ -67,750 +54,170 @@ export default function VideoPlayer() {
         }
     }, []);
 
+    // Construção da URL (Com Proxy se necessário)
     const getStreamUrl = useCallback(() => {
         if (!currentStream) return '';
-        let url = currentStream.streamUrl || currentStream.url;
+        const url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
         
-        // Se o proxy estiver ativo e não for um link já proxied, envolvemos na URL de proxy do backend
-        if (useProxy && !url.includes('/api/proxy/stream')) {
+        const isMixedContent = window.location.protocol === 'https:' && url.startsWith('http://');
+        if ((isMixedContent || useProxy) && !url.includes('/api/proxy/stream')) {
             let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            // Garantir que a URL base termina com /api para que a rota /proxy/stream funcione
-            if (!apiBase.endsWith('/api')) {
-                apiBase = apiBase.replace(/\/$/, '') + '/api';
-            }
+            if (!apiBase.endsWith('/api')) apiBase += '/api';
             return `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
         }
-
         return url;
     }, [currentStream, useProxy]);
 
-    const handlePlayAction = useCallback(async () => {
-        if (!videoRef.current) return;
-        
-        const playVideo = async () => {
-            if (!videoRef.current) return;
-            try {
-                // Tenta tocar com som primeiro
-                videoRef.current.muted = false;
-                await videoRef.current.play();
-                setIsMuted(false);
-                if (!isPlaying) togglePlay();
-                setIsBuffering(false);
-            } catch (err) {
-                if (err.name === 'AbortError') return;
-                
-                if (!videoRef.current) return;
-                try {
-                    // Fallback para mudo (permitido pelo browser)
-                    videoRef.current.muted = true;
-                    await videoRef.current.play();
-                    setIsMuted(true);
-                    if (!isPlaying) togglePlay();
-                    setIsBuffering(false);
-                } catch (e) {
-                    if (e.name === 'AbortError') return;
-                    console.error("[PLAYER] Falha na reprodução:", e);
-                    setError("Erro ao iniciar vídeo.");
-                }
-            }
-        };
-
-        playVideo();
-    }, [isPlaying, togglePlay]);
-
-    // Listener global para "desbloquear" o áudio no primeiro clique
-    useEffect(() => {
-        const unlockAudio = () => {
-            if (videoRef.current && isMuted) {
-                videoRef.current.muted = false;
-                setIsMuted(false);
-                console.log("[PLAYER] Áudio desbloqueado por interação do usuário.");
-                document.removeEventListener('click', unlockAudio);
-                document.removeEventListener('keydown', unlockAudio);
-            }
-        };
-
-        if (isMuted) {
-            document.addEventListener('click', unlockAudio);
-            document.addEventListener('keydown', unlockAudio);
-        }
-        return () => {
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('keydown', unlockAudio);
-        };
-    }, [isMuted]);
-
-    // Sync isPlaying store state with video element
-    useEffect(() => {
-        if (!videoRef.current || !currentStream) return;
-        if (isPlaying) {
-            videoRef.current.play().catch(err => {
-                if (err.name !== 'AbortError') console.error("[PLAYER] Auto-play failed:", err);
-            });
-        } else {
-            videoRef.current.pause();
-        }
-    }, [isPlaying, currentStream]);
-
-    // Carregar comentários locais
-    useEffect(() => {
-        if (currentStream) {
-            const saved = localStorage.getItem(`comments_${currentStream.id}`);
-            setComments(saved ? JSON.parse(saved) : []);
-        }
-    }, [currentStream]);
-
-    const handleAddComment = (e) => {
-        e.preventDefault();
-        if (!newComment.trim()) return;
-        
-        const comment = {
-            id: Date.now(),
-            text: newComment,
-            user: 'Você',
-            date: new Date().toISOString()
-        };
-        
-        const updated = [comment, ...comments];
-        setComments(updated);
-        setNewComment('');
-        localStorage.setItem(`comments_${currentStream.id}`, JSON.stringify(updated));
-        toast.success('Comentário enviado!');
-    };
-
-    const handleCast = () => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        // 1. Tentar AirPlay (Safari/iOS)
-        if (video.webkitShowPlaybackTargetPicker) {
-            video.webkitShowPlaybackTargetPicker();
-            return;
-        }
-
-        // 2. Tentar API de Controle Remoto (Padrão moderno)
-        if (video.remote && video.remote.state !== 'disabled') {
-            video.remote.prompt().catch((err) => {
-                console.error("[CAST] Remote prompt error:", err);
-                const ua = navigator.userAgent.toLowerCase();
-                if (ua.includes('chrome') && ua.includes('android')) {
-                    toast('Utilize a opção "Transmitir" no menu do Chrome para espelhar.', { icon: '📺' });
-                } else {
-                    toast.error('Não foi possível iniciar o espelhamento.');
-                }
-            });
-            return;
-        }
-
-        // 3. Fallback com orientações por dispositivo
-        const ua = navigator.userAgent.toLowerCase();
-        const isiOS = /iphone|ipad|ipod/.test(ua);
-        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-
-        if (isiOS && !isSafari) {
-            toast('No iPhone, o AirPlay nativo requer o uso do navegador Safari.', { icon: '📺', duration: 5000 });
-        } else if (ua.includes('android')) {
-            toast('No Android, use o menu do Chrome > Transmitir para ver na TV.', { icon: '📺', duration: 5000 });
-        } else {
-            toast.error('O seu navegador não possui suporte a espelhamento nativo.');
-        }
-    };
-
-
-    useEffect(() => {
-        const handleMouseMove = (e) => {
-            if (!isDragging) return;
-            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-
-            const dx = dragRef.current.startX - clientX;
-            const dy = dragRef.current.startY - clientY;
-            
-            setPosition({
-                x: Math.max(10, dragRef.current.initialX + dx),
-                y: Math.max(10, dragRef.current.initialY + dy)
-            });
-        };
-        const handleMouseUp = () => setIsDragging(false);
-
-        if (isDragging) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-            window.addEventListener('touchmove', handleMouseMove);
-            window.addEventListener('touchend', handleMouseUp);
-        }
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-            window.removeEventListener('touchmove', handleMouseMove);
-            window.removeEventListener('touchend', handleMouseUp);
-        };
-    }, [isDragging]);
-
-    useEffect(() => {
-        const handler = () => {
-            setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement));
-        };
-        document.addEventListener('fullscreenchange', handler);
-        document.addEventListener('webkitfullscreenchange', handler);
-        document.addEventListener('mozfullscreenchange', handler);
-        document.addEventListener('MSFullscreenChange', handler);
-        return () => {
-            document.removeEventListener('fullscreenchange', handler);
-            document.removeEventListener('webkitfullscreenchange', handler);
-            document.removeEventListener('mozfullscreenchange', handler);
-            document.removeEventListener('MSFullscreenChange', handler);
-        };
-    }, []);
-
-    const handleFullscreen = () => {
-        const container = mainContainerRef.current;
-        if (!container) return;
-
-        if (!isFullscreen) {
-            if (container.requestFullscreen) {
-                container.requestFullscreen();
-            } else if (container.webkitRequestFullscreen) {
-                container.webkitRequestFullscreen();
-            } else if (container.mozRequestFullScreen) {
-                container.mozRequestFullScreen();
-            } else if (container.msRequestFullscreen) {
-                container.msRequestFullscreen();
-            } else if (videoRef.current?.webkitEnterFullscreen) {
-                videoRef.current.webkitEnterFullscreen();
-            }
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
-        }
-    };
-
-    const handleMouseDown = (e) => {
-        if (!isMinimized) return;
-        setIsDragging(true);
-        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-        dragRef.current = {
-            startX: clientX,
-            startY: clientY,
-            initialX: position.x,
-            initialY: position.y
-        };
-    };
-
-    const init = useCallback((attempt = 0) => {
+    // Inicialização da Stream
+    const initPlayer = useCallback(async (attempt = 0) => {
         if (!currentStream || !videoRef.current) return;
         
-        const rawUrl = currentStream.streamUrl || currentStream.url || '';
-        if (!rawUrl) {
-            console.error("[PLAYER] URL de transmissão vazia.");
-            setError("URL de transmissão não encontrada.");
-            return;
-        }
-
-        const isHls = rawUrl.toLowerCase().includes('.m3u8') || rawUrl.toLowerCase().includes('type=m3u8');
-        let isTs = rawUrl.toLowerCase().includes('.ts') || rawUrl.toLowerCase().includes('output=ts') || rawUrl.toLowerCase().includes('mpegts') || rawUrl.includes('#');
-
-        // Detecção de Mixed Content (HTTP em página HTTPS)
-        const isMixedContent = window.location.protocol === 'https:' && rawUrl.startsWith('http://');
-        if ((isMixedContent || attempt > 0) && !useProxy) {
-            console.warn(`[PLAYER] Ativando Smart Proxy (Mixed Content ou Fallback). Tentativa: ${attempt}`);
-            setUseProxy(true);
-            return; // O próximo render com useProxy=true chamará init novamente
-        }
-
         const streamUrl = getStreamUrl();
-
-        // Lógica de Tentativas (Cadeia de Decodificadores)
-        if (currentStream.type === 'channel' && !isHls) isTs = true;
+        const isHls = streamUrl.toLowerCase().includes('.m3u8') || streamUrl.includes('type=m3u8');
+        const isTs = streamUrl.toLowerCase().includes('.ts') || streamUrl.includes('output=ts');
         
-        // Ajuste baseado em tentativas de fallback
-        // attempt 0: Tenta o formato detectado
-        // attempt 1: Força o outro formato (TS se era HLS, ou vice-versa) ou tenta nativo
-        let useHls = isHls && attempt === 0;
-        let useTs = (isTs || (isHls && attempt === 1)) && !useHls;
-
+        cleanUp();
         setError(null);
         setIsBuffering(true);
-        cleanUp();
-        statsApi.incrementView(currentStream);
 
-        console.log(`[PLAYER] Tentativa ${attempt}: isHls=${isHls} | isTs=${isTs} | useHls=${useHls} | useTs=${useTs} | url=${rawUrl.substring(0, 50)}...`);
+        console.log(`[ANTIGRAVITY PLAYER] Iniciando: ${currentStream.name} (Tentativa ${attempt})`);
 
-        // 1. Tentar HLS.js
-        if (useHls && Hls.isSupported()) {
+        // 1. Mobile (iOS/Safari) - Suporte Nativo HLS é melhor
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isHls && (videoRef.current.canPlayType('application/vnd.apple.mpegurl') || isMobile)) {
+            videoRef.current.src = streamUrl;
+            videoRef.current.play().catch(() => setIsMuted(true));
+        }
+        // 2. Desktop HLS.js
+        else if (isHls && Hls.isSupported()) {
             const hls = new Hls({ 
                 enableWorker: true, 
                 lowLatencyMode: true,
-                backBufferLength: 60,
-                manifestLoadingMaxRetry: 3
+                manifestLoadingMaxRetry: 5
             });
             hls.loadSource(streamUrl);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
-            hls.on(Hls.Events.MANIFEST_PARSED, handlePlayAction);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => videoRef.current.play().catch(() => {}));
             hls.on(Hls.Events.ERROR, (e, data) => {
-                const errorCode = data.response?.code;
-                if (errorCode === 522 || errorCode === 504 || errorCode === 403) {
-                    if (!useProxy) {
-                        console.warn(`[PLAYER] Erro ${errorCode} no HLS. Tentando Proxy Pro...`);
-                        setUseProxy(true);
-                        init(); // Tenta carregar novamente com proxy
-                    } else {
-                        setError(`Erro ${errorCode}: O servidor da transmissão não responde.`);
-                    }
-                } else if (data.fatal) {
-                    console.warn("[PLAYER] Falha fatal no HLS, tentando fallback TS...");
-                    init(attempt + 1);
-                }
+                if (data.fatal && !useProxy) setUseProxy(true);
+                else if (data.fatal) setError("Erro fatal na stream. Tente outro canal.");
             });
-            hls.on(Hls.Events.FRAG_BUFFERED, () => setIsBuffering(false));
-        } 
-        // 2. Tentar MPEG-TS (mpegts.js)
-        else if (useTs && mpegjs.isSupported()) {
+        }
+        // 3. MPEG-TS (mpegts.js)
+        else if (isTs && mpegjs.isSupported()) {
             try {
-                const mpeg = mpegjs.createPlayer({
-                    type: 'mse',
-                    url: streamUrl,
-                    isLive: currentStream.type === 'channel' || isTs,
-                    enableStashBuffer: false,
-                    stashInitialSize: 128
-                });
+                const mpeg = mpegjs.createPlayer({ type: 'mse', url: streamUrl, isLive: true });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
+                mpeg.play().catch(() => {});
                 mpegPlayerRef.current = mpeg;
-                
-                mpeg.on(mpegjs.Events.METADATA_ARRIVED, () => {
-                   handlePlayAction();
-                   setIsBuffering(false);
-                });
-
-                mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
-                    console.error(`[PLAYER] Erro MPEG-TS: ${type} - ${detail}`, info);
-                    
-                    const errorCode = info?.code;
-                    const isNetworkError = detail === mpegjs.ErrorDetails.NETWORK_TIMEOUT || errorCode === 522 || errorCode === 504 || detail === 'HttpStatusCodeInvalid';
-                    
-                    if (isNetworkError && !useProxy) {
-                        console.warn("[PLAYER] Erro de rede no TS. Ativando Proxy Pro...");
-                        setUseProxy(true);
-                        init();
-                    } else if (isNetworkError) {
-                        setError("Conexão interrompida (Timeout). O servidor da lista demorou muito para responder.");
-                    } else if (attempt < 1) {
-                        init(attempt + 1);
-                    } else {
-                        setError("Erro no decodificador ou servidor de vídeo. Tente outro canal.");
-                    }
-                });
-                
-                // Algumas streams TS demoram a emitir METADATA_ARRIVED, tentamos play logo
-                handlePlayAction();
             } catch (err) {
-                console.error("[PLAYER] Falha ao iniciar mpegts:", err);
-                init(attempt + 1);
+                setError("O formato TS não é suportado neste navegador.");
             }
-        } 
-        // 3. Fallback Nativo (Safari HLS, MP4, etc.)
+        }
+        // 4. Fallback Direto
         else {
             videoRef.current.src = streamUrl;
-            videoRef.current.load();
-            handlePlayAction();
-            setIsBuffering(false);
+            videoRef.current.play().catch(() => {});
         }
-    }, [currentStream, getStreamUrl, handlePlayAction, cleanUp]);
+    }, [currentStream, getStreamUrl, cleanUp, useProxy]);
 
     useEffect(() => {
-        init();
-        setShowFullEpg(false); // Reseta ao mudar de canal
-        
-        // Helper para decodificar texto do EPG (Xtream usa Base64 com UTF-8)
-        const decodeEPGText = (str) => {
-            if (!str) return '';
-            try {
-                // Tenta decodificar como Base64 UTF-8
-                return decodeURIComponent(escape(atob(str)));
-            } catch (e) {
-                try {
-                    // Fallback para Base64 simples
-                    return atob(str);
-                } catch (e2) {
-                    // Se não for base64, retorna o original
-                    return str;
-                }
-            }
-        };
-
-        // Helper para lidar com datas do EPG (pode vir em vários formatos)
-        const parseEPGDate = (dateStr) => {
-            if (!dateStr) return new Date();
-            const iso = dateStr.replace(' ', 'T');
-            const d = new Date(iso);
-            return isNaN(d.getTime()) ? new Date() : d;
-        };
-
-        // EPG Fetching Logic
-        if (currentStream?.type === 'channel') {
-            const fetchEPG = async () => {
-                try {
-                    const manager = usePlaylistManagerStore.getState();
-                    const activePlaylist = manager.getActivePlaylist();
-                    
-                    if (activePlaylist?.type === 'xtream' && currentStream.id.startsWith('xtream_')) {
-                        const streamId = currentStream.id.split('_').pop();
-                        const { server, username, password } = activePlaylist.config;
-                        
-                        const { data } = await api.get('/xtream/short-epg', {
-                            params: { server, username, password, stream_id: streamId }
-                        });
-
-                        if (data && data.epg_listings && data.epg_listings.length > 0) {
-                            const now = new Date();
-                            
-                            let currentIndex = data.epg_listings.findIndex(item => {
-                                const start = parseEPGDate(item.start);
-                                const end = parseEPGDate(item.end);
-                                return now >= start && now <= end;
-                            });
-
-                            if (currentIndex === -1) {
-                                currentIndex = data.epg_listings.findIndex(item => parseEPGDate(item.start) > now);
-                            }
-
-                            const nowListing = currentIndex !== -1 ? data.epg_listings[currentIndex] : data.epg_listings[0];
-                            const nextListing = currentIndex !== -1 ? data.epg_listings[currentIndex + 1] : data.epg_listings[1];
-                            
-                            if (nowListing) {
-                                setEpgInfo({
-                                    current: {
-                                        title: decodeEPGText(nowListing.title),
-                                        desc: decodeEPGText(nowListing.description),
-                                        start: parseEPGDate(nowListing.start),
-                                        end: parseEPGDate(nowListing.end)
-                                    },
-                                    next: nextListing ? {
-                                        title: decodeEPGText(nextListing.title)
-                                    } : null,
-                                    full: data.epg_listings.map(it => ({
-                                        ...it,
-                                        title: decodeEPGText(it.title),
-                                        description: decodeEPGText(it.description),
-                                        startTime: parseEPGDate(it.start),
-                                        endTime: parseEPGDate(it.end)
-                                    }))
-                                });
-                            }
-                        } else {
-                            setEpgInfo(null);
-                        }
-                    } else if (activePlaylist?.epgCacheKey) {
-                        // XMLTV / GLOBAL EPG SYNC
-                        const channelId = currentStream.tvgId || currentStream.name;
-                        const { data } = await api.get(`/epg/${encodeURIComponent(channelId)}`, {
-                            params: { cacheKey: activePlaylist.epgCacheKey }
-                        });
-
-                        if (data && data.length > 0) {
-                            const now = new Date();
-                            const listings = data.map(item => ({
-                                title: item.title,
-                                description: item.desc,
-                                start: item.start, 
-                                end: item.stop
-                            }));
-
-                            const parseXmltvDate = (str) => {
-                                if (!str) return new Date();
-                                const y = str.substring(0, 4);
-                                const m = str.substring(4, 6);
-                                const d = str.substring(6, 8);
-                                const h = str.substring(8, 10);
-                                const min = str.substring(10, 12);
-                                const s = str.substring(12, 14);
-                                return new Date(`${y}-${m}-${d}T${h}:${min}:${s}`);
-                            };
-
-                            let currentIndex = listings.findIndex(item => {
-                                const start = parseXmltvDate(item.start);
-                                const end = parseXmltvDate(item.end);
-                                return now >= start && now <= end;
-                            });
-
-                            if (currentIndex === -1) {
-                                currentIndex = listings.findIndex(item => parseXmltvDate(item.start) > now);
-                            }
-
-                            const nowListing = currentIndex !== -1 ? listings[currentIndex] : listings[0];
-                            const nextListing = currentIndex !== -1 ? listings[currentIndex + 1] : listings[1];
-
-                            if (nowListing) {
-                                setEpgInfo({
-                                    current: {
-                                        title: nowListing.title,
-                                        desc: nowListing.description,
-                                        start: parseXmltvDate(nowListing.start),
-                                        end: parseXmltvDate(nowListing.end)
-                                    },
-                                    next: nextListing ? {
-                                        title: nextListing.title
-                                    } : null,
-                                    full: listings.map(it => ({
-                                        title: it.title,
-                                        description: it.description,
-                                        startTime: parseXmltvDate(it.start),
-                                        endTime: parseXmltvDate(it.end)
-                                    }))
-                                });
-                            }
-                        } else {
-                            setEpgInfo(null);
-                        }
-                    } else {
-                        setEpgInfo(null);
-                    }
-                } catch (error) {
-                    console.error("[EPG] Erro ao buscar programação:", error);
-                    setEpgInfo(null);
-                }
-            };
-            fetchEPG();
-        } else {
-            setEpgInfo(null);
-        }
-
+        initPlayer();
         return cleanUp;
-    }, [init, cleanUp, currentStream]);
+    }, [currentStream, useProxy, initPlayer]);
+
+    // Controles de Visibilidade
+    useEffect(() => {
+        let timeout;
+        const resetTimer = () => {
+            setShowControls(true);
+            clearTimeout(timeout);
+            if (!isMinimized) timeout = setTimeout(() => setShowControls(false), 3000);
+        };
+        window.addEventListener('mousemove', resetTimer);
+        window.addEventListener('touchstart', resetTimer);
+        return () => {
+            window.removeEventListener('mousemove', resetTimer);
+            window.removeEventListener('touchstart', resetTimer);
+        };
+    }, [isMinimized]);
+
+    // Drag & Drop Logic (Para o Modo Anti-Gravidade)
+    const handleDragStart = (e) => {
+        if (!isMinimized) return;
+        setIsDragging(true);
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        dragStart.current = { x: clientX, y: clientY, initialX: position.x, initialY: position.y };
+    };
 
     useEffect(() => {
-        const handler = () => {
-            setShowControls(true);
-            if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-            controlsTimeout.current = setTimeout(() => setShowControls(false), 3000);
+        const handleMove = (e) => {
+            if (!isDragging) return;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const dx = dragStart.current.x - clientX;
+            const dy = dragStart.current.y - clientY;
+            
+            setPosition({
+                x: Math.max(10, Math.min(window.innerWidth - 100, dragStart.current.initialX + dx)),
+                y: Math.max(10, Math.min(window.innerHeight - 100, dragStart.current.initialY + dy))
+            });
         };
-        window.addEventListener('mousemove', handler);
-        window.addEventListener('touchstart', handler);
+        const handleEnd = () => setIsDragging(false);
+
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleEnd);
+            window.addEventListener('touchmove', handleMove);
+            window.addEventListener('touchend', handleEnd);
+        }
         return () => {
-            window.removeEventListener('mousemove', handler);
-            window.removeEventListener('touchstart', handler);
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleEnd);
+            window.removeEventListener('touchmove', handleMove);
+            window.removeEventListener('touchend', handleEnd);
         };
-    }, []);
+    }, [isDragging]);
 
-    const handleDownload = () => {
-        const rawUrl = currentStream.streamUrl || currentStream.url;
-        if (rawUrl.includes('.m3u8')) return toast.error('Download indisponível para HLS');
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-        window.open(`${apiUrl}/proxy/download?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(currentStream.name)}`, '_blank');
-        toast.success('Download iniciado...');
-    };
-
-    const handleFullscreenOld = () => {
-        // Esta função foi substituída pela handleFullscreen moderna acima
-    };
-
-    const formatTime = (seconds) => {
-        if (!seconds || !Number.isFinite(seconds) || seconds < 0) return '00:00:00';
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
-        return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
-    };
-
-    // Não retornamos null para manter o elemento de vídeo montado e com o áudio "desbloqueado" pelo browser
-    const isVisible = !!currentStream;
-    const stream = currentStream || {};
+    if (!currentStream) return null;
 
     return (
         <div 
-            ref={mainContainerRef}
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleMouseDown}
-            style={isMinimized ? { 
-                bottom: `${position.y}px`, 
-                right: `${position.x}px`,
-                cursor: isDragging ? 'grabbing' : 'grab',
-                touchAction: 'none'
-            } : {}}
-            className={`fixed z-[200] bg-black flex items-center justify-center overflow-hidden font-sans 
-                ${!isDragging ? 'transition-all duration-300' : ''}
-                ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-                ${isMinimized ? 'w-64 h-36 lg:w-80 lg:h-48 rounded-3xl shadow-2xl border border-white/10' : 'inset-0'}`}
+            ref={containerRef}
+            className={`fixed z-[999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center
+                ${isMinimized ? 'w-72 h-40 rounded-2xl border border-white/10' : 'inset-0'}
+                ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
+            style={isMinimized ? { bottom: position.y, right: position.x } : {}}
+            onMouseDown={handleDragStart}
+            onTouchStart={handleDragStart}
         >
-            {/* O Vídeo deve estar sempre centralizado */}
-            <div className="relative w-full h-full flex items-center justify-center">
-                <video
-                    ref={videoRef}
-                    className="w-full h-full object-contain cursor-pointer"
-                    x-webkit-airplay="allow"
-                    webkit-playsinline="true"
-                    airplay="allow"
-                    onClick={(e) => { 
-                        e.stopPropagation();
-                        if (isMinimized) {
-                            setIsMinimized(false);
-                        } else {
-                            togglePlay(); 
-                        }
-                    }}
-                    onWaiting={() => setIsBuffering(true)}
-                    onPlaying={() => setIsBuffering(false)}
-                    onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
-                    onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
-                    playsInline
-                    crossOrigin="anonymous"
-                />
+            <video 
+                ref={videoRef}
+                className="w-full h-full object-contain"
+                onWaiting={() => setIsBuffering(true)}
+                onPlaying={() => setIsBuffering(false)}
+                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+                onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+                onClick={() => isMinimized ? setIsMinimized(false) : togglePlay()}
+                playsInline
+                autoPlay
+            />
 
-
-            </div>
-
-            {/* INFO DO CANAL NO CANTO ESQUERDO CENTRAL (Reduzido no Mobile para não chocar com o centro) */}
-            {/* INFO DO CANAL NO CANTO ESQUERDO CENTRAL */}
-            <div className={`absolute top-4 lg:top-1/2 lg:-translate-y-1/2 left-4 lg:left-12 z-50 transition-all duration-700 flex flex-col gap-1 lg:gap-3 origin-top-left scale-[0.6] lg:scale-100 
-                ${(showControls && !isMinimized) ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0 pointer-events-none'}`}>
-                {stream.logo && (
-                    <div className="w-10 h-10 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-2xl p-1.5 lg:p-2 border border-white/10 shadow-2xl mb-1 lg:mb-2">
-                        <img src={stream.logo} className="w-full h-full object-contain drop-shadow-lg" alt="logo" />
-                    </div>
-                )}
-                
-                <div className="flex flex-col gap-1 w-[260px] lg:w-[400px]">
-                    <h2 className="text-xl lg:text-3xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
-                        {stream.name}
-                    </h2>
-                    
-                    <div className="flex items-center gap-2 mt-1 mb-2">
-                        <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none drop-shadow-md">
-                            {stream.group || 'Geral'}
-                        </span>
-                    </div>
-                    
-                    {/* UI de EPG Dinâmico */}
-                    {epgInfo?.current && (
-                        <div className="mt-3 space-y-2 animate-fade-in bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl">
-                            <p className="text-sm font-bold text-white line-clamp-2 md:line-clamp-1 flex items-center gap-2 uppercase tracking-tighter shadow-sm">
-                                <span className="text-[9px] px-2 py-1 bg-red-600 rounded text-white font-black animate-pulse flex-shrink-0">
-                                    AO VIVO
-                                </span>
-                                <span className="truncate">{epgInfo.current.title}</span>
-                            </p>
-                            
-                            {/* Barra de Progresso do Programa */}
-                            {(() => {
-                                const now = new Date();
-                                const start = new Date(epgInfo.current.start);
-                                const end = new Date(epgInfo.current.end);
-                                const total = end - start;
-                                const elapsed = now - start;
-                                const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
-                                
-                                return (
-                                    <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mt-1 shadow-inner">
-                                        <div className="h-full bg-white transition-all duration-500 rounded-full drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]" style={{ width: `${progress}%` }} />
-                                    </div>
-                                );
-                            })()}
-
-                            {epgInfo.next && (
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate mt-2">
-                                    <span className="text-white/60">Próximo:</span> {epgInfo.next.title}
-                                </p>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* BOTÕES DE AÇÃO NO CANTO SUPERIOR DIREITO */}
-            <div className={`absolute top-4 right-4 lg:top-8 lg:right-8 z-[60] transition-all duration-700 flex items-center gap-2 lg:gap-4 
-                ${(showControls || isMinimized) ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
-                {!isMinimized && (
-                    <button 
-                        onClick={() => { if (isFavorite) removeFavorite(stream.id); else addFavorite(stream); toast.success(isFavorite ? 'Removido dos favoritos' : 'Salvo nos favoritos'); }}
-                        className={`p-2 rounded-xl transition-all active:scale-90 ${isFavorite ? 'text-red-500' : 'text-white/80 hover:text-white'}`}
-                    >
-                        <FiHeart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
-                    </button>
-                )}
-
-                {!isMinimized && (
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
-                        className="p-2 bg-black/40 backdrop-blur-md rounded-xl text-white/80 hover:text-white border border-white/10 transition-all"
-                    >
-                        <FiMinimize2 size={18} />
-                    </button>
-                )}
-                
-                {isMinimized && (
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
-                        className="p-1.5 bg-black/40 backdrop-blur-md rounded-lg text-white/80 hover:text-white border border-white/10 transition-all"
-                    >
-                        <FiMaximize size={14} />
-                    </button>
-                )}
-
-                <button 
-                    onClick={(e) => { e.stopPropagation(); setCurrentStream(null); }} 
-                    className={`p-1.5 lg:p-2 bg-black/40 backdrop-blur-md rounded-lg lg:rounded-xl text-white/80 hover:text-white border border-white/10 transition-all transform hover:rotate-90`}
-                >
-                    <FiX size={isMinimized ? 16 : 20} />
-                </button>
-
-            </div>
-
-            {/* Overlays Cinematográficos Removidos para Transparência Total */}
-            <div className={`absolute inset-0 bg-black/10 transition-opacity duration-1000 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'}`} />
-
-            {/* Loading Profissional */}
+            {/* Overlays e Loading */}
             {isBuffering && !error && (
-                <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-                    <div className="flex flex-col items-center gap-6">
-                        <div className="w-20 h-20 border-4 border-primary/10 border-t-primary rounded-full animate-spin shadow-[0_0_30px_rgba(108,92,231,0.2)]" />
-                        <div className="flex flex-col items-center gap-2 text-center">
-                            <span className="text-white/40 text-[10px] uppercase font-black tracking-[0.5em] animate-pulse">Sintonizando</span>
-                            {useProxy && <span className="text-primary text-[8px] font-bold uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded border border-primary/20">Modo Proxy Ativo</span>}
-                        </div>
-                    </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                    <FiRefreshCw className="w-10 h-10 text-primary animate-spin" />
                 </div>
             )}
 
-
-            {/* UI de Erro (Compacta e Elevada) */}
+            {/* Erro UI */}
             {error && (
-                <div className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6 pb-32">
-                    <div className="text-center max-w-xs animate-fade-in">
-                        <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <FiRefreshCw className="text-red-500 text-2xl animate-spin-slow" />
-                        </div>
-                        <h3 className="text-white font-black text-lg mb-2 tracking-tight">Falha na Transmissão</h3>
-                        <p className="text-gray-500 text-[12px] mb-8 leading-relaxed px-4">{error}</p>
-                        <div className="flex flex-col gap-2 max-w-[200px] mx-auto">
-                            <button onClick={init} className="w-full py-3 bg-white text-black rounded-xl font-bold text-xs hover:bg-primary hover:text-white transition-all active:scale-95 shadow-lg">Tentar Novamente</button>
-                            <button onClick={() => setCurrentStream(null)} className="w-full py-3 bg-white/5 text-white/40 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all">Fechar Player</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* NOVO LAYOUT DE CONTROLES (ESTILO FOTO) - TRANSPARÊNCIA TOTAL */}
-            <div className={`absolute bottom-0 left-0 w-full p-4 lg:p-10 z-50 transition-all duration-700 
-                ${(showControls && !isMinimized) ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
-                
-
-                {/* 1. LINHA SUPERIOR: NAVEGAÇÃO PRINCIPAL (CENTRALIZADA) */}
-                <div className="flex items-center justify-center max-w-4xl mx-auto mb-4 lg:mb-8">
-                    {/* Bloco Central: Skip, Play, Skip */}
-                    <div className="flex items-center gap-8 lg:gap-16">
-                        <button onClick={playPrev} className="text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-75">
-                            <FiSkipBack className="w-6 h-6 lg:w-8 lg:h-8" />
                         </button>
 
                         <button 
