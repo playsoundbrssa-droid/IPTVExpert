@@ -56,6 +56,7 @@ function App() {
 
     return (
         <BrowserRouter>
+            <DeepLinkHandler />
             {!isAuthenticated ? (
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
@@ -92,6 +93,37 @@ function App() {
             <Toaster position="top-right" toastOptions={toasterStyle} />
         </BrowserRouter>
     );
+}
+
+/**
+ * DeepLinkHandler: Escuta parâmetros na URL para abrir conteúdo compartilhado
+ */
+function DeepLinkHandler() {
+    const { isAuthenticated } = useUserStore();
+    const { moviesList, seriesList, channels } = usePlaylistStore();
+    const { setCurrentStream } = usePlayerStore();
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const videoId = params.get('v');
+
+        if (videoId) {
+            // Busca em todas as listas
+            const allMedia = [...channels, ...moviesList, ...seriesList];
+            const found = allMedia.find(m => m.id === videoId);
+
+            if (found) {
+                setCurrentStream(found);
+                toast.success(`Abrindo: ${found.name}`);
+                // Limpa a URL sem recarregar a página
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+    }, [isAuthenticated, moviesList, seriesList, channels]);
+
+    return null;
 }
 
 export default App;
