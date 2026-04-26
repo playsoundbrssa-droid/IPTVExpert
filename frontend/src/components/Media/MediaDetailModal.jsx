@@ -31,7 +31,9 @@ export default function MediaDetailModal() {
     const [xtreamEpisodes, setXtreamEpisodes] = useState(null);
     const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
-    const isFavorite = favorites.some(f => f.id === selectedMediaDetails?.id);
+    const isFavorite = useMemo(() => 
+        selectedMediaDetails ? favorites.some(f => f.id === selectedMediaDetails.id) : false
+    , [favorites, selectedMediaDetails]);
 
     // Verificação inteligente: é série se o tipo for compatível OU se tiver episódios agrupados
     const isSeries = useMemo(() => {

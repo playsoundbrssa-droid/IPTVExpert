@@ -27,7 +27,7 @@ import Navbar from './components/Navigation/Navbar';
 
 function App() {
     const { isAuthenticated, init, user } = useUserStore();
-    const { currentStream } = usePlayerStore();
+    const { currentStream, setCurrentStream } = usePlayerStore();
     const { 
         loadFromStorage, 
         moviesList, 
@@ -35,14 +35,16 @@ function App() {
         channelsList, 
         setSelectedMediaDetails 
     } = usePlaylistStore();
-    const { setCurrentStream } = usePlayerStore();
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
         // Aplica o tema salvo ANTES de renderizar qualquer coisa
         const savedTheme = localStorage.getItem('iptv_theme') || 'default';
         applyTheme(savedTheme);
-        Promise.all([init(), loadFromStorage()]).then(() => setReady(true));
+        
+        // Inicializa o app e garante que o estado 'ready' seja ativado mesmo em caso de erro
+        Promise.all([init(), loadFromStorage()])
+            .finally(() => setReady(true));
     }, []);
 
     // Detecta link compartilhado (?v=ID)
