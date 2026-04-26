@@ -74,7 +74,11 @@ export default function VideoPlayer() {
         
         // Se o proxy estiver ativo e não for um link já proxied, envolvemos na URL de proxy do backend
         if (useProxy && !url.includes('/api/proxy/stream')) {
-            const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            // Garantir que a URL base termina com /api para que a rota /proxy/stream funcione
+            if (!apiBase.endsWith('/api')) {
+                apiBase = apiBase.replace(/\/$/, '') + '/api';
+            }
             return `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
         }
 

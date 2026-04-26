@@ -93,12 +93,20 @@ router.get('/stream', async (req, res) => {
         // Determinar se é manifest M3U8
         const isM3u8 = finalTarget.includes('.m3u8') || finalTarget.includes('type=m3u8');
 
+        // Tenta extrair a origem de forma segura
+        let origin = '';
+        try {
+            origin = new URL(finalTarget).origin;
+        } catch (e) {
+            origin = 'http://localhost';
+        }
+
         const commonHeaders = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
             'Accept': '*/*',
             'Connection': 'keep-alive',
-            'Referer': new URL(finalTarget).origin + '/',
-            'Origin': new URL(finalTarget).origin
+            'Referer': origin + '/',
+            'Origin': origin
         };
 
         if (isM3u8) {
