@@ -179,6 +179,9 @@ export default function MediaDetailModal() {
         }
     }, [seasons, selectedSeason]);
 
+    const backdropUrl = useMemo(() => safeImageUrl(metadata?.backdropPath || selectedMediaDetails?.logo), [metadata, selectedMediaDetails]);
+    const posterUrl = useMemo(() => safeImageUrl(metadata?.posterPath || selectedMediaDetails?.logo), [metadata, selectedMediaDetails]);
+
     if (!selectedMediaDetails) return null;
 
     const handlePlay = (episode = null) => {
@@ -196,9 +199,6 @@ export default function MediaDetailModal() {
             toast.success('Adicionado aos favoritos');
         }
     };
-
-    const backdropUrl = useMemo(() => safeImageUrl(metadata?.backdropPath || selectedMediaDetails.logo), [metadata, selectedMediaDetails]);
-    const posterUrl = useMemo(() => safeImageUrl(metadata?.posterPath || selectedMediaDetails.logo), [metadata, selectedMediaDetails]);
 
     return (
         <Transition show={!!selectedMediaDetails} as={React.Fragment}>
