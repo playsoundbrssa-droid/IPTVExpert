@@ -10,7 +10,16 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 export default function MediaDetailModal() {
-    const { selectedMediaDetails, setSelectedMediaDetails, favorites, addFavorite, removeFavorite, seriesList, seriesGroups } = usePlaylistStore();
+    const { 
+        selectedMediaDetails, 
+        setSelectedMediaDetails, 
+        favorites, 
+        addFavorite, 
+        removeFavorite, 
+        seriesList, 
+        moviesList,
+        seriesGroups 
+    } = usePlaylistStore();
     const { setCurrentStream } = usePlayerStore();
 
     const [metadata, setMetadata] = useState(null);
@@ -34,12 +43,14 @@ export default function MediaDetailModal() {
         // Se o tipo for série/tv
         if (['series', 'serie', 'tv'].includes(type)) return true;
 
-        // Se for 'movie' mas tivermos outros itens com o mesmo nome base na lista global de séries
+        // Se for 'movie' mas tivermos outros itens com o mesmo nome base nas listas globais
         const currentBaseName = getSeriesBaseName(selectedMediaDetails.name);
-        const hasSiblings = seriesList.some(s => getSeriesBaseName(s.name) === currentBaseName);
+        const hasSiblings = [...seriesList, ...moviesList].some(s => 
+            s.id !== selectedMediaDetails.id && getSeriesBaseName(s.name) === currentBaseName
+        );
         
         return hasSiblings;
-    }, [selectedMediaDetails, seriesList]);
+    }, [selectedMediaDetails, seriesList, moviesList]);
 
     useEffect(() => {
         if (selectedMediaDetails) {
