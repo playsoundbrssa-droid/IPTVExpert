@@ -16,11 +16,13 @@ export default function VideoPlayer() {
     const hlsRef = useRef(null);
     const mpegPlayerRef = useRef(null);
     const containerRef = useRef(null);
+    const mainContainerRef = useRef(null);
     
     const { currentStream, setCurrentStream, isPlaying, togglePlay } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     
     const [isMinimized, setIsMinimized] = useState(false);
+    const [isAutoMinimized, setIsAutoMinimized] = useState(false);
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
     const [error, setError] = useState(null);
@@ -37,6 +39,26 @@ export default function VideoPlayer() {
     const isFavorite = useMemo(() => 
         currentStream ? favorites.some(f => f.id === currentStream.id) : false
     , [favorites, currentStream]);
+
+    // Lógica de "Anti-Gravidade" Automática via Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (!entry.isIntersecting && !isMinimized) {
+                    setIsAutoMinimized(true);
+                } else if (entry.isIntersecting) {
+                    setIsAutoMinimized(false);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (mainContainerRef.current) {
+            observer.observe(mainContainerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [isMinimized]);
 
     const cleanUp = useCallback(() => {
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -62,7 +84,7 @@ export default function VideoPlayer() {
         return url;
     }, [currentStream, useProxy]);
 
-    const initPlayer = useCallback(async (attempt = 0) => {
+    const initPlayer = useCallback(async () => {
         if (!currentStream || !videoRef.current) return;
         const streamUrl = getStreamUrl();
         const isHls = streamUrl.toLowerCase().includes('.m3u8') || streamUrl.includes('type=m3u8');
@@ -111,7 +133,7 @@ export default function VideoPlayer() {
         const resetTimer = () => {
             setShowControls(true);
             clearTimeout(timeout);
-            if (!isMinimized) timeout = setTimeout(() => setShowControls(false), 3000);
+            if (!isMinimized && !isAutoMinimized) timeout = setTimeout(() => setShowControls(false), 3000);
         };
         window.addEventListener('mousemove', resetTimer);
         window.addEventListener('touchstart', resetTimer);
@@ -119,10 +141,10 @@ export default function VideoPlayer() {
             window.removeEventListener('mousemove', resetTimer);
             window.removeEventListener('touchstart', resetTimer);
         };
-    }, [isMinimized]);
+    }, [isMinimized, isAutoMinimized]);
 
     const handleDragStart = (e) => {
-        if (!isMinimized) return;
+        if (!isMinimized && !isAutoMinimized) return;
         setIsDragging(true);
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -158,97 +180,106 @@ export default function VideoPlayer() {
 
     if (!currentStream) return null;
 
+    const activeMinimized = isMinimized || isAutoMinimized;
+
     return (
-        <div 
-            ref={containerRef}
-            className={`fixed z-[999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center
-                ${isMinimized ? 'w-72 h-40 rounded-2xl border border-white/10' : 'inset-0'}
-                ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
-            style={isMinimized ? { bottom: position.y, right: position.x } : {}}
-            onMouseDown={handleDragStart}
-            onTouchStart={handleDragStart}
-        >
-            <video 
-                ref={videoRef}
-                className="w-full h-full object-contain"
-                onWaiting={() => setIsBuffering(true)}
-                onPlaying={() => setIsBuffering(false)}
-                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
-                onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
-                onClick={() => isMinimized ? setIsMinimized(false) : togglePlay()}
-                playsInline
-                autoPlay
-            />
-
-            {isBuffering && !error && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                    <FiRefreshCw className="w-10 h-10 text-primary animate-spin" />
-                </div>
+        <>
+            {/* Espaçador para manter o layout quando o player flutuar */}
+            {!isMinimized && (
+                <div ref={mainContainerRef} className="w-full aspect-video bg-black/40 rounded-3xl overflow-hidden mb-8" />
             )}
 
-            {error && (
-                <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-4 text-center">
-                    <p className="text-red-500 font-bold mb-4">{error}</p>
-                    <button onClick={() => initPlayer()} className="px-4 py-2 bg-primary rounded-lg text-sm font-bold">Tentar Novamente</button>
-                </div>
-            )}
+            <div 
+                ref={containerRef}
+                className={`fixed z-[999] bg-[#0f171e] shadow-2xl transition-all duration-500 ease-out flex items-center justify-center
+                    ${activeMinimized ? 'w-72 h-40 rounded-2xl border border-white/10' : 'inset-0'}
+                    ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
+                style={activeMinimized ? { bottom: position.y, right: position.x } : {}}
+                onMouseDown={handleDragStart}
+                onTouchStart={handleDragStart}
+            >
+                <video 
+                    ref={videoRef}
+                    className="w-full h-full object-contain"
+                    onWaiting={() => setIsBuffering(true)}
+                    onPlaying={() => setIsBuffering(false)}
+                    onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+                    onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+                    onClick={() => activeMinimized ? setIsMinimized(false) : togglePlay()}
+                    playsInline
+                    autoPlay
+                />
 
-            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 transition-opacity duration-300
-                ${(showControls || isMinimized) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                
-                <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-start">
-                    {!isMinimized && (
-                        <div className="flex flex-col">
-                            <h3 className="text-white font-black truncate max-w-[200px] lg:max-w-md">{currentStream.name}</h3>
-                            <span className="text-[10px] text-primary font-bold uppercase tracking-widest">{currentStream.group}</span>
+                {isBuffering && !error && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <FiRefreshCw className="w-10 h-10 text-primary animate-spin" />
+                    </div>
+                )}
+
+                {error && (
+                    <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-4 text-center">
+                        <p className="text-red-500 font-bold mb-4">{error}</p>
+                        <button onClick={() => initPlayer()} className="px-4 py-2 bg-primary rounded-lg text-sm font-bold">Tentar Novamente</button>
+                    </div>
+                )}
+
+                <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 transition-opacity duration-300
+                    ${(showControls || activeMinimized) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    
+                    <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-start">
+                        {!activeMinimized && (
+                            <div className="flex flex-col">
+                                <h3 className="text-white font-black truncate max-w-[200px] lg:max-w-md">{currentStream.name}</h3>
+                                <span className="text-[10px] text-primary font-bold uppercase tracking-widest">{currentStream.group}</span>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                            {!activeMinimized && (
+                                <button onClick={() => setIsMinimized(true)} className="p-2 text-white/70 hover:text-white transition-colors">
+                                    <FiMinimize2 size={20} />
+                                </button>
+                            )}
+                            <button onClick={() => setCurrentStream(null)} className="p-2 text-white/70 hover:text-white transition-colors">
+                                <FiX size={20} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {!activeMinimized && (
+                        <button onClick={togglePlay} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                            {isPlaying ? <FiPause size={32} /> : <FiPlay size={32} className="ml-1" />}
+                        </button>
+                    )}
+
+                    {!activeMinimized && (
+                        <div className="absolute bottom-0 left-0 w-full p-4 pt-10">
+                            {duration > 0 && (
+                                <div className="w-full h-1 bg-white/20 rounded-full mb-4 relative overflow-hidden">
+                                    <div className="absolute h-full bg-primary" style={{ width: `${(currentTime / duration) * 100}%` }} />
+                                </div>
+                            )}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <button onClick={togglePlay} className="text-white hover:text-primary"><FiPause size={20} /></button>
+                                    <button onClick={() => setIsMuted(!isMuted)} className="text-white">
+                                        {isMuted ? <FiVolumeX size={20} /> : <FiVolume2 size={20} />}
+                                    </button>
+                                    <span className="text-[12px] font-mono text-white/70">
+                                        {formatTime(currentTime)} / {duration > 0 ? formatTime(duration) : 'AO VIVO'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button onClick={() => { if (isFavorite) removeFavorite(currentStream.id); else addFavorite(currentStream); }} className={isFavorite ? 'text-red-500' : 'text-white'}>
+                                        <FiHeart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
+                                    </button>
+                                    <button onClick={() => containerRef.current.requestFullscreen()} className="text-white"><FiMaximize size={20} /></button>
+                                </div>
+                            </div>
                         </div>
                     )}
-                    <div className="flex items-center gap-2">
-                        {!isMinimized && (
-                            <button onClick={() => setIsMinimized(true)} className="p-2 text-white/70 hover:text-white transition-colors">
-                                <FiMinimize2 size={20} />
-                            </button>
-                        )}
-                        <button onClick={() => setCurrentStream(null)} className="p-2 text-white/70 hover:text-white transition-colors">
-                            <FiX size={20} />
-                        </button>
-                    </div>
                 </div>
-
-                {!isMinimized && (
-                    <button onClick={togglePlay} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
-                        {isPlaying ? <FiPause size={32} /> : <FiPlay size={32} className="ml-1" />}
-                    </button>
-                )}
-
-                {!isMinimized && (
-                    <div className="absolute bottom-0 left-0 w-full p-4 pt-10">
-                        {duration > 0 && (
-                            <div className="w-full h-1 bg-white/20 rounded-full mb-4 relative overflow-hidden">
-                                <div className="absolute h-full bg-primary" style={{ width: `${(currentTime / duration) * 100}%` }} />
-                            </div>
-                        )}
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <button onClick={togglePlay} className="text-white hover:text-primary"><FiPause size={20} /></button>
-                                <button onClick={() => setIsMuted(!isMuted)} className="text-white">
-                                    {isMuted ? <FiVolumeX size={20} /> : <FiVolume2 size={20} />}
-                                </button>
-                                <span className="text-[12px] font-mono text-white/70">
-                                    {formatTime(currentTime)} / {duration > 0 ? formatTime(duration) : 'AO VIVO'}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => { if (isFavorite) removeFavorite(currentStream.id); else addFavorite(currentStream); }} className={isFavorite ? 'text-red-500' : 'text-white'}>
-                                    <FiHeart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
-                                </button>
-                                <button onClick={() => containerRef.current.requestFullscreen()} className="text-white"><FiMaximize size={20} /></button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
-        </div>
+        </>
     );
 }
 

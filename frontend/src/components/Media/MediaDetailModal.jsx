@@ -8,14 +8,24 @@ import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import { getSeriesBaseName } from '../../utils/seriesUtils';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { safeImageUrl } from '../../utils/imageUtils';
 
 export default function MediaDetailModal() {
-    const { selectedMediaDetails, setSelectedMediaDetails, favorites, addFavorite, removeFavorite, seriesList, seriesGroups } = usePlaylistStore();
+    const { 
+        selectedMediaDetails, 
+        setSelectedMediaDetails, 
+        favorites, 
+        addFavorite, 
+        removeFavorite, 
+        seriesList, 
+        moviesList,
+        seriesGroups 
+    } = usePlaylistStore();
     const { setCurrentStream } = usePlayerStore();
-    
+
     const [metadata, setMetadata] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [selectedSeason, setSelectedSeason] = useState(1);
+    const [selectedSeason, setSelectedSeason] = useState(1); // número
 
     const { getActivePlaylist } = usePlaylistManagerStore();
     const [xtreamEpisodes, setXtreamEpisodes] = useState(null);
@@ -23,41 +33,66 @@ export default function MediaDetailModal() {
 
     const isFavorite = favorites.some(f => f.id === selectedMediaDetails?.id);
 
+    // Verificação inteligente: é série se o tipo for compatível OU se tiver episódios agrupados
+    const isSeries = useMemo(() => {
+        if (!selectedMediaDetails) return false;
+        const type = selectedMediaDetails.type?.toLowerCase?.() ?? '';
+        
+        // Se já tem episódios agrupados ou temporadas (Xtream), é série
+        if ((selectedMediaDetails.allEpisodes?.length || 0) > 1 || selectedMediaDetails.seasons) return true;
+        
+        // Se o tipo for série/tv
+        if (['series', 'serie', 'tv'].includes(type)) return true;
+
+        // Se for 'movie' mas tivermos outros itens com o mesmo nome base nas listas globais
+        const currentBaseName = getSeriesBaseName(selectedMediaDetails.name);
+        const hasSiblings = [...seriesList, ...moviesList].some(s => 
+            s.id !== selectedMediaDetails.id && getSeriesBaseName(s.name) === currentBaseName
+        );
+        
+        return hasSiblings;
+    }, [selectedMediaDetails, seriesList, moviesList]);
+
     useEffect(() => {
         if (selectedMediaDetails) {
             fetchMetadata();
-            // Reset season to 1 when changing media
+            // Reset de estados
+            setXtreamEpisodes(null);
+            setLoadingEpisodes(false);
             setSelectedSeason(1);
-            const isXtream = selectedMediaDetails.id.includes('xtream_');
-            if (selectedMediaDetails.type === 'series' && isXtream) {
+
+            if (isSeries && selectedMediaDetails.id?.includes('xtream_')) {
                 fetchXtreamSeriesInfo();
             }
         } else {
             setMetadata(null);
             setXtreamEpisodes(null);
         }
-    }, [selectedMediaDetails]);
+    }, [selectedMediaDetails, isSeries]);
 
     const fetchXtreamSeriesInfo = async () => {
         const active = getActivePlaylist();
         if (!active || active.type !== 'xtream') return;
-        
-        setXtreamEpisodes(null); // Limpar lista anterior
+
+        setXtreamEpisodes(null);
         setLoadingEpisodes(true);
         try {
-            // Extrair o ID numérico final (suporta 'xtream_series_123' ou 'series_group_xtream_series_123')
+            // Extrai o ID numérico final (suporta 'xtream_series_123', 'series_group_xtream_series_123', etc.)
             const seriesId = selectedMediaDetails.id.split('_').filter(Boolean).pop();
+            if (!seriesId || isNaN(seriesId)) {
+                throw new Error('ID de série inválido');
+            }
             const { server, username, password } = active.config;
-            
+
             const response = await api.get('/xtream/series-info', {
                 params: { server, username, password, series_id: seriesId }
             });
-            
-            if (response.data && response.data.episodes) {
-                // O Xtream retorna episódios agrupados por temporadas
-                // Precisamos normalizá-los para o formato que o organizeBySeasons espera
+
+            if (response.data && response.data.episodes && Object.keys(response.data.episodes).length > 0) {
+                // Normalização dos episódios
                 const normalized = [];
                 Object.keys(response.data.episodes).forEach(seasonNum => {
+                    const seasonNumber = parseInt(seasonNum); // garante número
                     response.data.episodes[seasonNum].forEach(ep => {
                         const base = server.replace(/\/$/, '');
                         normalized.push({
@@ -65,17 +100,22 @@ export default function MediaDetailModal() {
                             name: ep.title,
                             logo: ep.info?.movie_image || selectedMediaDetails.logo,
                             streamUrl: `${base}/series/${username}/${password}/${ep.id}.${ep.container_extension || 'mp4'}`,
-                            season: parseInt(seasonNum),
-                            episode: parseInt(ep.episode_num),
-                            order: parseInt(ep.episode_num)
+                            season: seasonNumber,
+                            episode: parseInt(ep.episode_num) || 0,
+                            order: parseInt(ep.episode_num) || 0
                         });
                     });
                 });
                 setXtreamEpisodes(normalized);
+            } else {
+                // API retornou mas sem episódios
+                setXtreamEpisodes([]); // array vazio para indicar que não há episódios (diferente de null = ainda buscando)
+                toast.error('Nenhum episódio encontrado no servidor.');
             }
         } catch (error) {
             console.error('Erro ao buscar episódios Xtream:', error);
             toast.error('Erro ao carregar episódios do servidor.');
+            setXtreamEpisodes([]); // evita loop de carregamento
         } finally {
             setLoadingEpisodes(false);
         }
@@ -98,34 +138,56 @@ export default function MediaDetailModal() {
         }
     };
 
-    // Agrupar episódios se for série
+    // Memo dos episódios agrupados por temporada
     const episodesBySeason = useMemo(() => {
         if (!selectedMediaDetails) return null;
-        
-        // Prioridade 1: Episódios vindos do Xtream (carregados via API)
-        if (xtreamEpisodes) return organizeBySeasons(xtreamEpisodes);
 
-        // Prioridade 2: Episódios agrupados localmente (M3U)
-        let siblings = selectedMediaDetails.allEpisodes;
+        // 1. Prioridade: Episódios vindos do Xtream (carregados sob demanda)
+        if (xtreamEpisodes) {
+            return organizeBySeasons(xtreamEpisodes);
+        }
 
-        if (!siblings) {
+        // 2. Episódios locais (M3U)
+        let siblings = selectedMediaDetails.allEpisodes || [];
+
+        // Se não houver lista pronta, busca pelo nome base
+        if (siblings.length === 0) {
             const currentBaseName = getSeriesBaseName(selectedMediaDetails.name);
-            siblings = seriesList.filter(s => getSeriesBaseName(s.name) === currentBaseName);
+            // Busca tanto em seriesList quanto em moviesList (caso algum episódio tenha vazado pra lá)
+            siblings = [...seriesList, ...moviesList].filter(s =>
+                getSeriesBaseName(s.name) === currentBaseName
+            );
+        }
+
+        // Se ainda assim não encontrou nada, o próprio item é o "episódio" único
+        if (siblings.length === 0) {
+            siblings = [selectedMediaDetails];
         }
 
         return organizeBySeasons(siblings);
-    }, [selectedMediaDetails, seriesList, xtreamEpisodes]);
+    }, [selectedMediaDetails, seriesList, moviesList, xtreamEpisodes]);
 
+    // Lista de temporadas disponíveis (como números)
     const seasons = useMemo(() => {
-        return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => a-b) : [];
+        return episodesBySeason ? Object.keys(episodesBySeason).map(Number).sort((a, b) => a - b) : [];
     }, [episodesBySeason]);
+
+    // Ao mudar a lista de temporadas, se a temporada selecionada não existir, volta para a primeira
+    useEffect(() => {
+        if (seasons.length > 0 && !seasons.includes(selectedSeason)) {
+            setSelectedSeason(seasons[0]);
+        }
+    }, [seasons, selectedSeason]);
+
+    const backdropUrl = useMemo(() => safeImageUrl(metadata?.backdropPath || selectedMediaDetails?.logo), [metadata, selectedMediaDetails]);
+    const posterUrl = useMemo(() => safeImageUrl(metadata?.posterPath || selectedMediaDetails?.logo), [metadata, selectedMediaDetails]);
 
     if (!selectedMediaDetails) return null;
 
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;
         setCurrentStream(itemToPlay, []);
-        setSelectedMediaDetails(null); // Fechar modal ao dar play
+        setSelectedMediaDetails(null);
     };
 
     const toggleFavorite = () => {
@@ -138,15 +200,13 @@ export default function MediaDetailModal() {
         }
     };
 
-    const backdropUrl = metadata?.backdropPath || selectedMediaDetails.logo;
-
     return (
         <Transition show={!!selectedMediaDetails} as={React.Fragment}>
-            <Dialog 
+            <Dialog
                 onClose={() => setSelectedMediaDetails(null)}
                 className="relative z-50"
             >
-                {/* Backdrop Layer */}
+                {/* Backdrop */}
                 <Transition.Child
                     enter="ease-out duration-300"
                     enterFrom="opacity-0"
@@ -171,11 +231,11 @@ export default function MediaDetailModal() {
                             className="w-full max-w-6xl"
                         >
                             <Dialog.Panel className="relative w-full bg-surface/40 border border-white/10 md:rounded-[2.5rem] overflow-hidden shadow-2xl h-screen md:h-auto md:max-h-[90vh] flex flex-col">
-                                
+
                                 {/* Background Image & Overlay */}
                                 <div className="absolute inset-0 -z-10 h-[60%] overflow-hidden">
                                     <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent z-10" />
-                                    <img 
+                                    <img
                                         src={backdropUrl}
                                         alt=""
                                         className="w-full h-full object-cover scale-105 blur-sm opacity-50"
@@ -183,7 +243,7 @@ export default function MediaDetailModal() {
                                 </div>
 
                                 {/* Close Button */}
-                                <button 
+                                <button
                                     onClick={() => setSelectedMediaDetails(null)}
                                     className="absolute top-6 right-6 z-50 p-3 bg-black/40 hover:bg-white/10 rounded-full text-white backdrop-blur-md transition-all border border-white/10"
                                 >
@@ -193,32 +253,31 @@ export default function MediaDetailModal() {
                                 {/* Scrollable Content */}
                                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12">
                                     <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-10">
-                                        
+
                                         {/* Poster Column */}
                                         <div className="flex flex-col items-center gap-6">
                                             <div className="w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
-                                                <img 
-                                                    src={metadata?.posterPath || selectedMediaDetails.logo}
+                                                <img
+                                                    src={posterUrl}
                                                     alt={selectedMediaDetails.name}
                                                     className="w-full h-full object-cover"
                                                 />
                                             </div>
-                                            
+
                                             {/* Action Buttons */}
                                             <div className="w-full grid grid-cols-2 gap-3">
-                                                <button 
+                                                <button
                                                     onClick={() => handlePlay()}
                                                     className="flex items-center justify-center gap-2 py-4 bg-primary rounded-2xl font-black text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-wider"
                                                 >
                                                     <FiPlay fill="currentColor" /> Assistir
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={toggleFavorite}
-                                                    className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black border transition-all active:scale-95 text-sm uppercase tracking-wider ${
-                                                        isFavorite 
-                                                        ? 'bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/20' 
-                                                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                                                    }`}
+                                                    className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black border transition-all active:scale-95 text-sm uppercase tracking-wider ${isFavorite
+                                                            ? 'bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/20'
+                                                            : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                                                        }`}
                                                 >
                                                     <FiHeart fill={isFavorite ? 'currentColor' : 'none'} /> Favoritos
                                                 </button>
@@ -268,8 +327,8 @@ export default function MediaDetailModal() {
                                                 </p>
                                             </div>
 
-                                            {/* Season & Episode List (Only for Series) */}
-                                            {selectedMediaDetails.type === 'series' && (
+                                            {/* SEÇÃO DE TEMPORADAS E EPISÓDIOS (agora sempre visível se for série) */}
+                                            {isSeries && (
                                                 <div className="space-y-6 pt-6 border-t border-white/5">
                                                     {loadingEpisodes ? (
                                                         <div className="py-12 flex flex-col items-center justify-center gap-4">
@@ -280,29 +339,34 @@ export default function MediaDetailModal() {
                                                         <>
                                                             <div className="flex items-center justify-between">
                                                                 <h3 className="text-2xl font-black">Episódios</h3>
-                                                                <div className="relative group/select">
-                                                                    <select 
-                                                                        value={selectedSeason}
-                                                                        onChange={(e) => setSelectedSeason(e.target.value)}
-                                                                        className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
-                                                                    >
-                                                                        {seasons.map(s => (
-                                                                            <option key={s} value={s} className="bg-surface text-white">Temporada {s}</option>
-                                                                        ))}
-                                                                    </select>
-                                                                    <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
-                                                                </div>
+                                                                {seasons.length > 1 && (
+                                                                    <div className="relative group/select">
+                                                                        <select
+                                                                            value={selectedSeason}
+                                                                            onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                                                                            className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-sm font-bold focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
+                                                                        >
+                                                                            {seasons.map(s => (
+                                                                                <option key={s} value={s} className="bg-surface text-white">
+                                                                                    Temporada {s}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                        <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
+                                                                    </div>
+                                                                )}
                                                             </div>
 
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                 {episodesBySeason[selectedSeason]?.map((ep, idx) => (
-                                                                    <button 
+                                                                    <button
                                                                         key={ep.id}
                                                                         onClick={() => handlePlay(ep)}
                                                                         className="flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group/ep text-left w-full"
                                                                     >
                                                                         <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-black group-hover/ep:bg-primary group-hover/ep:text-white transition-all shrink-0">
-                                                                            {ep.order}
+                                                                            {/* Número do episódio com fallback */}
+                                                                            {ep.order ?? ep.episode ?? idx + 1}
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
                                                                             <div className="font-bold text-white truncate group-hover/ep:text-primary transition-colors">
@@ -316,8 +380,17 @@ export default function MediaDetailModal() {
                                                             </div>
                                                         </>
                                                     ) : (
-                                                        <div className="py-12 text-center text-gray-500 italic">
-                                                            Nenhum episódio encontrado para esta série.
+                                                        <div className="py-12 text-center text-gray-500 italic flex flex-col items-center gap-4">
+                                                            <p>Nenhum episódio encontrado para esta série.</p>
+                                                            {/* Botão para tentar recarregar, se for Xtream */}
+                                                            {selectedMediaDetails.id?.includes('xtream_') && (
+                                                                <button
+                                                                    onClick={fetchXtreamSeriesInfo}
+                                                                    className="text-primary underline text-sm font-bold"
+                                                                >
+                                                                    Tentar novamente
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
