@@ -28,7 +28,8 @@ export default function MediaDetailModal() {
             fetchMetadata();
             // Reset season to 1 when changing media
             setSelectedSeason(1);
-            if (selectedMediaDetails.type === 'series' && selectedMediaDetails.id.startsWith('xtream_')) {
+            const isXtream = selectedMediaDetails.id.includes('xtream_');
+            if (selectedMediaDetails.type === 'series' && isXtream) {
                 fetchXtreamSeriesInfo();
             }
         } else {
@@ -41,10 +42,11 @@ export default function MediaDetailModal() {
         const active = getActivePlaylist();
         if (!active || active.type !== 'xtream') return;
         
+        setXtreamEpisodes(null); // Limpar lista anterior
         setLoadingEpisodes(true);
         try {
-            // Extrair o ID numérico do Xtream (ex: xtream_series_123 -> 123)
-            const seriesId = selectedMediaDetails.id.split('_').pop();
+            // Extrair o ID numérico final (suporta 'xtream_series_123' ou 'series_group_xtream_series_123')
+            const seriesId = selectedMediaDetails.id.split('_').filter(Boolean).pop();
             const { server, username, password } = active.config;
             
             const response = await api.get('/xtream/series-info', {
