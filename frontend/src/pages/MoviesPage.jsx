@@ -3,10 +3,18 @@ import { usePlaylistStore } from '../stores/usePlaylistStore';
 import MediaCard from '../components/Media/MediaCard';
 import CategoryFilter from '../components/Media/CategoryFilter';
 import { FiSearch, FiFilm } from 'react-icons/fi';
+import ContentHero from '../components/Media/ContentHero';
 
 export default function MoviesPage() {
     const { moviesList, moviesGroups, selectedMovieGroup, setSelectedMovieGroup } = usePlaylistStore();
     const [searchTerm, setSearchTerm] = useState('');
+
+    const featuredMovie = useMemo(() => {
+        if (!moviesList.length) return null;
+        // Pega um filme aleatório com logo para ser o destaque, ou o primeiro
+        const withLogo = moviesList.filter(m => m.logo && !m.logo.includes('default'));
+        return withLogo.length > 0 ? withLogo[Math.floor(Math.random() * Math.min(withLogo.length, 20))] : moviesList[0];
+    }, [moviesList]);
 
     // Prevenção de etiquetas erradas (Séries | em Filmes) vindo do provedor
     const cleanedGroups = useMemo(() => {
@@ -68,6 +76,11 @@ export default function MoviesPage() {
 
     return (
         <div className="space-y-8 animate-fade-in">
+            {/* Featured Hero (Prime Style) */}
+            {!searchTerm && !selectedMovieGroup && featuredMovie && (
+                <ContentHero item={{ ...featuredMovie, type: 'movie' }} />
+            )}
+
             {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>

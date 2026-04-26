@@ -1,14 +1,14 @@
 :root {
-    --color-primary: 108 92 231;
-    --color-background: 0 0 0;
-    --color-surface: 30 30 30;
-    --color-surface-light: 45 45 45;
-    --color-neon-blue: 63 94 240;
-    --color-neon-blue-light: 109 140 255;
+    --color-primary: 0 168 225; /* #00a8e1 Prime Blue */
+    --color-background: 15 23 30; /* #0f171e Prime Background */
+    --color-surface: 26 36 47; /* #1a242f */
+    --color-surface-light: 48 60 70;
+    --color-neon-blue: 0 168 225;
+    --color-neon-blue-light: 100 210 255;
     --color-neon-purple: 122 77 240;
     --color-neon-purple-light: 183 125 255;
     --color-white: 255 255 255;
-    --color-black: 0 0 0;
+    --color-black: 15 23 30;
 }
 
 /* ─── TEMA VERMELHO ─── */

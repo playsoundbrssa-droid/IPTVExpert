@@ -156,18 +156,51 @@ export default function VideoPlayer() {
         };
     }, [isDragging]);
 
+    const [isAutoMinimized, setIsAutoMinimized] = useState(false);
+    const observerRef = useRef(null);
+    const mainContainerRef = useRef(null);
+
+    useEffect(() => {
+        // Lógica de "Anti-Gravidade" Automática
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                // Se o player principal sair da tela em mais de 80%, ele flutua
+                if (!entry.isIntersecting && !isMinimized) {
+                    setIsAutoMinimized(true);
+                } else if (entry.isIntersecting) {
+                    setIsAutoMinimized(false);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (mainContainerRef.current) {
+            observer.observe(mainContainerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [isMinimized]);
+
     if (!currentStream) return null;
 
+    const activeMinimized = isMinimized || isAutoMinimized;
+
     return (
-        <div 
-            ref={containerRef}
-            className={`fixed z-[999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center
-                ${isMinimized ? 'w-72 h-40 rounded-2xl border border-white/10' : 'inset-0'}
-                ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
-            style={isMinimized ? { bottom: position.y, right: position.x } : {}}
-            onMouseDown={handleDragStart}
-            onTouchStart={handleDragStart}
-        >
+        <>
+            {/* Espaçador para manter o layout quando o player flutuar */}
+            {!isMinimized && (
+                <div ref={mainContainerRef} className="w-full aspect-video bg-black/40 rounded-3xl overflow-hidden mb-8" />
+            )}
+
+            <div 
+                ref={containerRef}
+                className={`fixed z-[999] bg-[#0f171e] shadow-2xl transition-all duration-500 ease-out flex items-center justify-center
+                    ${activeMinimized ? 'w-72 h-40 rounded-2xl border border-white/10' : 'inset-0'}
+                    ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
+                style={activeMinimized ? { bottom: position.y, right: position.x } : {}}
+                onMouseDown={handleDragStart}
+                onTouchStart={handleDragStart}
+            >
             <video 
                 ref={videoRef}
                 className="w-full h-full object-contain"
