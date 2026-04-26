@@ -5,20 +5,22 @@ export const getSeriesBaseName = (name) => {
     if (!name) return '';
     return name
         // 1. Remove padrões de episódios e tudo que vem depois
-        .replace(/\s*[[({]*\s*[sS]\d+[eE]\d+.*[\])}]*$/i, '') // S01E01 com ou sem colchetes
+        .replace(/\s*[[({]*\s*[sS]\d+[eE]\d+.*[\])}]*$/i, '') // S01E01
         .replace(/\s*[[({]*\s*(\d{1,2}x\d{1,2}|x\d{1,2}).*[\])}]*$/i, '') // 1x01
-        .replace(/\s*[[({]*\s*(Temporada|Season|T)\s*\d+.*[\])}]*$/i, '') // Temporada/Season/T + N
-        .replace(/\s*[[({]*\s*(Episódio|Capítulo|Ep|E)\s*\d+.*[\])}]*$/i, '') // Episódio/Capítulo/Ep/E + N
+        .replace(/\s*[[({]*\s*(Temporada|Season|T|Temp)\.?\s*\d+.*[\])}]*$/i, '') // Temporada/Season/T/Temp + N
+        .replace(/\s*[[({]*\s*(Episódio|Capítulo|Ep|E|Cap|Parte|P)\.?\s*\d+.*[\])}]*$/i, '') // Episódio/Capítulo/Ep/E/Cap/Parte + N
+        .replace(/\s+-\s+\d+.*$/i, '') // "Nome - 01"
+        .replace(/\s+\d+.*$/i, '') // "Nome 01" (apenas se for no final)
         
         // 2. Remove anos entre parênteses ou colchetes
         .replace(/\s*[\(\[]\s*\d{4}\s*[\)\]].*/g, '')
         
-        // 3. Remove tags de qualidade e áudio (finais ou meio)
+        // 3. Remove tags de qualidade e áudio
         .replace(/\s*(4[kK]|1080[pP]|720[pP]|[fF][hH][dD]|[hH][dD]|[sS][dD]|[uU][hH][dD])\b/gi, '')
-        .replace(/\s*(Dublado|Legendado|Dual|Multi|Legend|Dub)\b/gi, '')
+        .replace(/\s*(Dublado|Legendado|Dual|Multi|Legend|Dub|Leg)\b/gi, '')
         
         // 4. Limpeza de caracteres residuais no final
-        .replace(/\s*[-|–—:._(]+\s*$/, '') // Trailing dashes, pipes, colons etc
+        .replace(/\s*[-|–—:._(]+\s*$/, '') 
         .trim();
 };
 

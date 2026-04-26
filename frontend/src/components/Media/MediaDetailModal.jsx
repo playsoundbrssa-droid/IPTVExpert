@@ -23,25 +23,32 @@ export default function MediaDetailModal() {
 
     const isFavorite = favorites.some(f => f.id === selectedMediaDetails?.id);
 
-    // Verificação robusta: é série se tipo for um desses OU se possuir 'allEpisodes' ou 'seasons'
+    // Verificação inteligente: é série se o tipo for compatível OU se tiver episódios agrupados
     const isSeries = useMemo(() => {
         if (!selectedMediaDetails) return false;
         const type = selectedMediaDetails.type?.toLowerCase?.() ?? '';
-        const isTypeSeries = ['series', 'serie', 'tv'].includes(type);
-        const hasSeriesProp = !!selectedMediaDetails.allEpisodes || !!selectedMediaDetails.seasons;
-        return isTypeSeries || hasSeriesProp;
-    }, [selectedMediaDetails]);
+        
+        // Se já tem episódios agrupados ou temporadas (Xtream), é série
+        if ((selectedMediaDetails.allEpisodes?.length || 0) > 1 || selectedMediaDetails.seasons) return true;
+        
+        // Se o tipo for série/tv
+        if (['series', 'serie', 'tv'].includes(type)) return true;
+
+        // Se for 'movie' mas tivermos outros itens com o mesmo nome base na lista global de séries
+        const currentBaseName = getSeriesBaseName(selectedMediaDetails.name);
+        const hasSiblings = seriesList.some(s => getSeriesBaseName(s.name) === currentBaseName);
+        
+        return hasSiblings;
+    }, [selectedMediaDetails, seriesList]);
 
     useEffect(() => {
         if (selectedMediaDetails) {
             fetchMetadata();
-            // Reset para primeira temporada ao trocar de mídia
-            setSelectedSeason(1);
-            // Reset Xtream
+            // Reset de estados
             setXtreamEpisodes(null);
             setLoadingEpisodes(false);
+            setSelectedSeason(1);
 
-            // Só busca episódios Xtream se for série e tiver ID compatível
             if (isSeries && selectedMediaDetails.id?.includes('xtream_')) {
                 fetchXtreamSeriesInfo();
             }
@@ -49,7 +56,7 @@ export default function MediaDetailModal() {
             setMetadata(null);
             setXtreamEpisodes(null);
         }
-    }, [selectedMediaDetails, isSeries]); // ← dependência isSeries adicionada para reexecutar com segurança
+    }, [selectedMediaDetails, isSeries]);
 
     const fetchXtreamSeriesInfo = async () => {
         const active = getActivePlaylist();
@@ -123,31 +130,30 @@ export default function MediaDetailModal() {
     const episodesBySeason = useMemo(() => {
         if (!selectedMediaDetails) return null;
 
-        // 1. Episódios vindos do Xtream (carregados sob demanda)
+        // 1. Prioridade: Episódios vindos do Xtream (carregados sob demanda)
         if (xtreamEpisodes) {
-            // Se xtreamEpisodes é array (mesmo vazio) já retorna o resultado de organizeBySeasons
             return organizeBySeasons(xtreamEpisodes);
         }
 
         // 2. Episódios locais (M3U)
-        let siblings = selectedMediaDetails.allEpisodes;
+        let siblings = selectedMediaDetails.allEpisodes || [];
 
-        // Se não houver lista pronta via 'allEpisodes', tenta buscar pelo nome base na seriesList
-        if (!siblings || siblings.length === 0) {
+        // Se não houver lista pronta, busca pelo nome base
+        if (siblings.length === 0) {
             const currentBaseName = getSeriesBaseName(selectedMediaDetails.name);
-            siblings = seriesList.filter(s =>
+            // Busca tanto em seriesList quanto em moviesList (caso algum episódio tenha vazado pra lá)
+            siblings = [...seriesList, ...moviesList].filter(s =>
                 getSeriesBaseName(s.name) === currentBaseName
             );
         }
 
-        // 3. Fallback: se ainda assim não encontrou episódios, retorna objeto vazio para indicar que não há dados,
-        //    mas sem quebrar a UI (a seção continuará sendo exibida com a mensagem apropriada)
-        if (!siblings || siblings.length === 0) {
-            return {};
+        // Se ainda assim não encontrou nada, o próprio item é o "episódio" único
+        if (siblings.length === 0) {
+            siblings = [selectedMediaDetails];
         }
 
         return organizeBySeasons(siblings);
-    }, [selectedMediaDetails, seriesList, xtreamEpisodes]);
+    }, [selectedMediaDetails, seriesList, moviesList, xtreamEpisodes]);
 
     // Lista de temporadas disponíveis (como números)
     const seasons = useMemo(() => {

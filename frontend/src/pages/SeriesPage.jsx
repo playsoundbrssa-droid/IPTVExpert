@@ -65,9 +65,10 @@ export default function SeriesPage() {
         const fullList = [...seriesList, ...moviesList];
         const globalSeriesMap = {};
 
-        fullList.forEach(item => {
+ fullList.forEach(item => {
             const name = item.name || '';
-            const isEpisodePattern = /[sS]\d+|[xX]\d+|\b(temp|ep|cap|season|episode)\b/i.test(name);
+            // Regex melhorado: detecta S01E01, 1x01, Temporada, Episódio, Capítulo, Parte, ou um número no final
+            const isEpisodePattern = /[sS]\d+[eE]\d+|\d{1,2}x\d{1,2}|(temporada|season|temp|episodio|episode|ep|capitulo|cap|parte|part)\s*\d+|\s+-\s+\d+|\s+\d+$/i.test(name);
             if (!isEpisodePattern && !seriesIdSet.has(item.id)) return;
 
             const baseName = getSeriesBaseName(name);
