@@ -28,7 +28,14 @@ import Navbar from './components/Navigation/Navbar';
 function App() {
     const { isAuthenticated, init, user } = useUserStore();
     const { currentStream } = usePlayerStore();
-    const { loadFromStorage } = usePlaylistStore();
+    const { 
+        loadFromStorage, 
+        moviesList, 
+        seriesList, 
+        channelsList, 
+        setSelectedMediaDetails 
+    } = usePlaylistStore();
+    const { setCurrentStream } = usePlayerStore();
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
@@ -37,6 +44,24 @@ function App() {
         applyTheme(savedTheme);
         Promise.all([init(), loadFromStorage()]).then(() => setReady(true));
     }, []);
+
+    // Detecta link compartilhado (?v=ID)
+    useEffect(() => {
+        if (ready && isAuthenticated) {
+            const params = new URLSearchParams(window.location.search);
+            const videoId = params.get('v');
+            if (videoId) {
+                const item = [...moviesList, ...seriesList, ...channelsList].find(i => String(i.id) === String(videoId));
+                if (item) {
+                    if (item.type === 'movie' || item.type === 'series') {
+                        setSelectedMediaDetails(item);
+                    } else {
+                        setCurrentStream(item);
+                    }
+                }
+            }
+        }
+    }, [ready, isAuthenticated, moviesList, seriesList, channelsList]);
 
     if (!ready) {
         return (
