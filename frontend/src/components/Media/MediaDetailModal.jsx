@@ -8,6 +8,7 @@ import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import { getSeriesBaseName } from '../../utils/seriesUtils';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { safeImageUrl } from '../../utils/imageUtils';
 
 export default function MediaDetailModal() {
     const { 
@@ -196,7 +197,8 @@ export default function MediaDetailModal() {
         }
     };
 
-    const backdropUrl = metadata?.backdropPath || selectedMediaDetails.logo;
+    const backdropUrl = useMemo(() => safeImageUrl(metadata?.backdropPath || selectedMediaDetails.logo), [metadata, selectedMediaDetails]);
+    const posterUrl = useMemo(() => safeImageUrl(metadata?.posterPath || selectedMediaDetails.logo), [metadata, selectedMediaDetails]);
 
     return (
         <Transition show={!!selectedMediaDetails} as={React.Fragment}>
@@ -256,7 +258,7 @@ export default function MediaDetailModal() {
                                         <div className="flex flex-col items-center gap-6">
                                             <div className="w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
                                                 <img
-                                                    src={metadata?.posterPath || selectedMediaDetails.logo}
+                                                    src={posterUrl}
                                                     alt={selectedMediaDetails.name}
                                                     className="w-full h-full object-cover"
                                                 />

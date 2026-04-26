@@ -2,10 +2,13 @@ import React from 'react';
 import { FiPlay, FiInfo, FiPlus } from 'react-icons/fi';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
+import { safeImageUrl } from '../../utils/imageUtils';
 
 export default function ContentHero({ item }) {
     const { setCurrentStream } = usePlayerStore();
     const { setSelectedMediaDetails } = usePlaylistStore();
+
+    const heroImage = React.useMemo(() => safeImageUrl(item?.logo), [item]);
 
     if (!item) return null;
 
@@ -22,7 +25,7 @@ export default function ContentHero({ item }) {
             {/* Background Image with Gradient Overlay */}
             <div className="absolute inset-0">
                 <img 
-                    src={item.logo || 'https://picsum.photos/1920/1080?random=hero'} 
+                    src={heroImage || 'https://picsum.photos/1920/1080?random=hero'} 
                     alt={item.name}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
