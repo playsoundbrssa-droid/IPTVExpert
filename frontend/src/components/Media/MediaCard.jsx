@@ -50,6 +50,8 @@ export default function MediaCard({ item, type, playlist = [] }) {
 
     const isVOD = type === 'movie' || type === 'series';
 
+    const [imgError, setImgError] = React.useState(false);
+
     return (
         <div 
             onClick={handlePlay}
@@ -57,16 +59,19 @@ export default function MediaCard({ item, type, playlist = [] }) {
         >
             {/* Poster / Logo Area */}
             <div className={`${isVOD ? 'aspect-[2/3]' : 'aspect-[16/9]'} relative bg-black/40 flex items-center justify-center shrink-0`}>
-                {item.logo ? (
+                {item.logo && !imgError ? (
                     <img 
                         src={item.logo} 
                         alt={item.name} 
                         className={`w-full h-full ${isVOD ? 'object-cover' : 'object-contain p-4'} group-hover:scale-110 transition-transform duration-500`}
                         loading="lazy"
                         decoding="async"
+                        onError={() => setImgError(true)}
                     />
                 ) : (
-                    <div className="text-gray-600 text-4xl font-bold uppercase">{item.name.charAt(0)}</div>
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface to-black text-primary/40 text-4xl font-black uppercase select-none">
+                        {item.name ? item.name.charAt(0) : '?'}
+                    </div>
                 )}
                 
                 {/* Overlay on hover */}
