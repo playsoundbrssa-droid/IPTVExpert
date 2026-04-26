@@ -23,47 +23,18 @@ import { applyTheme } from './hooks/useTheme';
 
 const toasterStyle = { style: { background: '#1E1E1E', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } };
 
-import Navbar from './components/Navigation/Navbar';
-
 function App() {
     const { isAuthenticated, init, user } = useUserStore();
-    const { currentStream, setCurrentStream } = usePlayerStore();
-    const { 
-        loadFromStorage, 
-        moviesList, 
-        seriesList, 
-        channelsList, 
-        setSelectedMediaDetails 
-    } = usePlaylistStore();
+    const { currentStream } = usePlayerStore();
+    const { loadFromStorage } = usePlaylistStore();
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
         // Aplica o tema salvo ANTES de renderizar qualquer coisa
         const savedTheme = localStorage.getItem('iptv_theme') || 'default';
         applyTheme(savedTheme);
-        
-        // Inicializa o app e garante que o estado 'ready' seja ativado mesmo em caso de erro
-        Promise.all([init(), loadFromStorage()])
-            .finally(() => setReady(true));
+        Promise.all([init(), loadFromStorage()]).then(() => setReady(true));
     }, []);
-
-    // Detecta link compartilhado (?v=ID)
-    useEffect(() => {
-        if (ready && isAuthenticated) {
-            const params = new URLSearchParams(window.location.search);
-            const videoId = params.get('v');
-            if (videoId) {
-                const item = [...moviesList, ...seriesList, ...channelsList].find(i => String(i.id) === String(videoId));
-                if (item) {
-                    if (item.type === 'movie' || item.type === 'series') {
-                        setSelectedMediaDetails(item);
-                    } else {
-                        setCurrentStream(item);
-                    }
-                }
-            }
-        }
-    }, [ready, isAuthenticated, moviesList, seriesList, channelsList]);
 
     if (!ready) {
         return (
@@ -90,31 +61,34 @@ function App() {
                     <Route path="*" element={<LandingPage />} />
                 </Routes>
             ) : (
-                <div className="flex flex-col h-[100dvh] overflow-hidden bg-background relative pt-safe">
-                    <Navbar />
-                    
-                    {/* Main Content Area */}
-                    <main className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pt-20 pb-24 md:pb-6 px-4 md:px-12 relative z-10 transition-all duration-300">
-                        <Routes>
-                            <Route path="/" element={<HighlightsPage />} />
-                            <Route path="/live-tv" element={<LiveTvPage />} />
-                            <Route path="/movies" element={<MoviesPage />} />
-                            <Route path="/series" element={<SeriesPage />} />
-                            <Route path="/highlights" element={<HighlightsPage />} />
-                            <Route path="/favorites" element={<FavoritesPage />} />
-                            <Route path="/settings" element={<SettingsPage />} />
-                            {user?.role === 'admin' && (
-                                <Route path="/admin" element={<AdminPage />} />
-                            )}
-                        </Routes>
-                    </main>
-                    
-                    {/* Mobile Bottom Navigation (hidden on desktop) */}
-                    <MobileBottomNav />
-
-                    {currentStream && <VideoPlayer />}
-                    <MediaDetailModal />
+                <div className="flex h-[100dvh] overflow-hidden bg-background relative pt-safe">
+                {/* Desktop Sidebar (hidden on mobile) */}
+                <div className="hidden md:flex flex-shrink-0 h-full">
+                    <Sidebar />
                 </div>
+                
+                {/* Main Content Area */}
+                <main className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pt-6 pb-24 md:pb-6 px-4 md:px-6 relative z-10 transition-all duration-300">
+                    <Routes>
+                        <Route path="/" element={<LiveTvPage />} />
+                        <Route path="/live-tv" element={<LiveTvPage />} />
+                        <Route path="/movies" element={<MoviesPage />} />
+                        <Route path="/series" element={<SeriesPage />} />
+                        <Route path="/highlights" element={<HighlightsPage />} />
+                        <Route path="/favorites" element={<FavoritesPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        {user?.role === 'admin' && (
+                            <Route path="/admin" element={<AdminPage />} />
+                        )}
+                    </Routes>
+                </main>
+                
+                {/* Mobile Bottom Navigation (hidden on desktop) */}
+                <MobileBottomNav />
+
+                {currentStream && <VideoPlayer />}
+                <MediaDetailModal />
+            </div>
             )}
             <Toaster position="top-right" toastOptions={toasterStyle} />
         </BrowserRouter>

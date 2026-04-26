@@ -4,18 +4,10 @@ import MediaCard from '../components/Media/MediaCard';
 import CategoryFilter from '../components/Media/CategoryFilter';
 import { FiSearch, FiLayers } from 'react-icons/fi';
 import { getSeriesBaseName, getBestSeriesLogo } from '../utils/seriesUtils';
-import ContentHero from '../components/Media/ContentHero';
 
 export default function SeriesPage() {
     const { seriesList, moviesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
     const [searchTerm, setSearchTerm] = useState('');
-
-    const featuredSeries = useMemo(() => {
-        if (!seriesList.length) return null;
-        // Pega uma série aleatória com logo para ser o destaque, ou o primeiro
-        const withLogo = seriesList.filter(s => s.logo && !s.logo.includes('default'));
-        return withLogo.length > 0 ? withLogo[Math.floor(Math.random() * Math.min(withLogo.length, 20))] : seriesList[0];
-    }, [seriesList]);
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(50);
 
@@ -65,10 +57,9 @@ export default function SeriesPage() {
         const fullList = [...seriesList, ...moviesList];
         const globalSeriesMap = {};
 
- fullList.forEach(item => {
+        fullList.forEach(item => {
             const name = item.name || '';
-            // Regex melhorado: detecta S01E01, 1x01, Temporada, Episódio, Capítulo, Parte, ou um número no final
-            const isEpisodePattern = /[sS]\d+[eE]\d+|\d{1,2}x\d{1,2}|(temporada|season|temp|episodio|episode|ep|capitulo|cap|parte|part)\s*\d+|\s+-\s+\d+|\s+\d+$/i.test(name);
+            const isEpisodePattern = /[sS]\d+|[xX]\d+|\b(temp|ep|cap|season|episode)\b/i.test(name);
             if (!isEpisodePattern && !seriesIdSet.has(item.id)) return;
 
             const baseName = getSeriesBaseName(name);
@@ -137,11 +128,6 @@ export default function SeriesPage() {
 
     return (
         <div className="space-y-8 animate-fade-in">
-            {/* Featured Hero (Prime Style) */}
-            {!searchTerm && !selectedSeriesGroup && featuredSeries && (
-                <ContentHero item={{ ...featuredSeries, type: 'series' }} />
-            )}
-
             {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>

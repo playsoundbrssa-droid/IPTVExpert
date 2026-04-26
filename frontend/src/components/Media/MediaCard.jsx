@@ -3,7 +3,6 @@ import { FiPlay, FiHeart, FiDownload } from 'react-icons/fi';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import toast from 'react-hot-toast';
-import { safeImageUrl } from '../../utils/imageUtils';
 
 export default function MediaCard({ item, type, playlist = [] }) {
     const { addFavorite, removeFavorite, favorites } = usePlaylistStore();
@@ -11,8 +10,6 @@ export default function MediaCard({ item, type, playlist = [] }) {
     const { setSelectedMediaDetails } = usePlaylistStore();
     
     const isFavorite = favorites.some(f => f.id === item.id);
-
-    const logoUrl = React.useMemo(() => safeImageUrl(item.logo), [item.logo]);
 
     const toggleFavorite = (e) => {
         e.stopPropagation();
@@ -62,9 +59,9 @@ export default function MediaCard({ item, type, playlist = [] }) {
         >
             {/* Poster / Logo Area */}
             <div className={`${isVOD ? 'aspect-[2/3]' : 'aspect-[16/9]'} relative bg-black/40 flex items-center justify-center shrink-0`}>
-                {logoUrl && !imgError ? (
+                {item.logo && !imgError ? (
                     <img 
-                        src={logoUrl} 
+                        src={item.logo} 
                         alt={item.name} 
                         className={`w-full h-full ${isVOD ? 'object-cover' : 'object-contain p-4'} group-hover:scale-110 transition-transform duration-500`}
                         loading="lazy"

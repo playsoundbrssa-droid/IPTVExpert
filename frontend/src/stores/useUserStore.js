@@ -10,35 +10,17 @@ export const useUserStore = create((set, get) => ({
     isAuthenticated: false,
     loading: false,
 
+    // Initialize: check if stored token is still valid
     init: async () => {
-        // 1. Se há um hash de OAuth na URL (#access_token=...), processa-o primeiro
+        const token = localStorage.getItem('token');
+        
+        // 1. TENTA CAPTURAR O TOKEN DIRETAMENTE DA URL (Fallback de emergência)
         if (window.location.hash && window.location.hash.includes('access_token')) {
-            console.log('[AUTH] Token OAuth detectado na URL. Processando...');
-            try {
-                // O Supabase consegue extrair automaticamente a sessão do hash da URL
-                const { data: { session }, error } = await supabase.auth.getSession();
-                
-                if (error) {
-                    console.error('[AUTH] Erro ao extrair sessão do hash:', error.message);
-                }
-                
-                if (session) {
-                    console.log('[AUTH] Sessão OAuth extraída com sucesso. Sincronizando...');
-                    await get().socialSyncLogin(session);
-                }
-            } catch (e) {
-                console.error('[AUTH] Erro crítico ao processar OAuth callback:', e);
-            } finally {
-                // Limpa o hash da URL para evitar exposição do token e avisos do Chrome
-                if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-                }
-            }
-            return; // Não precisa continuar, o onAuthStateChange vai lidar com o resto
+            console.log('[AUTH] Token detectado na URL! Processando hash manualmente...');
         }
 
-        // 2. Verifica sessão existente do Supabase
-        console.log('[AUTH] Verificando sessão salva do Supabase...');
+        // 2. Tenta pegar a sessão atual imediatamente
+        console.log('[AUTH] Verificando sessão inicial do Supabase...');
         const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -46,11 +28,11 @@ export const useUserStore = create((set, get) => ({
         }
 
         if (initialSession && !get().isAuthenticated) {
-            console.log('[AUTH] Sessão Supabase encontrada. Sincronizando com backend...');
+            console.log('[AUTH] Sessão inicial detectada. Sincronizando com backend...');
             await get().socialSyncLogin(initialSession);
         }
 
-        // 3. Ouvinte para mudanças de autenticação futuras (ex: login em outra aba)
+        // 3. Ouvinte para mudanças de autenticação do Supabase (Redirect flow)
         supabase.auth.onAuthStateChange(async (event, session) => {
             console.log(`[AUTH] Evento Supabase: ${event}`);
             
@@ -58,19 +40,15 @@ export const useUserStore = create((set, get) => ({
                 console.log('[AUTH] Login detectado via evento. Sincronizando...');
                 await get().socialSyncLogin(session);
             }
-            
-            if (event === 'SIGNED_OUT') {
-                set({ user: null, token: null, isAuthenticated: false });
-            }
         });
 
-        // 4. Se já tivermos um token local do nosso backend, valida ele
-        const token = localStorage.getItem('token');
-        if (token && !get().isAuthenticated) {
+        // 2. Se já tivermos um token local, valida ele
+        if (token) {
             try {
                 api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                 const { data } = await api.get('/auth/me');
                 set({ user: data.user, token, isAuthenticated: true });
+                // Fetch cloud playlists async
                 usePlaylistManagerStore.getState().syncWithCloud();
             } catch {
                 localStorage.removeItem('token');
