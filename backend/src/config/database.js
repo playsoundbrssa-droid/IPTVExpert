@@ -100,6 +100,17 @@ const initializeTables = async () => {
             await db.query(playlistsTable);
             await db.query(progressTable);
             await db.query(logsTable);
+
+            // Migração: Adiciona colunas que podem estar faltando em tabelas antigas
+            const alterPlaylists = [
+                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS "channelsCount" INTEGER DEFAULT 0',
+                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS "moviesCount" INTEGER DEFAULT 0',
+                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS "seriesCount" INTEGER DEFAULT 0'
+            ];
+            for (const sql of alterPlaylists) {
+                await db.query(sql).catch(err => console.log('[DB MIGRATION] Coluna já existe ou erro:', err.message));
+            }
+
             console.log('[DATABASE] Tabelas PostgreSQL prontas!');
         } else {
             const run = (sql) => new Promise((resolve, reject) => {
@@ -108,9 +119,15 @@ const initializeTables = async () => {
 
             await run(usersTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('BOOLEAN DEFAULT true', 'INTEGER DEFAULT 1').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             await run(statsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
-            await run(playlistsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME').replace(/REFERENCES\s+users\(id\)\s+ON\s+DELETE\s+CASCADE/g, 'REFERENCES users(id) ON DELETE CASCADE'));
-            await run(progressTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME').replace(/REFERENCES\s+users\(id\)\s+ON\s+DELETE\s+CASCADE/g, 'REFERENCES users(id) ON DELETE CASCADE'));
+            await run(playlistsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
+            await run(progressTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             await run(logsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
+            
+            // SQLite migração básica
+            await run('ALTER TABLE user_playlists ADD COLUMN channelsCount INTEGER DEFAULT 0').catch(() => {});
+            await run('ALTER TABLE user_playlists ADD COLUMN moviesCount INTEGER DEFAULT 0').catch(() => {});
+            await run('ALTER TABLE user_playlists ADD COLUMN seriesCount INTEGER DEFAULT 0').catch(() => {});
+
             console.log('[DATABASE] Tabelas SQLite prontas!');
         }
     } catch (error) {

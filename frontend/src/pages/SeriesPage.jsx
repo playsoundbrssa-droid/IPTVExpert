@@ -6,7 +6,7 @@ import { FiSearch, FiLayers } from 'react-icons/fi';
 import { getSeriesBaseName, getBestSeriesLogo } from '../utils/seriesUtils';
 
 export default function SeriesPage() {
-    const { seriesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
+    const { seriesList, moviesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(50);
