@@ -575,29 +575,7 @@ export default function VideoPlayer() {
                                 <FiDownload size={22} />
                             </button>
 
-                            {/* Speed Selector */}
-                            <div className="relative">
-                                <button onClick={() => { setShowSpeedMenu(!showSpeedMenu); setShowQualityMenu(false); }} className={`p-2 transition-all ${showSpeedMenu ? 'text-primary' : 'text-white/70 hover:text-white'}`} title="Velocidade">
-                                    <FiSettings size={22} className={showSpeedMenu ? 'rotate-45' : ''} />
-                                </button>
-                                {showSpeedMenu && (
-                                    <div className="absolute bottom-12 right-0 bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl min-w-[120px] animate-fade-in-up">
-                                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map(rate => (
-                                            <button 
-                                                key={rate}
-                                                onClick={() => {
-                                                    videoRef.current.playbackRate = rate;
-                                                    setPlaybackRate(rate);
-                                                    setShowSpeedMenu(false);
-                                                }}
-                                                className={`w-full px-4 py-2.5 text-sm font-bold text-left hover:bg-white/10 transition-colors ${playbackRate === rate ? 'text-primary bg-primary/10' : 'text-white/70'}`}
-                                            >
-                                                {rate === 1 ? 'Normal' : `${rate}x`}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            {/* Speed Selector Removed */}
 
                             {/* PiP */}
                             <button onClick={handlePiP} className="p-2 text-white/70 hover:text-white transition-all hidden md:block" title="Picture-in-Picture">
@@ -611,9 +589,7 @@ export default function VideoPlayer() {
 
                             {/* Theater Mode Removed as requested */}
 
-                            <button onClick={() => { if (isFavorite) removeFavorite(currentStream.id); else addFavorite(currentStream); }} className={`p-2 transition-all ${isFavorite ? 'text-red-500' : 'text-white/70 hover:text-white'}`} title="Favoritos">
-                                <FiHeart size={22} fill={isFavorite ? 'currentColor' : 'none'} />
-                            </button>
+                            {/* Favorites Removed */}
                             
                             <button onClick={toggleFullscreen} className="p-2 text-white/70 hover:text-white transition-all" title="Tela Cheia">
                                 <FiMaximize size={22} />
