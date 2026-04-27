@@ -3,6 +3,7 @@ import { usePlaylistStore } from '../stores/usePlaylistStore';
 import MediaCard from '../components/Media/MediaCard';
 import CategoryFilter from '../components/Media/CategoryFilter';
 import { FiSearch, FiLayers } from 'react-icons/fi';
+import ContinueWatching from '../components/Media/ContinueWatching';
 import { getSeriesBaseName, getBestSeriesLogo } from '../utils/seriesUtils';
 
 export default function SeriesPage() {
@@ -202,6 +203,8 @@ export default function SeriesPage() {
                     Nenhuma série encontrada para sua busca.
                 </div>
             )}
+
+            <ContinueWatching />
         </div>
     );
 }

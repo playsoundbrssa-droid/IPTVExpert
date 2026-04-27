@@ -23,8 +23,6 @@ export default function VideoPlayer() {
     const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     
-    const [isMinimized, setIsMinimized] = useState(false);
-    const [isTheaterMode, setIsTheaterMode] = useState(false);
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
     const [error, setError] = useState(null);
@@ -168,12 +166,30 @@ export default function VideoPlayer() {
     }, []);
 
     const toggleFullscreen = () => {
+        if (!videoRef.current) return;
+        
+        const video = videoRef.current;
+        const container = containerRef.current;
+
+        // Suporte para iOS (Safari) - Maximização nativa do vídeo
+        if (video.webkitEnterFullscreen) {
+            video.webkitEnterFullscreen();
+            return;
+        }
+
+        // Suporte para Android/Desktop
         if (!document.fullscreenElement) {
-            containerRef.current.requestFullscreen().catch(err => {
-                console.error(`Erro ao entrar em fullscreen: ${err.message}`);
-            });
+            if (container.requestFullscreen) {
+                container.requestFullscreen();
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else if (container.msRequestFullscreen) {
+                container.msRequestFullscreen();
+            }
         } else {
-            document.exitFullscreen();
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
         }
     };
 
@@ -346,10 +362,8 @@ export default function VideoPlayer() {
     return (
         <div 
             ref={containerRef}
-            className={`fixed z-[999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center group/container
-                ${isMinimized ? 'w-72 h-40 rounded-2xl border border-white/10' : (isTheaterMode ? 'inset-x-0 top-0 h-[70vh] relative z-10' : 'inset-0')}
+            className={`fixed z-[999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center group/container inset-0
                 ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
-            style={isMinimized ? { bottom: position.y, right: position.x } : {}}
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
         >
@@ -361,11 +375,7 @@ export default function VideoPlayer() {
                 onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
                 onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
                 onClick={() => {
-                    if (isMinimized) {
-                        setIsMinimized(false);
-                    } else {
-                        setShowControls(!showControls);
-                    }
+                    setShowControls(!showControls);
                 }}
                 playsInline
                 autoPlay
@@ -373,7 +383,7 @@ export default function VideoPlayer() {
             />
 
             {/* Resume Prompt Overlay */}
-            {resumeData && !isMinimized && (
+            {resumeData && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center animate-fade-in">
                     <div className="bg-surface/90 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl text-center max-w-sm mx-4 transform animate-scale-up">
                         <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
@@ -412,25 +422,24 @@ export default function VideoPlayer() {
                 </div>
             )}
 
-            {/* Top Bar Controls */}
-            <div className={`absolute top-0 left-0 w-full p-4 lg:p-6 bg-gradient-to-b from-black/80 to-transparent transition-opacity duration-300 z-40
-                ${(showControls || isMinimized) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <div className="flex justify-between items-start">
-                    {!isMinimized && (
-                        <div className="flex flex-col gap-1">
-                            <h3 className="text-white text-lg lg:text-xl font-black truncate max-w-[200px] lg:max-w-xl shadow-sm">{currentStream.name}</h3>
-                            <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 bg-primary/20 text-primary text-[10px] font-black rounded border border-primary/20 uppercase tracking-widest">{currentStream.group}</span>
-                                {duration === 0 && <span className="flex items-center gap-1 text-[10px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> AO VIVO</span>}
-                            </div>
-                        </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setCurrentStream(null)} className="p-2.5 bg-black/40 backdrop-blur-md rounded-xl text-white/70 hover:text-white hover:bg-red-500 transition-all border border-white/5" title="Fechar">
-                            <FiX size={20} />
-                        </button>
+            {/* Repositioned Title/EPG Info (Middle-Left) */}
+            <div className={`absolute left-0 top-1/2 -translate-y-1/2 p-6 lg:p-10 bg-gradient-to-r from-black/80 to-transparent transition-all duration-500 z-40 max-w-[80%] lg:max-w-md
+                ${(showControls) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
+                <div className="flex flex-col gap-2">
+                    <h3 className="text-white text-2xl lg:text-4xl font-black leading-tight shadow-sm drop-shadow-2xl">{currentStream.name}</h3>
+                    <div className="flex items-center gap-3">
+                        <span className="px-3 py-1 bg-primary text-white text-[10px] lg:text-[12px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
+                        {duration === 0 && <span className="flex items-center gap-2 text-[10px] lg:text-[12px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-2 h-2 bg-red-500 rounded-full" /> AO VIVO</span>}
                     </div>
                 </div>
+            </div>
+
+            {/* Top Right Close Button */}
+            <div className={`absolute top-0 right-0 p-6 transition-opacity duration-300 z-40
+                ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <button onClick={() => setCurrentStream(null)} className="p-3 bg-black/40 backdrop-blur-md rounded-2xl text-white/70 hover:text-white hover:bg-red-500 transition-all border border-white/10 shadow-2xl" title="Fechar">
+                    <FiX size={24} />
+                </button>
             </div>
 
             {/* Middle Controls Indicator */}
@@ -567,10 +576,7 @@ export default function VideoPlayer() {
                                 </button>
                             )}
 
-                            {/* Theater Mode */}
-                            <button onClick={() => setIsTheaterMode(!isTheaterMode)} className={`p-2 transition-all hidden lg:block ${isTheaterMode ? 'text-primary' : 'text-white/70 hover:text-white'}`} title="Modo Teatro">
-                                <FiMonitor size={22} />
-                            </button>
+                            {/* Theater Mode Removed as requested */}
 
                             <button onClick={() => { if (isFavorite) removeFavorite(currentStream.id); else addFavorite(currentStream); }} className={`p-2 transition-all ${isFavorite ? 'text-red-500' : 'text-white/70 hover:text-white'}`} title="Favoritos">
                                 <FiHeart size={22} fill={isFavorite ? 'currentColor' : 'none'} />
