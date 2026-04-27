@@ -443,14 +443,14 @@ export default function VideoPlayer() {
                 </div>
             )}
 
-            {/* Repositioned Title/EPG Info (Middle-Left) - Subtle shadow instead of heavy bg */}
-            <div className={`absolute left-0 top-1/2 -translate-y-1/2 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[80%] lg:max-w-md
+            {/* Repositioned Title/EPG Info (Top-Left) */}
+            <div className={`absolute left-0 top-0 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[80%] lg:max-w-md
                 ${(showControls) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
-                <div className="flex flex-col gap-2">
-                    <h3 className="text-white text-2xl lg:text-4xl font-black leading-tight shadow-sm drop-shadow-2xl">{currentStream.name}</h3>
+                <div className="flex flex-col gap-1 md:gap-2">
+                    <h3 className="text-white text-xl lg:text-4xl font-black leading-tight drop-shadow-2xl">{currentStream.name}</h3>
                     <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 bg-primary text-white text-[10px] lg:text-[12px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
-                        {duration === 0 && <span className="flex items-center gap-2 text-[10px] lg:text-[12px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-2 h-2 bg-red-500 rounded-full" /> AO VIVO</span>}
+                        <span className="px-2 py-0.5 md:px-3 md:py-1 bg-primary text-white text-[9px] lg:text-[12px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
+                        {duration === 0 && <span className="flex items-center gap-1.5 md:gap-2 text-[9px] lg:text-[12px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> AO VIVO</span>}
                     </div>
                 </div>
             </div>
@@ -477,7 +477,8 @@ export default function VideoPlayer() {
                     {/* Previous */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); playPrev(); }} 
-                        className="w-10 h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/10"
+                        onTouchStart={(e) => { e.stopPropagation(); playPrev(); }}
+                        className="w-10 h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/10 active:bg-white/20"
                     >
                         <FiSkipBack size={24} />
                     </button>
@@ -485,7 +486,8 @@ export default function VideoPlayer() {
                     {/* -10s */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); seek(-10); }} 
-                        className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/10"
+                        onTouchStart={(e) => { e.stopPropagation(); seek(-10); }}
+                        className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/10 active:bg-white/20"
                     >
                         <FiRotateCcw size={22} />
                         <span className="text-[10px] font-black mt-1">10</span>
@@ -503,7 +505,8 @@ export default function VideoPlayer() {
                     {/* +10s */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); seek(10); }} 
-                        className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/10"
+                        onTouchStart={(e) => { e.stopPropagation(); seek(10); }}
+                        className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/10 active:bg-white/20"
                     >
                         <FiRotateCw size={22} />
                         <span className="text-[10px] font-black mt-1">10</span>
@@ -512,7 +515,8 @@ export default function VideoPlayer() {
                     {/* Next */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); playNext(); }} 
-                        className="w-10 h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/10"
+                        onTouchStart={(e) => { e.stopPropagation(); playNext(); }}
+                        className="w-10 h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/10 active:bg-white/20"
                     >
                         <FiSkipForward size={24} />
                     </button>
