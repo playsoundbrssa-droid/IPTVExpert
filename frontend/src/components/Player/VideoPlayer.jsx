@@ -37,7 +37,7 @@ export default function VideoPlayer() {
     const [showSpeedMenu, setShowSpeedMenu] = useState(false);
     const [showQualityMenu, setShowQualityMenu] = useState(false);
     const [airplayAvailable, setAirplayAvailable] = useState(false);
-    const [pendingResume, setPendingResume] = useState(null);
+    const [resumeData, setResumeData] = useState(null);
     
     const [position, setPosition] = useState({ x: 20, y: 20 });
     const [isDragging, setIsDragging] = useState(false);
@@ -220,13 +220,22 @@ export default function VideoPlayer() {
             
             if (response.data?.progress) {
                 const pos = response.data.progress.last_position;
-                if (pos > 10 && videoRef.current) {
-                    setPendingResume(pos);
+                if (pos > 10) {
+                    setResumeData(pos);
                 }
             }
         } catch (error) {
             console.warn('[PROGRESS] Falha ao carregar:', error.message);
         }
+    };
+
+    const handleResume = (shouldResume) => {
+        if (shouldResume && videoRef.current && resumeData) {
+            videoRef.current.currentTime = resumeData;
+            videoRef.current.play().catch(() => {});
+            toast.success(`Continuando de ${formatTime(resumeData)}`, { icon: '🕒' });
+        }
+        setResumeData(null);
     };
 
     const saveProgress = async () => {
@@ -351,11 +360,44 @@ export default function VideoPlayer() {
                 onPlaying={() => setIsBuffering(false)}
                 onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
                 onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
-                onClick={() => isMinimized ? setIsMinimized(false) : togglePlay()}
+                onClick={() => {
+                    if (isMinimized) {
+                        setIsMinimized(false);
+                    } else {
+                        setShowControls(!showControls);
+                    }
+                }}
                 playsInline
                 autoPlay
                 x-webkit-airplay="allow"
             />
+
+            {/* Resume Prompt Overlay */}
+            {resumeData && !isMinimized && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center animate-fade-in">
+                    <div className="bg-surface/90 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl text-center max-w-sm mx-4 transform animate-scale-up">
+                        <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                            <FiRotateCw size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-white mb-2">Continuar assistindo?</h3>
+                        <p className="text-gray-400 text-sm mb-8 font-medium">Você parou em <span className="text-white font-bold">{formatTime(resumeData)}</span>. Como deseja prosseguir?</p>
+                        <div className="grid grid-cols-1 gap-3">
+                            <button 
+                                onClick={() => handleResume(true)}
+                                className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-wider hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20"
+                            >
+                                Continuar de onde parei
+                            </button>
+                            <button 
+                                onClick={() => handleResume(false)}
+                                className="w-full py-4 bg-white/5 text-white/70 hover:text-white rounded-2xl font-black uppercase tracking-wider hover:bg-white/10 transition-all"
+                            >
+                                Começar do início
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {isBuffering && !error && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
@@ -385,8 +427,18 @@ export default function VideoPlayer() {
                     )}
                     <div className="flex items-center gap-2">
                         {!isMinimized && (
-                            <button onClick={() => setIsMinimized(true)} className="p-2.5 bg-black/40 backdrop-blur-md rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all border border-white/5" title="Minimizar">
-                                <FiMinimize2 size={20} />
+                            <button 
+                                onClick={() => {
+                                    if (document.pictureInPictureEnabled) {
+                                        handlePiP();
+                                    } else {
+                                        setIsMinimized(true);
+                                    }
+                                }} 
+                                className="p-2.5 bg-black/40 backdrop-blur-md rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all border border-white/5" 
+                                title="Picture-in-Picture"
+                            >
+                                <FiSquare size={20} />
                             </button>
                         )}
                         <button onClick={() => setCurrentStream(null)} className="p-2.5 bg-black/40 backdrop-blur-md rounded-xl text-white/70 hover:text-white hover:bg-red-500 transition-all border border-white/5" title="Fechar">
@@ -423,44 +475,6 @@ export default function VideoPlayer() {
                         <FiRotateCw size={24} />
                         <span className="text-[10px] font-black mt-1">10</span>
                     </button>
-                </div>
-            )}
-
-            {/* Resume Playback Dialog */}
-            {!isMinimized && pendingResume && (
-                <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-                    <div className="bg-surface/90 border border-white/10 p-6 lg:p-10 rounded-[2rem] max-w-sm w-full text-center shadow-2xl space-y-6">
-                        <div className="w-20 h-20 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                            <FiRotateCw size={40} className="animate-spin-slow" />
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="text-2xl font-black text-white">Continuar de onde parou?</h3>
-                            <p className="text-gray-400 font-medium">Identificamos que você já começou este vídeo. Deseja retomar de <span className="text-primary font-bold">{formatTime(pendingResume)}</span>?</p>
-                        </div>
-                        <div className="flex flex-col gap-3">
-                            <button 
-                                onClick={() => {
-                                    videoRef.current.currentTime = pendingResume;
-                                    setPendingResume(null);
-                                    videoRef.current.play();
-                                    toast.success('Retomando reprodução...', { icon: '🕒' });
-                                }}
-                                className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-                            >
-                                CONTINUAR ASSISTINDO
-                            </button>
-                            <button 
-                                onClick={() => {
-                                    setPendingResume(null);
-                                    videoRef.current.currentTime = 0;
-                                    videoRef.current.play();
-                                }}
-                                className="w-full py-4 bg-white/5 text-white/70 font-bold rounded-2xl hover:bg-white/10 transition-all"
-                            >
-                                Começar do início
-                            </button>
-                        </div>
-                    </div>
                 </div>
             )}
 
