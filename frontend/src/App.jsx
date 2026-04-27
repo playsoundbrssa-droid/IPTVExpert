@@ -75,7 +75,7 @@ function App() {
                         <Route path="/live-tv" element={<LiveTvPage />} />
                         <Route path="/movies" element={<MoviesPage />} />
                         <Route path="/series" element={<SeriesPage />} />
-                        <Route path="/highlights" element={<HighlightsPage />} />
+                        <Route path="/favorites" element={<FavoritesPage />} />
                         <Route path="/favorites" element={<FavoritesPage />} />
                         <Route path="/settings" element={<SettingsPage />} />
                         {user?.role === 'admin' && (

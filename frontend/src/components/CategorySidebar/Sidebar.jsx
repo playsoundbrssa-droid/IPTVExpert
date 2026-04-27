@@ -7,7 +7,6 @@ export default function Sidebar({ onImportClick }) {
 
     const navItems = [
         { path: '/', icon: FiHome, label: 'Início' },
-        { path: '/highlights', icon: FiTrendingUp, label: 'Destaques' },
         { path: '/favorites', icon: FiHeart, label: 'Favoritos' },
         { path: '/live-tv', icon: FiTv, label: 'TV ao Vivo' },
         { path: '/movies', icon: FiFilm, label: 'Filmes' },

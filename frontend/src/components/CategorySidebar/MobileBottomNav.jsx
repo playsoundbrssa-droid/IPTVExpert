@@ -7,7 +7,6 @@ export default function MobileBottomNav() {
         { path: '/live-tv', icon: FiTv, label: 'Ao Vivo' },
         { path: '/movies', icon: FiFilm, label: 'Filmes' },
         { path: '/series', icon: FiVideo, label: 'Séries' },
-        { path: '/highlights', icon: FiStar, label: 'Destaques' },
         { path: '/settings', icon: FiSettings, label: 'Ajustes' },
     ];
 

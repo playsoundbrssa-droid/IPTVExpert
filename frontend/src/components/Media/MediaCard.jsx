@@ -4,11 +4,17 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import toast from 'react-hot-toast';
 import { getProxyUrl } from '../../services/api';
+import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
+import { useNavigate } from 'react-router-dom';
 
 export default function MediaCard({ item, type, playlist = [] }) {
     const { addFavorite, removeFavorite, favorites } = usePlaylistStore();
     const { setCurrentStream } = usePlayerStore();
     const { setSelectedMediaDetails } = usePlaylistStore();
+    const { getActivePlaylist } = usePlaylistManagerStore();
+    const navigate = useNavigate();
+    
+    const activePlaylist = getActivePlaylist();
     
     const isFavorite = favorites.some(f => f.id === item.id);
 
@@ -25,6 +31,13 @@ export default function MediaCard({ item, type, playlist = [] }) {
 
     const handleDownload = (e) => {
         e.stopPropagation();
+        
+        if (!activePlaylist) {
+            toast.error('Adicione uma lista nas configurações para fazer downloads.');
+            navigate('/settings');
+            return;
+        }
+
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         const rawUrl = item.streamUrl || item.url;
         
@@ -42,6 +55,12 @@ export default function MediaCard({ item, type, playlist = [] }) {
     };
 
     const handlePlay = () => {
+        if (!activePlaylist) {
+            toast.error('Você precisa de uma lista ativa para assistir.');
+            navigate('/settings');
+            return;
+        }
+
         if (type === 'movie' || type === 'series') {
             setSelectedMediaDetails({ ...item, type });
         } else {
