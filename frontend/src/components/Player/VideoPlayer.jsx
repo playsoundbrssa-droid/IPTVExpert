@@ -308,6 +308,22 @@ export default function VideoPlayer() {
     }, [currentStream, useProxy, initPlayer]);
 
     useEffect(() => {
+        const handleVisibilityChange = async () => {
+            if (document.visibilityState === 'hidden' && videoRef.current && isPlaying && !error) {
+                try {
+                    if (document.pictureInPictureEnabled && videoRef.current !== document.pictureInPictureElement) {
+                        await videoRef.current.requestPictureInPicture();
+                    }
+                } catch (e) {
+                    console.warn('[PiP] Auto-PiP failed:', e);
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [isPlaying, error]);
+
+    useEffect(() => {
         let timeout;
         const resetTimer = () => {
             setShowControls(true);

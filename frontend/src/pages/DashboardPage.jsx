@@ -56,7 +56,7 @@ export default function DashboardPage() {
     // Pegar amostras para o Dashboard
     const dashboardData = useMemo(() => {
         const isAdult = (item) => {
-            const forbidden = [/adulto/i, /xxx/i, /sexo/i, /porno/i, /sexy/i, /+18/i, /18+/i, /hentai/i];
+            const forbidden = [/adulto/i, /xxx/i, /sexo/i, /porno/i, /sexy/i, /\+18/i, /18\+/i, /hentai/i];
             const text = `${item.name} ${item.group}`.toLowerCase();
             return forbidden.some(regex => regex.test(text));
         };
