@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FiPlay, FiX, FiClock } from 'react-icons/fi';
+import { FiPlay, FiX, FiClock, FiTv, FiFilm } from 'react-icons/fi';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
@@ -9,6 +9,7 @@ export default function ContinueWatching() {
     const [lastWatched, setLastWatched] = useState([]);
     const [isVisible, setIsVisible] = useState(true);
     const { setCurrentStream } = usePlayerStore();
+    const { setSelectedMediaDetails } = usePlaylistStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
     const { moviesList, seriesList, channelsList } = usePlaylistStore();
 
@@ -23,14 +24,11 @@ export default function ContinueWatching() {
                 });
 
                 if (response.data?.progress) {
-                    // Ordenar por data (se houver) e pegar os 3 últimos
-                    // Como o backend atual não retorna data no select, pegamos os últimos da lista
                     const recent = response.data.progress
                         .filter(p => (p.last_position / p.duration) < 0.95) // Não terminados
-                        .slice(-3)
+                        .slice(-4)
                         .reverse();
 
-                    // Mapear detalhes da mídia
                     const detailed = recent.map(progress => {
                         const allMedia = [...moviesList, ...seriesList, ...channelsList];
                         const item = allMedia.find(m => String(m.id) === String(progress.media_id));
@@ -50,7 +48,15 @@ export default function ContinueWatching() {
         fetchRecentProgress();
     }, [moviesList, seriesList, channelsList, getActivePlaylist]);
 
-    if (!isVisible || lastWatched.length === 0) return null;
+    const handleContinue = (item) => {
+        if (item.type === 'series') {
+            // Para séries, abre o modal de detalhes para escolher continuar pelo episódio certo
+            setSelectedMediaDetails({ ...item, continueFrom: item.progress.last_position });
+        } else {
+            // Para filmes e canais, continua direto
+            setCurrentStream(item);
+        }
+    };
 
     return (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-[95%] max-w-4xl animate-fade-in-up">
@@ -65,21 +71,28 @@ export default function ContinueWatching() {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {lastWatched.map((item) => (
                         <div 
                             key={item.id}
-                            onClick={() => setCurrentStream(item)}
+                            onClick={() => handleContinue(item)}
                             className="group relative bg-white/5 hover:bg-white/10 rounded-2xl p-3 flex items-center gap-4 cursor-pointer transition-all border border-white/5 hover:border-primary/30"
                         >
                             <div className="relative w-16 h-20 flex-shrink-0 rounded-xl overflow-hidden shadow-lg">
                                 <img 
-                                    src={item.stream_icon || item.cover || 'https://via.placeholder.com/150'} 
+                                    src={item.stream_icon || item.cover || item.logo || 'https://via.placeholder.com/150'} 
                                     alt={item.name}
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                 />
                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     <FiPlay className="text-white fill-white" size={20} />
+                                </div>
+                                {/* Type badge */}
+                                <div className="absolute top-1 left-1">
+                                    {item.type === 'series' ? 
+                                        <FiTv size={10} className="text-white drop-shadow" /> : 
+                                        <FiFilm size={10} className="text-white drop-shadow" />
+                                    }
                                 </div>
                             </div>
                             

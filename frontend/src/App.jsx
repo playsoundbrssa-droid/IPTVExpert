@@ -22,7 +22,10 @@ import MobileBottomNav from './components/CategorySidebar/MobileBottomNav';
 import { FiPlus } from 'react-icons/fi';
 import { applyTheme } from './hooks/useTheme';
 
-const toasterStyle = { style: { background: '#1E1E1E', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } };
+const toasterStyle = { 
+    style: { background: '#1E1E1E', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
+    duration: 4000,
+};
 
 function App() {
     const { isAuthenticated, init, user } = useUserStore();
