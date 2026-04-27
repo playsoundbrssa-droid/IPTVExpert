@@ -5,7 +5,8 @@ import {
     FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
     FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiMinimize2, FiSkipBack, FiSkipForward,
-    FiSettings, FiDownload, FiAirplay, FiSquare, FiMonitor
+    FiSettings, FiDownload, FiAirplay, FiSquare, FiMonitor,
+    FiRotateCcw, FiRotateCw
 } from 'react-icons/fi';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
@@ -169,6 +170,12 @@ export default function VideoPlayer() {
         }
     };
 
+    const seek = (seconds) => {
+        if (videoRef.current) {
+            videoRef.current.currentTime += seconds;
+        }
+    };
+
     useEffect(() => {
         if (!videoRef.current) return;
         if (isPlaying) {
@@ -297,12 +304,34 @@ export default function VideoPlayer() {
                 </div>
             </div>
 
-            {/* Middle Play/Pause Indicator (Optional, like YT) */}
+            {/* Middle Controls Indicator */}
             {!isMinimized && !isBuffering && (
-                <button onClick={togglePlay} className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-all z-30
-                    ${(showControls) ? 'opacity-100 scale-100' : 'opacity-0 scale-150 pointer-events-none'}`}>
-                    {isPlaying ? <FiPause size={40} /> : <FiPlay size={40} className="ml-1" />}
-                </button>
+                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-8 lg:gap-20 transition-all z-30
+                    ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    
+                    {/* -10s */}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); seek(-10); }} 
+                        className="w-12 h-12 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/5"
+                    >
+                        <FiRotateCcw size={24} />
+                        <span className="text-[10px] font-black mt-1">10</span>
+                    </button>
+
+                    {/* Play/Pause */}
+                    <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-20 h-20 lg:w-28 lg:h-28 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform border border-white/10 shadow-2xl">
+                        {isPlaying ? <FiPause size={40} className="lg:size-56" /> : <FiPlay size={40} className="lg:size-56 ml-2" />}
+                    </button>
+
+                    {/* +10s */}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); seek(10); }} 
+                        className="w-12 h-12 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/5"
+                    >
+                        <FiRotateCw size={24} />
+                        <span className="text-[10px] font-black mt-1">10</span>
+                    </button>
+                </div>
             )}
 
             {/* Bottom Controls Overlay */}
