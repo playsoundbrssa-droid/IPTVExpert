@@ -219,14 +219,18 @@ export default function SettingsPage() {
             {/* Profile Section */}
             <div className="glass-panel p-8 rounded-3xl border-white/10">
                 <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 text-primary">
-                        <FiUser size={40} />
+                    <div className="w-20 h-20 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 text-primary overflow-hidden">
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <FiUser size={40} />
+                        )}
                     </div>
                     <div>
                         <h2 className="text-xl font-bold">{user?.name}</h2>
                         <p className="text-gray-500">{user?.email}</p>
                         <span className="inline-block mt-2 px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold uppercase tracking-wider text-gray-400 border border-white/10">
-                            ID: {user?.id} · {user?.role}
+                            {user?.role === 'admin' ? 'Administrador' : 'Usuário'}
                         </span>
                     </div>
                 </div>

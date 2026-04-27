@@ -6,7 +6,7 @@ import {
     FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiMinimize2, FiSkipBack, FiSkipForward,
     FiSettings, FiDownload, FiAirplay, FiSquare, FiMonitor,
-    FiRotateCcw, FiRotateCw
+    FiRotateCcw, FiRotateCw, FiLogOut
 } from 'react-icons/fi';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
@@ -433,8 +433,13 @@ export default function VideoPlayer() {
             {/* Top Right Close Button */}
             <div className={`absolute top-0 right-0 p-6 transition-opacity duration-300 z-40
                 ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <button onClick={() => setCurrentStream(null)} className="p-3 bg-black/40 backdrop-blur-md rounded-2xl text-white/70 hover:text-white hover:bg-red-500 transition-all border border-white/10 shadow-2xl" title="Fechar">
-                    <FiX size={24} />
+                <button 
+                    onClick={() => setCurrentStream(null)} 
+                    className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-2xl shadow-red-600/30 border border-white/10 group/exit" 
+                    title="Parar Reprodução"
+                >
+                    <FiLogOut size={18} className="group-hover/exit:-translate-x-1 transition-transform" />
+                    <span>Sair do Player</span>
                 </button>
             </div>
 
