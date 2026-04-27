@@ -155,13 +155,10 @@ export default function VideoPlayer() {
                 setAirplayAvailable(event.availability === 'available');
             };
             video.addEventListener('webkitplaybacktargetavailabilitychanged', handler);
-            
-            // Forçar uma verificação inicial se possível
-            if (video.webkitPlaybackTargetAvailability) {
-                setAirplayAvailable(video.webkitPlaybackTargetAvailability === 'available');
-            }
-
             return () => video.removeEventListener('webkitplaybacktargetavailabilitychanged', handler);
+        } else if (video.remote && video.remote.state !== 'unavailable') {
+            // Suporte a Remote Playback (Chrome/Android)
+            setAirplayAvailable(true);
         }
     }, []);
 
@@ -217,9 +214,17 @@ export default function VideoPlayer() {
         }
     };
 
-    const handleAirPlay = () => {
+    const handleAirPlay = async () => {
         if (videoRef.current?.webkitShowPlaybackTargetPicker) {
             videoRef.current.webkitShowPlaybackTargetPicker();
+        } else if (videoRef.current?.remote) {
+            try {
+                await videoRef.current.remote.prompt();
+            } catch (e) {
+                console.error('Cast Error:', e);
+            }
+        } else {
+            toast.error('Transmissão não suportada neste navegador.');
         }
     };
 
@@ -392,6 +397,7 @@ export default function VideoPlayer() {
                 playsInline
                 autoPlay
                 x-webkit-airplay="allow"
+                webkit-playsinline="true"
             />
 
             {/* Resume Prompt Overlay */}
@@ -434,8 +440,8 @@ export default function VideoPlayer() {
                 </div>
             )}
 
-            {/* Repositioned Title/EPG Info (Middle-Left) */}
-            <div className={`absolute left-0 top-1/2 -translate-y-1/2 p-6 lg:p-10 bg-gradient-to-r from-black/80 to-transparent transition-all duration-500 z-40 max-w-[80%] lg:max-w-md
+            {/* Repositioned Title/EPG Info (Middle-Left) - Subtle shadow instead of heavy bg */}
+            <div className={`absolute left-0 top-1/2 -translate-y-1/2 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[80%] lg:max-w-md
                 ${(showControls) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
                 <div className="flex flex-col gap-2">
                     <h3 className="text-white text-2xl lg:text-4xl font-black leading-tight shadow-sm drop-shadow-2xl">{currentStream.name}</h3>
@@ -452,23 +458,11 @@ export default function VideoPlayer() {
                 
                 <button 
                     onClick={() => setCurrentStream(null)} 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/back" 
-                    title="Voltar para Episódios / Menu"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
+                    title="Sair da Reprodução"
                 >
-                    <FiChevronLeft size={18} className="group-hover/back:-translate-x-1 transition-transform" />
+                    <FiChevronLeft size={18} className="group-hover/exit:-translate-x-1 transition-transform" />
                     <span>Voltar</span>
-                </button>
-
-                <button 
-                    onClick={() => {
-                        // Sair do Player agora também volta para o menu de episódios/sinopse
-                        setCurrentStream(null);
-                    }} 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-2xl shadow-red-600/30 border border-white/10 group/exit" 
-                    title="Fechar Player"
-                >
-                    <FiLogOut size={18} />
-                    <span>Sair do Player</span>
                 </button>
             </div>
 
@@ -480,7 +474,7 @@ export default function VideoPlayer() {
                     {/* Previous */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); playPrev(); }} 
-                        className="w-10 h-10 lg:w-14 lg:h-14 bg-black/30 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/5"
+                        className="w-10 h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/10"
                     >
                         <FiSkipBack size={24} />
                     </button>
@@ -488,21 +482,21 @@ export default function VideoPlayer() {
                     {/* -10s */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); seek(-10); }} 
-                        className="w-12 h-12 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/5"
+                        className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/10"
                     >
                         <FiRotateCcw size={22} />
                         <span className="text-[10px] font-black mt-1">10</span>
                     </button>
 
                     {/* Play/Pause */}
-                    <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-20 h-20 lg:w-28 lg:h-28 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform border border-white/10 shadow-2xl">
+                    <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-20 h-20 lg:w-28 lg:h-28 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform border border-white/20 shadow-2xl">
                         {isPlaying ? <FiPause size={48} /> : <FiPlay size={48} className="ml-2" />}
                     </button>
 
                     {/* +10s */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); seek(10); }} 
-                        className="w-12 h-12 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/5"
+                        className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/10"
                     >
                         <FiRotateCw size={22} />
                         <span className="text-[10px] font-black mt-1">10</span>
@@ -511,7 +505,7 @@ export default function VideoPlayer() {
                     {/* Next */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); playNext(); }} 
-                        className="w-10 h-10 lg:w-14 lg:h-14 bg-black/30 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/5"
+                        className="w-10 h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/10"
                     >
                         <FiSkipForward size={24} />
                     </button>
@@ -520,7 +514,7 @@ export default function VideoPlayer() {
 
             {/* Bottom Controls Overlay */}
             {(
-                <div className={`absolute bottom-0 left-0 w-full p-4 lg:p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-300 z-40
+                <div className={`absolute bottom-0 left-0 w-full p-4 lg:p-6 bg-gradient-to-t from-black/60 to-transparent transition-opacity duration-300 z-40
                     ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                     
                     {/* Progress Bar (YouTube style) */}
@@ -599,12 +593,10 @@ export default function VideoPlayer() {
                                 <FiSquare size={22} />
                             </button>
 
-                            {/* AirPlay */}
-                            {airplayAvailable && (
-                                <button onClick={handleAirPlay} className="p-2 text-white/70 hover:text-white transition-all" title="AirPlay">
-                                    <FiAirplay size={22} />
-                                </button>
-                            )}
+                            {/* Transmitir (AirPlay / Cast) */}
+                            <button onClick={handleAirPlay} className={`p-2 transition-all ${airplayAvailable ? 'text-primary' : 'text-white/30'}`} title="Transmitir Tela">
+                                <FiAirplay size={22} />
+                            </button>
 
                             {/* Theater Mode Removed as requested */}
 

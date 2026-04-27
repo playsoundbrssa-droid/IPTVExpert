@@ -251,7 +251,7 @@ export default function MediaDetailModal() {
                             <Dialog.Panel className="relative w-full bg-surface/40 border border-white/10 md:rounded-[2.5rem] overflow-hidden shadow-2xl h-screen md:h-auto md:max-h-[90vh] flex flex-col">
                                 
                                 {/* Background Image & Overlay */}
-                                <div className="absolute inset-0 -z-10 h-[60%] overflow-hidden">
+                                <div className="absolute inset-0 -z-10 h-[40%] md:h-[60%] overflow-hidden">
                                     <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent z-10" />
                                     <img 
                                         src={backdropUrl}
@@ -272,9 +272,9 @@ export default function MediaDetailModal() {
                                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12">
                                     <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-10">
                                         
-                                        {/* Poster Column */}
+                                        {/* Poster Column - Better sizing on mobile */}
                                         <div className="flex flex-col items-center gap-6">
-                                            <div className="w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
+                                            <div className="w-48 md:w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group shrink-0">
                                                 <img 
                                                     src={metadata?.posterPath || selectedMediaDetails.logo}
                                                     alt={selectedMediaDetails.name}
