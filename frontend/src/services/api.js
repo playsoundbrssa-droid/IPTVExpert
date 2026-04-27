@@ -27,4 +27,10 @@ api.interceptors.response.use(
     }
 );
 
+export const getProxyUrl = (url, isFetch = false) => {
+    if (!url) return '';
+    const endpoint = isFetch ? 'proxy/fetch' : 'proxy/stream';
+    return `${baseURL}/${endpoint}?url=${encodeURIComponent(url)}`;
+};
+
 export default api;
