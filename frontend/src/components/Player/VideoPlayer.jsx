@@ -461,14 +461,13 @@ export default function VideoPlayer() {
 
                 <button 
                     onClick={() => {
-                        const { setSelectedMediaDetails } = usePlaylistStore.getState();
+                        // Sair do Player agora também volta para o menu de episódios/sinopse
                         setCurrentStream(null);
-                        setSelectedMediaDetails(null);
                     }} 
                     className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-2xl shadow-red-600/30 border border-white/10 group/exit" 
-                    title="Fechar Tudo"
+                    title="Fechar Player"
                 >
-                    <FiX size={18} />
+                    <FiLogOut size={18} />
                     <span>Sair do Player</span>
                 </button>
             </div>
