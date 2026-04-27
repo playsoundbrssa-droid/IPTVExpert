@@ -97,6 +97,16 @@ exports.getSeriesInfo = async (req, res, next) => {
     }
 };
 
+exports.getVodInfo = async (req, res, next) => {
+    try {
+        const { server, username, password, vod_id } = req.query;
+        const info = await xtreamApiService.getVodInfo(server, username, password, vod_id);
+        res.json(info);
+    } catch (error) {
+        next(error);
+    }
+};
+
 exports.getShortEPG = async (req, res, next) => {
     try {
         const { server, username, password, stream_id } = req.query;

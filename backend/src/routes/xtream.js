@@ -34,6 +34,7 @@ router.get('/vod-streams', auth, xtreamValidations, xtreamController.getVodStrea
 router.get('/series-categories', auth, xtreamValidations, xtreamController.getSeriesCategories);
 router.get('/series', auth, xtreamValidations, xtreamController.getSeries);
 router.get('/series-info', auth, xtreamValidations, xtreamController.getSeriesInfo);
+router.get('/vod-info', auth, xtreamValidations, xtreamController.getVodInfo);
 router.get('/short-epg', auth, xtreamValidations, xtreamController.getShortEPG);
 
 module.exports = router;

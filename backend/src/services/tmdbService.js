@@ -3,13 +3,27 @@ const axios = require('axios');
 const TMDB_API_KEY = process.env.TMDB_API_KEY || '6f926673a3ad4681602052402120e24c'; // Chave de teste pública comum
 const BASE_URL = 'https://api.themoviedb.org/3';
 
+const cleanTitle = (title) => {
+    if (!title) return '';
+    return title
+        .replace(/\d{4}/g, '') // Remove anos (2023, 2024, etc)
+        .replace(/\(.*\)/g, '') // Remove conteúdo entre parênteses
+        .replace(/\[.*\]/g, '') // Remove conteúdo entre colchetes
+        .replace(/4k|1080p|720p|hdtv|s\d+e\d+|dual|legendado|dublado|multi/gi, '') // Remove tags comuns
+        .replace(/\s+/g, ' ') // Normaliza espaços
+        .trim();
+};
+
 exports.searchMedia = async (title, type = 'movie') => {
     try {
+        const cleanedTitle = cleanTitle(title);
+        console.log(`[TMDB SEARCH] Original: "${title}" | Cleaned: "${cleanedTitle}"`);
+
         const searchPath = type === 'series' ? 'tv' : 'movie';
         const response = await axios.get(`${BASE_URL}/search/${searchPath}`, {
             params: {
                 api_key: TMDB_API_KEY,
-                query: title,
+                query: cleanedTitle,
                 language: 'pt-BR'
             }
         });

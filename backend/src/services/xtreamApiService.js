@@ -98,6 +98,7 @@ exports.getVodStreams = (serverUrl, username, password, categoryId) => makeReque
 exports.getSeriesCategories = (serverUrl, username, password) => makeRequest(serverUrl, username, password, 'get_series_categories');
 exports.getSeries = (serverUrl, username, password, categoryId) => makeRequest(serverUrl, username, password, 'get_series', categoryId ? { category_id: categoryId } : {});
 exports.getSeriesInfo = (serverUrl, username, password, seriesId) => makeRequest(serverUrl, username, password, 'get_series_info', { series_id: seriesId });
+exports.getVodInfo = (serverUrl, username, password, vodId) => makeRequest(serverUrl, username, password, 'get_vod_info', { vod_id: vodId });
 exports.getShortEPG = (serverUrl, username, password, streamId) => makeRequest(serverUrl, username, password, 'get_short_epg', { stream_id: streamId });
 
 exports.importAsPlaylist = async (serverUrl, username, password) => {

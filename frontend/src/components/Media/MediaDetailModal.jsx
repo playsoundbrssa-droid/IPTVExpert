@@ -19,7 +19,9 @@ export default function MediaDetailModal() {
 
     const { getActivePlaylist } = usePlaylistManagerStore();
     const [xtreamEpisodes, setXtreamEpisodes] = useState(null);
+    const [xtreamInfo, setXtreamInfo] = useState(null);
     const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+    const [loadingXtream, setLoadingXtream] = useState(false);
 
     const isFavorite = favorites.some(f => f.id === selectedMediaDetails?.id);
 
@@ -31,10 +33,13 @@ export default function MediaDetailModal() {
             const isXtream = selectedMediaDetails.id.includes('xtream_');
             if (selectedMediaDetails.type === 'series' && isXtream) {
                 fetchXtreamSeriesInfo();
+            } else if (selectedMediaDetails.type === 'movie' && isXtream) {
+                fetchXtreamMovieInfo();
             }
         } else {
             setMetadata(null);
             setXtreamEpisodes(null);
+            setXtreamInfo(null);
         }
     }, [selectedMediaDetails]);
 
@@ -42,10 +47,10 @@ export default function MediaDetailModal() {
         const active = getActivePlaylist();
         if (!active || active.type !== 'xtream') return;
         
-        setXtreamEpisodes(null); // Limpar lista anterior
+        setXtreamEpisodes(null);
         setLoadingEpisodes(true);
+        setLoadingXtream(true);
         try {
-            // Extrair o ID numérico final (suporta 'xtream_series_123' ou 'series_group_xtream_series_123')
             const seriesId = selectedMediaDetails.id.split('_').filter(Boolean).pop();
             const { server, username, password } = active.config;
             
@@ -53,31 +58,58 @@ export default function MediaDetailModal() {
                 params: { server, username, password, series_id: seriesId }
             });
             
-            if (response.data && response.data.episodes) {
-                // O Xtream retorna episódios agrupados por temporadas
-                // Precisamos normalizá-los para o formato que o organizeBySeasons espera
-                const normalized = [];
-                Object.keys(response.data.episodes).forEach(seasonNum => {
-                    response.data.episodes[seasonNum].forEach(ep => {
-                        const base = server.replace(/\/$/, '');
-                        normalized.push({
-                            id: `xtream_ep_${ep.id}`,
-                            name: ep.title,
-                            logo: ep.info?.movie_image || selectedMediaDetails.logo,
-                            streamUrl: `${base}/series/${username}/${password}/${ep.id}.${ep.container_extension || 'mp4'}`,
-                            season: parseInt(seasonNum),
-                            episode: parseInt(ep.episode_num),
-                            order: parseInt(ep.episode_num)
+            if (response.data) {
+                if (response.data.info) {
+                    setXtreamInfo(response.data.info);
+                }
+
+                if (response.data.episodes) {
+                    const normalized = [];
+                    Object.keys(response.data.episodes).forEach(seasonNum => {
+                        response.data.episodes[seasonNum].forEach(ep => {
+                            const base = server.replace(/\/$/, '');
+                            normalized.push({
+                                id: `xtream_ep_${ep.id}`,
+                                name: ep.title,
+                                logo: ep.info?.movie_image || selectedMediaDetails.logo,
+                                streamUrl: `${base}/series/${username}/${password}/${ep.id}.${ep.container_extension || 'mp4'}`,
+                                season: parseInt(seasonNum),
+                                episode: parseInt(ep.episode_num),
+                                order: parseInt(ep.episode_num)
+                            });
                         });
                     });
-                });
-                setXtreamEpisodes(normalized);
+                    setXtreamEpisodes(normalized);
+                }
             }
         } catch (error) {
             console.error('Erro ao buscar episódios Xtream:', error);
-            toast.error('Erro ao carregar episódios do servidor.');
         } finally {
             setLoadingEpisodes(false);
+            setLoadingXtream(false);
+        }
+    };
+
+    const fetchXtreamMovieInfo = async () => {
+        const active = getActivePlaylist();
+        if (!active || active.type !== 'xtream') return;
+        
+        setLoadingXtream(true);
+        try {
+            const vodId = selectedMediaDetails.id.split('_').filter(Boolean).pop();
+            const { server, username, password } = active.config;
+            
+            const response = await api.get('/xtream/vod-info', {
+                params: { server, username, password, vod_id: vodId }
+            });
+            
+            if (response.data && response.data.info) {
+                setXtreamInfo(response.data.info);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar info Xtream VOD:', error);
+        } finally {
+            setLoadingXtream(false);
         }
     };
 
@@ -260,10 +292,10 @@ export default function MediaDetailModal() {
                                             <div className="space-y-4">
                                                 <h3 className="text-lg font-bold text-gray-300">Sinopse</h3>
                                                 <p className="text-gray-400 leading-relaxed text-base md:text-lg max-w-3xl font-medium">
-                                                    {loading ? (
+                                                    {(loading || loadingXtream) ? (
                                                         <span className="animate-pulse">Buscando informações detalhadas...</span>
                                                     ) : (
-                                                        metadata?.overview || 'Nenhuma descrição disponível para este conteúdo.'
+                                                        metadata?.overview || xtreamInfo?.plot || xtreamInfo?.description || 'Nenhuma descrição disponível para este conteúdo.'
                                                     )}
                                                 </p>
                                             </div>
