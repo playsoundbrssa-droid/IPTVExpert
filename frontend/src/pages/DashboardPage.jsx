@@ -3,7 +3,6 @@ import { usePlaylistStore } from '../stores/usePlaylistStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import MediaCard from '../components/Media/MediaCard';
 import { FiTv, FiFilm, FiLayers, FiChevronLeft, FiChevronRight, FiPlay } from 'react-icons/fi';
-import ContinueWatching from '../components/Media/ContinueWatching';
 
 const CarouselRow = memo(({ title, icon: Icon, items, type }) => {
     const scrollRef = useRef(null);
@@ -119,7 +118,6 @@ export default function DashboardPage() {
                 <CarouselRow title="SÉRIES" icon={FiLayers} items={dashboardData.series} type="series" />
             </div>
 
-            <ContinueWatching />
         </div>
     );
 }
