@@ -7,15 +7,18 @@ export const organizeBySeasons = (episodes) => {
     episodes.forEach((ep) => {
         const name = ep.name || '';
         
-        // Padrões comuns: S01E01, 1x01, Season 1 Episode 1
-        let seasonNum = 1;
-        let episodeNum = 1;
+        // Se já tiver metadados de temporada (ex: Xtream), usa eles
+        let seasonNum = ep.season || 1;
+        let episodeNum = ep.episode || ep.order || 1;
 
-        const sMatch = name.match(/s(\d+)/i) || name.match(/(\d+)x/i) || name.match(/temporada\s+(\d+)/i);
-        const eMatch = name.match(/e(\d+)/i) || name.match(/x(\d+)/i) || name.match(/episódio\s+(\d+)/i);
+        // Se não tiver metadados, tenta extrair do nome (M3U)
+        if (!ep.season) {
+            const sMatch = name.match(/s(\d+)/i) || name.match(/(\d+)x/i) || name.match(/temporada\s+(\d+)/i);
+            const eMatch = name.match(/e(\d+)/i) || name.match(/x(\d+)/i) || name.match(/episódio\s+(\d+)/i);
 
-        if (sMatch) seasonNum = parseInt(sMatch[1]);
-        if (eMatch) episodeNum = parseInt(eMatch[1]);
+            if (sMatch) seasonNum = parseInt(sMatch[1]);
+            if (eMatch) episodeNum = parseInt(eMatch[1]);
+        }
 
         if (!seasons[seasonNum]) {
             seasons[seasonNum] = [];
@@ -23,6 +26,8 @@ export const organizeBySeasons = (episodes) => {
 
         seasons[seasonNum].push({
             ...ep,
+            season: seasonNum,
+            episode: episodeNum,
             order: episodeNum
         });
     });

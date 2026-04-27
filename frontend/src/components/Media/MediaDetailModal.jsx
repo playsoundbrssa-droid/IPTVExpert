@@ -149,7 +149,11 @@ export default function MediaDetailModal() {
     }, [selectedMediaDetails, seriesList, xtreamEpisodes]);
 
     const seasons = useMemo(() => {
-        return episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => a-b) : [];
+        const list = episodesBySeason ? Object.keys(episodesBySeason).sort((a,b) => a-b) : [];
+        if (list.length > 0 && !list.includes(String(selectedSeason)) && !list.includes(Number(selectedSeason))) {
+            setSelectedSeason(list[0]);
+        }
+        return list;
     }, [episodesBySeason]);
 
     if (!selectedMediaDetails) return null;
