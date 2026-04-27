@@ -57,7 +57,6 @@ function App() {
         <BrowserRouter>
             {!isAuthenticated ? (
                 <Routes>
-                    <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<AuthScreen />} />
                     <Route path="*" element={<LandingPage />} />
                 </Routes>

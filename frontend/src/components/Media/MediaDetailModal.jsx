@@ -202,7 +202,8 @@ export default function MediaDetailModal() {
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;
         setCurrentStream(itemToPlay, []);
-        setSelectedMediaDetails(null); // Fechar modal ao dar play
+        // Não fechamos mais o modal aqui, para que o usuário possa voltar a ele
+        // O VideoPlayer tem z-index maior e cobrirá o modal.
     };
 
     const toggleFavorite = () => {

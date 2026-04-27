@@ -430,15 +430,29 @@ export default function VideoPlayer() {
                 </div>
             </div>
 
-            {/* Top Right Close Button */}
-            <div className={`absolute top-0 right-0 p-6 transition-opacity duration-300 z-40
+            {/* Top Right Actions */}
+            <div className={`absolute top-0 right-0 p-6 flex flex-col items-end gap-3 transition-opacity duration-300 z-40
                 ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                
                 <button 
                     onClick={() => setCurrentStream(null)} 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-2xl shadow-red-600/30 border border-white/10 group/exit" 
-                    title="Parar Reprodução"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/back" 
+                    title="Voltar para Episódios / Menu"
                 >
-                    <FiLogOut size={18} className="group-hover/exit:-translate-x-1 transition-transform" />
+                    <FiChevronLeft size={18} className="group-hover/back:-translate-x-1 transition-transform" />
+                    <span>Voltar</span>
+                </button>
+
+                <button 
+                    onClick={() => {
+                        const { setSelectedMediaDetails } = usePlaylistStore.getState();
+                        setCurrentStream(null);
+                        setSelectedMediaDetails(null);
+                    }} 
+                    className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-2xl shadow-red-600/30 border border-white/10 group/exit" 
+                    title="Fechar Tudo"
+                >
+                    <FiX size={18} />
                     <span>Sair do Player</span>
                 </button>
             </div>

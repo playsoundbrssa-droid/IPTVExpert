@@ -55,7 +55,13 @@ export default function DashboardPage() {
 
     // Pegar amostras para o Dashboard
     const dashboardData = useMemo(() => {
-        const shuffle = (array) => [...array].sort(() => 0.5 - Math.random());
+        const isAdult = (item) => {
+            const forbidden = [/adulto/i, /xxx/i, /sexo/i, /porno/i, /sexy/i, /+18/i, /18+/i, /hentai/i];
+            const text = `${item.name} ${item.group}`.toLowerCase();
+            return forbidden.some(regex => regex.test(text));
+        };
+
+        const shuffle = (array) => [...array].filter(i => !isAdult(i)).sort(() => 0.5 - Math.random());
         
         return {
             channels: shuffle(channelsList).slice(0, 15).map(c => ({ ...c, type: 'channel' })),
