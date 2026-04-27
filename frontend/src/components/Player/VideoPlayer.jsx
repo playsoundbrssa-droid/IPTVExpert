@@ -80,32 +80,68 @@ export default function VideoPlayer() {
         setError(null);
         setIsBuffering(true);
 
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        // Detectar se é Safari/iOS que requer player nativo para HLS
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || /iPad|iPhone|iPod/.test(navigator.platform);
         
-        if (isHls && (videoRef.current.canPlayType('application/vnd.apple.mpegurl') || isMobile)) {
+        if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+            // Player Nativo (Safari/iOS)
             videoRef.current.src = streamUrl;
-            videoRef.current.play().catch(() => setIsMuted(true));
+            videoRef.current.play().catch(() => {
+                videoRef.current.muted = true;
+                videoRef.current.play();
+                setIsMuted(true);
+            });
         } else if (isHls && Hls.isSupported()) {
-            const hls = new Hls({ enableWorker: true, lowLatencyMode: true, manifestLoadingMaxRetry: 5 });
+            // Hls.js (Chrome, Firefox, Android, etc)
+            const hls = new Hls({ 
+                enableWorker: true, 
+                lowLatencyMode: true, 
+                manifestLoadingMaxRetry: 10,
+                xhrSetup: (xhr) => { xhr.withCredentials = false; }
+            });
             hls.loadSource(streamUrl);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
-            hls.on(Hls.Events.MANIFEST_PARSED, () => videoRef.current.play().catch(() => {}));
+            hls.on(Hls.Events.MANIFEST_PARSED, () => videoRef.current.play().catch(() => {
+                videoRef.current.muted = true;
+                videoRef.current.play();
+                setIsMuted(true);
+            }));
             hls.on(Hls.Events.ERROR, (e, data) => {
-                if (data.fatal && !useProxy) setUseProxy(true);
-                else if (data.fatal) setError("Erro fatal na stream. Tente outro canal.");
+                if (data.fatal) {
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !useProxy) {
+                        setUseProxy(true);
+                    } else {
+                        setError("Erro ao carregar a stream HLS.");
+                    }
+                }
             });
         } else if (isTs && mpegjs.isSupported()) {
+            // MPEG-TS (mse)
             try {
                 const mpeg = mpegjs.createPlayer({ type: 'mse', url: streamUrl, isLive: true });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
-                mpeg.play().catch(() => {});
+                mpeg.play().catch(() => {
+                    videoRef.current.muted = true;
+                    videoRef.current.play();
+                    setIsMuted(true);
+                });
                 mpegPlayerRef.current = mpeg;
-            } catch (err) { setError("O formato TS não é suportado."); }
+            } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
         } else {
+            // Fallback genérico (MP4, etc)
             videoRef.current.src = streamUrl;
-            videoRef.current.play().catch(() => {});
+            videoRef.current.play().catch(() => {
+                videoRef.current.muted = true;
+                videoRef.current.play();
+                setIsMuted(true);
+            });
+        }
+
+        // Tentar restaurar progresso após o vídeo carregar
+        if (currentStream.type === 'movie' || currentStream.type === 'series') {
+            loadProgress();
         }
     }, [currentStream, getStreamUrl, cleanUp, useProxy]);
 
@@ -169,6 +205,62 @@ export default function VideoPlayer() {
             videoRef.current.webkitShowPlaybackTargetPicker();
         }
     };
+
+    const { getActivePlaylist } = usePlaylistManagerStore();
+
+    const loadProgress = async () => {
+        const active = getActivePlaylist();
+        if (!active || !currentStream) return;
+        
+        try {
+            const response = await api.get('/progress', {
+                params: { mediaId: currentStream.id, playlistId: active.id }
+            });
+            
+            if (response.data?.progress) {
+                const pos = response.data.progress.last_position;
+                if (pos > 10 && videoRef.current) {
+                    videoRef.current.currentTime = pos;
+                    toast.success(`Continuando de ${formatTime(pos)}`, { icon: '🕒', duration: 2000 });
+                }
+            }
+        } catch (error) {
+            console.warn('[PROGRESS] Falha ao carregar:', error.message);
+        }
+    };
+
+    const saveProgress = async () => {
+        if (!videoRef.current || !currentStream) return;
+        if (currentStream.type === 'channel') return;
+
+        const active = getActivePlaylist();
+        if (!active) return;
+
+        try {
+            await api.post('/progress', {
+                mediaId: currentStream.id,
+                playlistId: active.id,
+                currentTime: videoRef.current.currentTime,
+                duration: videoRef.current.duration
+            });
+        } catch (error) {
+            console.warn('[PROGRESS] Falha ao salvar:', error.message);
+        }
+    };
+
+    // Salvar progresso periodicamente
+    useEffect(() => {
+        if (currentStream?.type === 'channel') return;
+        
+        const interval = setInterval(() => {
+            saveProgress();
+        }, 15000); // A cada 15 segundos
+
+        return () => {
+            clearInterval(interval);
+            saveProgress(); // Salvar ao fechar
+        };
+    }, [currentStream]);
 
     const seek = (seconds) => {
         if (videoRef.current) {
