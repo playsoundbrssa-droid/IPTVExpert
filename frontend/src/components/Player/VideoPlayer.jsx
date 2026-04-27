@@ -426,21 +426,6 @@ export default function VideoPlayer() {
                         </div>
                     )}
                     <div className="flex items-center gap-2">
-                        {!isMinimized && (
-                            <button 
-                                onClick={() => {
-                                    if (document.pictureInPictureEnabled) {
-                                        handlePiP();
-                                    } else {
-                                        setIsMinimized(true);
-                                    }
-                                }} 
-                                className="p-2.5 bg-black/40 backdrop-blur-md rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all border border-white/5" 
-                                title="Picture-in-Picture"
-                            >
-                                <FiSquare size={20} />
-                            </button>
-                        )}
                         <button onClick={() => setCurrentStream(null)} className="p-2.5 bg-black/40 backdrop-blur-md rounded-xl text-white/70 hover:text-white hover:bg-red-500 transition-all border border-white/5" title="Fechar">
                             <FiX size={20} />
                         </button>
@@ -450,21 +435,29 @@ export default function VideoPlayer() {
 
             {/* Middle Controls Indicator */}
             {!isMinimized && !isBuffering && (
-                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-8 lg:gap-20 transition-all z-30
+                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 lg:gap-12 transition-all z-30
                     ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                     
+                    {/* Previous */}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); playPrev(); }} 
+                        className="w-10 h-10 lg:w-14 lg:h-14 bg-black/30 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/5"
+                    >
+                        <FiSkipBack size={24} />
+                    </button>
+
                     {/* -10s */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); seek(-10); }} 
                         className="w-12 h-12 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/5"
                     >
-                        <FiRotateCcw size={24} />
+                        <FiRotateCcw size={22} />
                         <span className="text-[10px] font-black mt-1">10</span>
                     </button>
 
                     {/* Play/Pause */}
                     <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-20 h-20 lg:w-28 lg:h-28 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform border border-white/10 shadow-2xl">
-                        {isPlaying ? <FiPause size={40} className="lg:size-56" /> : <FiPlay size={40} className="lg:size-56 ml-2" />}
+                        {isPlaying ? <FiPause size={48} /> : <FiPlay size={48} className="ml-2" />}
                     </button>
 
                     {/* +10s */}
@@ -472,8 +465,16 @@ export default function VideoPlayer() {
                         onClick={(e) => { e.stopPropagation(); seek(10); }} 
                         className="w-12 h-12 lg:w-16 lg:h-16 bg-black/40 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90 border border-white/5"
                     >
-                        <FiRotateCw size={24} />
+                        <FiRotateCw size={22} />
                         <span className="text-[10px] font-black mt-1">10</span>
+                    </button>
+
+                    {/* Next */}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); playNext(); }} 
+                        className="w-10 h-10 lg:w-14 lg:h-14 bg-black/30 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all border border-white/5"
+                    >
+                        <FiSkipForward size={24} />
                     </button>
                 </div>
             )}
@@ -500,22 +501,10 @@ export default function VideoPlayer() {
                     )}
 
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 lg:gap-6">
-                            <button onClick={playPrev} className="text-white hover:text-primary transition-colors" title="Anterior">
-                                <FiSkipBack size={24} />
-                            </button>
-                            
-                            <button onClick={togglePlay} className="text-white hover:text-primary transition-colors">
-                                {isPlaying ? <FiPause size={28} /> : <FiPlay size={28} />}
-                            </button>
-
-                            <button onClick={playNext} className="text-white hover:text-primary transition-colors" title="Próximo">
-                                <FiSkipForward size={24} />
-                            </button>
-                            
-                            <div className="flex items-center group/volume ml-2">
+                        <div className="flex items-center gap-4 lg:gap-8">
+                            <div className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/5 transition-all">
                                 <button onClick={() => setIsMuted(!isMuted)} className="text-white hover:text-primary transition-colors">
-                                    {isMuted || volume === 0 ? <FiVolumeX size={24} /> : <FiVolume2 size={24} />}
+                                    {isMuted || volume === 0 ? <FiVolumeX size={20} /> : <FiVolume2 size={20} />}
                                 </button>
                                 <input 
                                     type="range" 
@@ -527,7 +516,7 @@ export default function VideoPlayer() {
                                         videoRef.current.volume = v;
                                         if (v > 0) setIsMuted(false);
                                     }}
-                                    className="w-0 group-hover/volume:w-24 transition-all duration-300 accent-primary mx-2 h-1 cursor-pointer"
+                                    className="w-20 lg:w-32 transition-all duration-300 accent-primary h-1 cursor-pointer"
                                 />
                             </div>
 
