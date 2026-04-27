@@ -150,16 +150,19 @@ export default function VideoPlayer() {
         const video = videoRef.current;
         
         // Detecção de AirPlay (Safari/iOS)
-        if (window.WebKitPlaybackTargetAvailabilityEvent) {
-            const handler = (event) => {
-                setAirplayAvailable(event.availability === 'available');
-            };
-            video.addEventListener('webkitplaybacktargetavailabilitychanged', handler);
-            return () => video.removeEventListener('webkitplaybacktargetavailabilitychanged', handler);
-        } else if (video.remote && video.remote.state !== 'unavailable') {
-            // Suporte a Remote Playback (Chrome/Android)
-            setAirplayAvailable(true);
-        }
+        const checkAirPlay = () => {
+            if (window.WebKitPlaybackTargetAvailabilityEvent) {
+                video.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => {
+                    setAirplayAvailable(e.availability === 'available');
+                });
+            } else if (video.webkitShowPlaybackTargetPicker) {
+                // Se a função existe mas o evento não disparou, assume disponível no iOS
+                setAirplayAvailable(true);
+            } else if (video.remote && video.remote.state !== 'unavailable') {
+                setAirplayAvailable(true);
+            }
+        };
+        checkAirPlay();
     }, []);
 
     const toggleFullscreen = () => {
@@ -489,7 +492,11 @@ export default function VideoPlayer() {
                     </button>
 
                     {/* Play/Pause */}
-                    <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-20 h-20 lg:w-28 lg:h-28 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform border border-white/20 shadow-2xl">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
+                        onTouchStart={(e) => { e.stopPropagation(); togglePlay(); }}
+                        className="w-20 h-20 lg:w-28 lg:h-28 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform border border-white/20 shadow-2xl active:bg-primary/40"
+                    >
                         {isPlaying ? <FiPause size={48} /> : <FiPlay size={48} className="ml-2" />}
                     </button>
 

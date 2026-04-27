@@ -250,13 +250,13 @@ export default function MediaDetailModal() {
                         >
                             <Dialog.Panel className="relative w-full bg-surface/40 border border-white/10 md:rounded-[2.5rem] overflow-hidden shadow-2xl h-screen md:h-auto md:max-h-[90vh] flex flex-col">
                                 
-                                {/* Background Image & Overlay */}
-                                <div className="absolute inset-0 -z-10 h-[40%] md:h-[60%] overflow-hidden">
-                                    <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent z-10" />
+                                {/* Background Image & Overlay - Adjusted for better mobile visibility */}
+                                <div className="absolute inset-0 -z-10 h-48 md:h-[60%] overflow-hidden">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent z-10" />
                                     <img 
                                         src={backdropUrl}
                                         alt=""
-                                        className="w-full h-full object-cover scale-105 blur-sm opacity-50"
+                                        className="w-full h-full object-cover opacity-60"
                                     />
                                 </div>
 
@@ -269,12 +269,12 @@ export default function MediaDetailModal() {
                                 </button>
 
                                 {/* Scrollable Content */}
-                                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12">
-                                    <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-10">
+                                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12 pt-24 md:pt-12">
+                                    <div className="grid grid-cols-1 md:grid-cols-[300px,1fr] gap-10">
                                         
-                                        {/* Poster Column - Better sizing on mobile */}
-                                        <div className="flex flex-col items-center gap-6">
-                                            <div className="w-48 md:w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group shrink-0">
+                                        {/* Poster Column - Hidden on small mobile to save space, shown on MD+ */}
+                                        <div className="hidden md:flex flex-col items-center gap-6">
+                                            <div className="w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
                                                 <img 
                                                     src={metadata?.posterPath || selectedMediaDetails.logo}
                                                     alt={selectedMediaDetails.name}
