@@ -3,6 +3,7 @@ import { FiPlay, FiHeart, FiDownload } from 'react-icons/fi';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import toast from 'react-hot-toast';
+import { getProxyUrl } from '../../services/api';
 
 export default function MediaCard({ item, type, playlist = [] }) {
     const { addFavorite, removeFavorite, favorites } = usePlaylistStore();
@@ -50,7 +51,20 @@ export default function MediaCard({ item, type, playlist = [] }) {
 
     const isVOD = type === 'movie' || type === 'series';
 
+    const [imgSrc, setImgSrc] = React.useState(item.logo);
     const [imgError, setImgError] = React.useState(false);
+
+    const handleImgError = () => {
+        if (!imgSrc) return setImgError(true);
+        
+        // Se a imagem falhou e ainda não tentamos o proxy
+        if (!imgSrc.includes('/api/proxy/fetch')) {
+            const proxied = getProxyUrl(imgSrc, true); // Usando o endpoint de fetch do proxy
+            setImgSrc(proxied);
+        } else {
+            setImgError(true);
+        }
+    };
 
     return (
         <div 
@@ -59,14 +73,14 @@ export default function MediaCard({ item, type, playlist = [] }) {
         >
             {/* Poster / Logo Area */}
             <div className={`${isVOD ? 'aspect-[2/3]' : 'aspect-[16/9]'} relative bg-black/40 flex items-center justify-center shrink-0`}>
-                {item.logo && !imgError ? (
+                {imgSrc && !imgError ? (
                     <img 
-                        src={item.logo} 
+                        src={imgSrc} 
                         alt={item.name} 
                         className={`w-full h-full ${isVOD ? 'object-cover' : 'object-contain p-4'} group-hover:scale-110 transition-transform duration-500`}
                         loading="lazy"
                         decoding="async"
-                        onError={() => setImgError(true)}
+                        onError={handleImgError}
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface to-black text-primary/40 text-4xl font-black uppercase select-none">

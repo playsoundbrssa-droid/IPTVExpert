@@ -16,3 +16,14 @@ exports.getMediaMetadata = async (req, res) => {
         res.status(500).json({ message: 'Erro ao buscar metadados.' });
     }
 };
+
+exports.getSeriesEpisodes = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const episodes = await tmdbService.getSeriesEpisodes(id);
+        res.json(episodes);
+    } catch (error) {
+        console.error('[MEDIA EPISODES ERROR]', error.message);
+        res.status(500).json({ message: 'Erro ao buscar episódios.' });
+    }
+};

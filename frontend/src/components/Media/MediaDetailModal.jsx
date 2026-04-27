@@ -8,6 +8,7 @@ import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import { getSeriesBaseName } from '../../utils/seriesUtils';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { getProxyUrl } from '../../services/api';
 
 export default function MediaDetailModal() {
     const { selectedMediaDetails, setSelectedMediaDetails, favorites, addFavorite, removeFavorite, seriesList, seriesGroups } = usePlaylistStore();
@@ -138,6 +139,8 @@ export default function MediaDetailModal() {
     };
 
     const fetchMetadata = async () => {
+        if (!selectedMediaDetails?.name) return;
+        
         setLoading(true);
         try {
             const response = await api.get('/media/metadata', {
@@ -147,11 +150,25 @@ export default function MediaDetailModal() {
                 }
             });
             setMetadata(response.data);
+            
+            // Tentar associar nomes de episódios se for série
+            if (selectedMediaDetails.type === 'series' && response.data.id) {
+                fetchTmdbEpisodes(response.data.id);
+            }
         } catch (error) {
             console.error('Falha ao buscar metadados:', error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const [tmdbEpisodes, setTmdbEpisodes] = useState({});
+
+    const fetchTmdbEpisodes = async (tmdbId) => {
+        try {
+            const res = await api.get(`/media/metadata/series/${tmdbId}/episodes`);
+            if (res.data) setTmdbEpisodes(res.data);
+        } catch (err) {}
     };
 
     // Agrupar episódios se for série
@@ -366,9 +383,11 @@ export default function MediaDetailModal() {
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
                                                                             <div className="font-bold text-white truncate group-hover/ep:text-primary transition-colors">
-                                                                                {ep.name}
+                                                                                {tmdbEpisodes[`${selectedSeason}x${ep.episode}`]?.name || ep.name}
                                                                             </div>
-                                                                            <div className="text-xs text-gray-500 uppercase font-black">ASSISTIR EPISÓDIO</div>
+                                                                            <div className="text-xs text-gray-500 uppercase font-black">
+                                                                                {tmdbEpisodes[`${selectedSeason}x${ep.episode}`]?.overview ? 'Ver Detalhes' : 'ASSISTIR EPISÓDIO'}
+                                                                            </div>
                                                                         </div>
                                                                         <FiPlay className="text-gray-600 group-hover/ep:text-primary transition-all opacity-0 group-hover/ep:opacity-100" />
                                                                     </button>

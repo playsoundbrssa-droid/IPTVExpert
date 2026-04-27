@@ -58,3 +58,40 @@ exports.searchMedia = async (title, type = 'movie') => {
         return null;
     }
 };
+exports.getSeriesEpisodes = async (tmdbId) => {
+    try {
+        // 1. Pegar detalhes da série para saber o número de temporadas
+        const detailResponse = await axios.get(`${BASE_URL}/tv/${tmdbId}`, {
+            params: { api_key: TMDB_API_KEY, language: 'pt-BR' }
+        });
+
+        const episodesMap = {};
+        const seasons = detailResponse.data.seasons || [];
+
+        // Buscar episódios de cada temporada (em paralelo para performance)
+        const promises = seasons.map(s => 
+            axios.get(`${BASE_URL}/tv/${tmdbId}/season/${s.season_number}`, {
+                params: { api_key: TMDB_API_KEY, language: 'pt-BR' }
+            }).catch(() => null)
+        );
+
+        const results = await Promise.all(promises);
+
+        results.forEach(res => {
+            if (res && res.data && res.data.episodes) {
+                res.data.episodes.forEach(ep => {
+                    episodesMap[`${ep.season_number}x${ep.episode_number}`] = {
+                        name: ep.name,
+                        overview: ep.overview,
+                        stillPath: ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : null
+                    };
+                });
+            }
+        });
+
+        return episodesMap;
+    } catch (error) {
+        console.error('[TMDB EPISODES ERROR]', error.message);
+        return {};
+    }
+};
