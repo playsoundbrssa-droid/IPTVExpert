@@ -1,13 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import { FiTv, FiFilm, FiVideo, FiSettings, FiHeart, FiStar } from 'react-icons/fi';
+import { FiTv, FiFilm, FiVideo, FiSettings, FiHeart, FiStar, FiHome } from 'react-icons/fi';
 
 export default function MobileBottomNav() {
     const navItems = [
-        { path: '/', icon: FiTv, label: 'Ao Vivo' },
+        { path: '/', icon: FiHome, label: 'Início' },
+        { path: '/live-tv', icon: FiTv, label: 'Ao Vivo' },
         { path: '/movies', icon: FiFilm, label: 'Filmes' },
         { path: '/series', icon: FiVideo, label: 'Séries' },
         { path: '/highlights', icon: FiStar, label: 'Destaques' },
-        { path: '/favorites', icon: FiHeart, label: 'Favoritos' },
         { path: '/settings', icon: FiSettings, label: 'Ajustes' },
     ];
 

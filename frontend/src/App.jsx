@@ -8,6 +8,7 @@ import HighlightsPage from './pages/HighlightsPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
+import DashboardPage from './pages/DashboardPage';
 import AuthScreen from './components/Auth/AuthScreen';
 import { useUserStore } from './stores/useUserStore';
 import { usePlaylistStore } from './stores/usePlaylistStore';
@@ -70,7 +71,7 @@ function App() {
                 {/* Main Content Area */}
                 <main className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pt-6 pb-24 md:pb-6 px-4 md:px-6 relative z-10 transition-all duration-300">
                     <Routes>
-                        <Route path="/" element={<LiveTvPage />} />
+                        <Route path="/" element={<DashboardPage />} />
                         <Route path="/live-tv" element={<LiveTvPage />} />
                         <Route path="/movies" element={<MoviesPage />} />
                         <Route path="/series" element={<SeriesPage />} />
