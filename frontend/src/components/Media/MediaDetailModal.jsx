@@ -281,26 +281,6 @@ export default function MediaDetailModal() {
                                                     className="w-full h-full object-cover"
                                                 />
                                             </div>
-                                            
-                                            {/* Action Buttons */}
-                                            <div className="w-full grid grid-cols-2 gap-3">
-                                                <button 
-                                                    onClick={() => handlePlay()}
-                                                    className="flex items-center justify-center gap-2 py-4 bg-primary rounded-2xl font-black text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-wider"
-                                                >
-                                                    <FiPlay fill="currentColor" /> Assistir
-                                                </button>
-                                                <button 
-                                                    onClick={toggleFavorite}
-                                                    className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black border transition-all active:scale-95 text-sm uppercase tracking-wider ${
-                                                        isFavorite 
-                                                        ? 'bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/20' 
-                                                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                                                    }`}
-                                                >
-                                                    <FiHeart fill={isFavorite ? 'currentColor' : 'none'} /> Favoritos
-                                                </button>
-                                            </div>
                                         </div>
 
                                         {/* Info Column */}
@@ -325,6 +305,26 @@ export default function MediaDetailModal() {
                                                 <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
                                                     {selectedMediaDetails.name}
                                                 </h2>
+
+                                                {/* Action Buttons - Always Visible */}
+                                                <div className="w-full grid grid-cols-2 gap-3 pt-2">
+                                                    <button 
+                                                        onClick={() => handlePlay()}
+                                                        className="flex items-center justify-center gap-2 py-4 bg-primary rounded-2xl font-black text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-wider"
+                                                    >
+                                                        <FiPlay fill="currentColor" /> Assistir
+                                                    </button>
+                                                    <button 
+                                                        onClick={toggleFavorite}
+                                                        className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black border transition-all active:scale-95 text-sm uppercase tracking-wider ${
+                                                            isFavorite 
+                                                            ? 'bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/20' 
+                                                            : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                                                        }`}
+                                                    >
+                                                        <FiHeart fill={isFavorite ? 'currentColor' : 'none'} /> Favoritos
+                                                    </button>
+                                                </div>
 
                                                 {metadata?.genres && (
                                                     <div className="flex flex-wrap gap-2">
