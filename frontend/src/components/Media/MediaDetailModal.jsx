@@ -59,26 +59,50 @@ export default function MediaDetailModal() {
             });
             
             if (response.data) {
+                console.log('[MODAL] Info Xtream recebida:', response.data);
                 if (response.data.info) {
                     setXtreamInfo(response.data.info);
                 }
 
                 if (response.data.episodes) {
                     const normalized = [];
-                    Object.keys(response.data.episodes).forEach(seasonNum => {
-                        response.data.episodes[seasonNum].forEach(ep => {
+                    const seasonsData = response.data.episodes;
+                    
+                    // Xtream pode retornar episódios como um objeto de temporadas ou como um array plano
+                    if (typeof seasonsData === 'object' && !Array.isArray(seasonsData)) {
+                        Object.keys(seasonsData).forEach(seasonNum => {
+                            const episodesList = seasonsData[seasonNum];
+                            if (Array.isArray(episodesList)) {
+                                episodesList.forEach(ep => {
+                                    const base = server.replace(/\/$/, '');
+                                    normalized.push({
+                                        id: `xtream_ep_${ep.id}`,
+                                        name: ep.title || ep.name || `Episódio ${ep.episode_num}`,
+                                        logo: ep.info?.movie_image || selectedMediaDetails.logo,
+                                        streamUrl: `${base}/series/${username}/${password}/${ep.id}.${ep.container_extension || 'mp4'}`,
+                                        season: parseInt(seasonNum),
+                                        episode: parseInt(ep.episode_num),
+                                        order: parseInt(ep.episode_num)
+                                    });
+                                });
+                            }
+                        });
+                    } else if (Array.isArray(seasonsData)) {
+                        seasonsData.forEach(ep => {
                             const base = server.replace(/\/$/, '');
                             normalized.push({
                                 id: `xtream_ep_${ep.id}`,
-                                name: ep.title,
+                                name: ep.title || ep.name || `Episódio ${ep.episode_num}`,
                                 logo: ep.info?.movie_image || selectedMediaDetails.logo,
                                 streamUrl: `${base}/series/${username}/${password}/${ep.id}.${ep.container_extension || 'mp4'}`,
-                                season: parseInt(seasonNum),
+                                season: parseInt(ep.season) || 1,
                                 episode: parseInt(ep.episode_num),
                                 order: parseInt(ep.episode_num)
                             });
                         });
-                    });
+                    }
+                    
+                    console.log(`[MODAL] ${normalized.length} episódios normalizados.`);
                     setXtreamEpisodes(normalized);
                 }
             }

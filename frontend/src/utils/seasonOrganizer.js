@@ -2,22 +2,37 @@
  * Utilitário para organizar uma lista plana de episódios em uma estrutura de temporadas
  */
 export const organizeBySeasons = (episodes) => {
+    if (!episodes || !Array.isArray(episodes)) return {};
+    
     const seasons = {};
+    console.log(`[SEASON_ORG] Organizando ${episodes.length} episódios.`);
 
     episodes.forEach((ep) => {
         const name = ep.name || '';
         
-        // Se já tiver metadados de temporada (ex: Xtream), usa eles
-        let seasonNum = ep.season || 1;
-        let episodeNum = ep.episode || ep.order || 1;
+        // Prioridade 1: Metadados explícitos (Xtream ou processados)
+        let seasonNum = ep.season || null;
+        let episodeNum = ep.episode || ep.order || null;
 
         // Se não tiver metadados, tenta extrair do nome (M3U)
-        if (!ep.season) {
-            const sMatch = name.match(/s(\d+)/i) || name.match(/(\d+)x/i) || name.match(/temporada\s+(\d+)/i);
-            const eMatch = name.match(/e(\d+)/i) || name.match(/x(\d+)/i) || name.match(/episódio\s+(\d+)/i);
+        if (!seasonNum) {
+            const sMatch = 
+                name.match(/s(\d+)/i) || 
+                name.match(/(\d+)x/i) || 
+                name.match(/temporada\s+(\d+)/i) ||
+                name.match(/t(\d+)/i) || // Suporte a T1, T01
+                name.match(/season\s+(\d+)/i);
 
-            if (sMatch) seasonNum = parseInt(sMatch[1]);
-            if (eMatch) episodeNum = parseInt(eMatch[1]);
+            const eMatch = 
+                name.match(/e(\d+)/i) || 
+                name.match(/x(\d+)/i) || 
+                name.match(/episódio\s+(\d+)/i) ||
+                name.match(/ep\s*(\d+)/i) ||
+                name.match(/capítulo\s+(\d+)/i) ||
+                name.match(/cap\s*(\d+)/i);
+
+            seasonNum = sMatch ? parseInt(sMatch[1]) : 1;
+            episodeNum = eMatch ? parseInt(eMatch[1]) : 1;
         }
 
         if (!seasons[seasonNum]) {
@@ -28,7 +43,7 @@ export const organizeBySeasons = (episodes) => {
             ...ep,
             season: seasonNum,
             episode: episodeNum,
-            order: episodeNum
+            order: episodeNum || seasons[seasonNum].length + 1
         });
     });
 
@@ -37,5 +52,6 @@ export const organizeBySeasons = (episodes) => {
         seasons[s].sort((a, b) => a.order - b.order);
     });
 
+    console.log(`[SEASON_ORG] Resultado: ${Object.keys(seasons).length} temporadas encontradas.`, Object.keys(seasons));
     return seasons;
 };
