@@ -312,7 +312,7 @@ export default function VideoPlayer() {
         const resetTimer = () => {
             setShowControls(true);
             clearTimeout(timeout);
-            if (!isMinimized) timeout = setTimeout(() => setShowControls(false), 3000);
+            timeout = setTimeout(() => setShowControls(false), 3000);
         };
         window.addEventListener('mousemove', resetTimer);
         window.addEventListener('touchstart', resetTimer);
@@ -320,14 +320,10 @@ export default function VideoPlayer() {
             window.removeEventListener('mousemove', resetTimer);
             window.removeEventListener('touchstart', resetTimer);
         };
-    }, [isMinimized]);
+    }, []);
 
     const handleDragStart = (e) => {
-        if (!isMinimized) return;
-        setIsDragging(true);
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        dragStart.current = { x: clientX, y: clientY, initialX: position.x, initialY: position.y };
+        return;
     };
 
     useEffect(() => {
@@ -443,7 +439,7 @@ export default function VideoPlayer() {
             </div>
 
             {/* Middle Controls Indicator */}
-            {!isMinimized && !isBuffering && (
+            {!isBuffering && (
                 <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 lg:gap-12 transition-all z-30
                     ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                     
@@ -489,7 +485,7 @@ export default function VideoPlayer() {
             )}
 
             {/* Bottom Controls Overlay */}
-            {!isMinimized && (
+            {(
                 <div className={`absolute bottom-0 left-0 w-full p-4 lg:p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-300 z-40
                     ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                     

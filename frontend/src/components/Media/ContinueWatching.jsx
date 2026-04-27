@@ -10,7 +10,7 @@ export default function ContinueWatching() {
     const [isVisible, setIsVisible] = useState(true);
     const { setCurrentStream } = usePlayerStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
-    const { movies, series, channels } = usePlaylistStore();
+    const { moviesList, seriesList, channelsList } = usePlaylistStore();
 
     useEffect(() => {
         const fetchRecentProgress = async () => {
@@ -32,7 +32,7 @@ export default function ContinueWatching() {
 
                     // Mapear detalhes da mídia
                     const detailed = recent.map(progress => {
-                        const allMedia = [...movies, ...series, ...channels];
+                        const allMedia = [...moviesList, ...seriesList, ...channelsList];
                         const item = allMedia.find(m => String(m.id) === String(progress.media_id));
                         if (item) {
                             return { ...item, progress };
@@ -48,7 +48,7 @@ export default function ContinueWatching() {
         };
 
         fetchRecentProgress();
-    }, [movies, series, channels, getActivePlaylist]);
+    }, [moviesList, seriesList, channelsList, getActivePlaylist]);
 
     if (!isVisible || lastWatched.length === 0) return null;
 
