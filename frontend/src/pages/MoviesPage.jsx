@@ -3,7 +3,6 @@ import { usePlaylistStore } from '../stores/usePlaylistStore';
 import MediaCard from '../components/Media/MediaCard';
 import CategoryFilter from '../components/Media/CategoryFilter';
 import { FiSearch, FiFilm } from 'react-icons/fi';
-import ContinueWatching from '../components/Media/ContinueWatching';
 
 export default function MoviesPage() {
     const { moviesList, moviesGroups, selectedMovieGroup, setSelectedMovieGroup } = usePlaylistStore();
@@ -137,7 +136,6 @@ export default function MoviesPage() {
                 </div>
             )}
 
-            <ContinueWatching />
         </div>
     );
 }

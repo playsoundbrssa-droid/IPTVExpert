@@ -6,7 +6,6 @@ import { FiSearch, FiTv, FiRefreshCw } from 'react-icons/fi';
 import { usePlaylistManagerStore } from '../stores/usePlaylistManagerStore';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
-import ContinueWatching from '../components/Media/ContinueWatching';
 
 export default function LiveTvPage() {
     const { channelsList, channelsGroups, selectedLiveGroup, setSelectedLiveGroup } = usePlaylistStore();
@@ -156,7 +155,6 @@ export default function LiveTvPage() {
                 </div>
             )}
 
-            <ContinueWatching />
         </div>
     );
 }
