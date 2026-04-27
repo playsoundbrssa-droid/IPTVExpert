@@ -19,7 +19,7 @@ export default function VideoPlayer() {
     const mpegPlayerRef = useRef(null);
     const containerRef = useRef(null);
     
-    const { currentStream, setCurrentStream, isPlaying, togglePlay } = usePlayerStore();
+    const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     
     const [isMinimized, setIsMinimized] = useState(false);
@@ -109,12 +109,23 @@ export default function VideoPlayer() {
     }, [currentStream, getStreamUrl, cleanUp, useProxy]);
 
     useEffect(() => {
-        if (window.WebKitPlaybackTargetAvailabilityEvent && videoRef.current) {
+        if (!videoRef.current) return;
+        
+        const video = videoRef.current;
+        
+        // Detecção de AirPlay (Safari/iOS)
+        if (window.WebKitPlaybackTargetAvailabilityEvent) {
             const handler = (event) => {
-                if (event.availability === 'available') setAirplayAvailable(true);
+                setAirplayAvailable(event.availability === 'available');
             };
-            videoRef.current.addEventListener('webkitplaybacktargetavailabilitychanged', handler);
-            return () => videoRef.current?.removeEventListener('webkitplaybacktargetavailabilitychanged', handler);
+            video.addEventListener('webkitplaybacktargetavailabilitychanged', handler);
+            
+            // Forçar uma verificação inicial se possível
+            if (video.webkitPlaybackTargetAvailability) {
+                setAirplayAvailable(video.webkitPlaybackTargetAvailability === 'available');
+            }
+
+            return () => video.removeEventListener('webkitplaybacktargetavailabilitychanged', handler);
         }
     }, []);
 
@@ -244,6 +255,7 @@ export default function VideoPlayer() {
                 onClick={() => isMinimized ? setIsMinimized(false) : togglePlay()}
                 playsInline
                 autoPlay
+                x-webkit-airplay="allow"
             />
 
             {isBuffering && !error && (
@@ -316,11 +328,19 @@ export default function VideoPlayer() {
 
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 lg:gap-6">
-                            <button onClick={togglePlay} className="text-white hover:text-primary transition-colors">
-                                {isPlaying ? <FiPause size={24} /> : <FiPlay size={24} />}
+                            <button onClick={playPrev} className="text-white hover:text-primary transition-colors" title="Anterior">
+                                <FiSkipBack size={24} />
                             </button>
                             
-                            <div className="flex items-center group/volume">
+                            <button onClick={togglePlay} className="text-white hover:text-primary transition-colors">
+                                {isPlaying ? <FiPause size={28} /> : <FiPlay size={28} />}
+                            </button>
+
+                            <button onClick={playNext} className="text-white hover:text-primary transition-colors" title="Próximo">
+                                <FiSkipForward size={24} />
+                            </button>
+                            
+                            <div className="flex items-center group/volume ml-2">
                                 <button onClick={() => setIsMuted(!isMuted)} className="text-white hover:text-primary transition-colors">
                                     {isMuted || volume === 0 ? <FiVolumeX size={24} /> : <FiVolume2 size={24} />}
                                 </button>
