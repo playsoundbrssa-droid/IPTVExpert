@@ -3,7 +3,7 @@ import { FiPlay, FiHeart, FiDownload } from 'react-icons/fi';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import toast from 'react-hot-toast';
-import { getProxyUrl } from '../../services/api';
+import { getProxyImageUrl } from '../../services/api';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -70,19 +70,11 @@ export default function MediaCard({ item, type, playlist = [] }) {
 
     const isVOD = type === 'movie' || type === 'series';
 
-    const [imgSrc, setImgSrc] = React.useState(item.logo);
+    const [imgSrc, setImgSrc] = React.useState(() => getProxyImageUrl(item.logo));
     const [imgError, setImgError] = React.useState(false);
 
     const handleImgError = () => {
-        if (!imgSrc) return setImgError(true);
-        
-        // Se a imagem falhou e ainda não tentamos o proxy
-        if (!imgSrc.includes('/api/proxy/fetch')) {
-            const proxied = getProxyUrl(imgSrc, true); // Usando o endpoint de fetch do proxy
-            setImgSrc(proxied);
-        } else {
-            setImgError(true);
-        }
+        setImgError(true);
     };
 
     return (

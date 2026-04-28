@@ -33,4 +33,10 @@ export const getProxyUrl = (url, isFetch = false) => {
     return `${baseURL}/${endpoint}?url=${encodeURIComponent(url)}`;
 };
 
+export const getProxyImageUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('https://')) return url; // Já é seguro
+    return `${baseURL}/proxy/image?url=${encodeURIComponent(url)}`;
+};
+
 export default api;

@@ -8,7 +8,7 @@ import { organizeBySeasons } from '../../utils/seasonOrganizer';
 import { getSeriesBaseName } from '../../utils/seriesUtils';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { getProxyUrl } from '../../services/api';
+import { getProxyUrl, getProxyImageUrl } from '../../services/api';
 
 export default function MediaDetailModal() {
     const { selectedMediaDetails, setSelectedMediaDetails, favorites, addFavorite, removeFavorite, seriesList, seriesGroups } = usePlaylistStore();
@@ -216,7 +216,7 @@ export default function MediaDetailModal() {
         }
     };
 
-    const backdropUrl = metadata?.backdropPath || selectedMediaDetails.logo;
+    const backdropUrl = getProxyImageUrl(metadata?.backdropPath || selectedMediaDetails.logo);
 
     return (
         <Transition show={!!selectedMediaDetails} as={React.Fragment}>
@@ -276,7 +276,7 @@ export default function MediaDetailModal() {
                                         <div className="hidden md:flex flex-col items-center gap-6">
                                             <div className="w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
                                                 <img 
-                                                    src={metadata?.posterPath || selectedMediaDetails.logo}
+                                                    src={getProxyImageUrl(metadata?.posterPath || selectedMediaDetails.logo)}
                                                     alt={selectedMediaDetails.name}
                                                     className="w-full h-full object-cover"
                                                 />

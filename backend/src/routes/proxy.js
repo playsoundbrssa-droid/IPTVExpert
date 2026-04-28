@@ -185,9 +185,52 @@ router.get('/stream', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('[PROXY ERROR URL]', req.query.url);
-        console.error('[PROXY ERROR MSG]', error.message);
-        res.status(error.response?.status || 500).send('Proxy Stream Error');
+        console.error(`[PROXY STREAM ERROR] URL: ${req.query.url}`);
+        
+        if (error.response) {
+            console.error(`[PROXY STREAM ERROR] Remote Server responded with: ${error.response.status}`);
+            console.error(`[PROXY STREAM ERROR] Remote Headers:`, error.response.headers);
+            return res.status(error.response.status).send(`Proxy Error from Remote: ${error.response.statusText}`);
+        }
+
+        console.error(`[PROXY STREAM ERROR] MSG: ${error.message}`);
+        
+        if (error.code === 'ECONNABORTED') {
+            return res.status(504).send('Proxy Timeout - Servidor remoto demorou muito a responder');
+        }
+        
+        if (error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN') {
+            return res.status(502).send('Proxy DNS Error - Não foi possível encontrar o servidor da lista');
+        }
+
+        res.status(500).send(`Proxy Stream Error: ${error.message}`);
+    }
+});
+
+// GET /api/proxy/image?url=...  — Proxy para imagens para evitar Mixed Content (HTTP em site HTTPS)
+router.get('/image', async (req, res) => {
+    const targetUrl = req.query.url;
+    if (!targetUrl) return res.status(400).send('URL is required');
+
+    try {
+        const response = await axios({
+            method: 'GET',
+            url: targetUrl,
+            responseType: 'stream',
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'image/*'
+            }
+        });
+
+        res.setHeader('Content-Type', response.headers['content-type'] || 'image/png');
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache por 24h
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        response.data.pipe(res);
+    } catch (error) {
+        // Se falhar, redireciona para um placeholder ou retorna erro silencioso
+        res.status(200).send(''); 
     }
 });
 
