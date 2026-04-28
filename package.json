@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Root package for IPTV Expert",
   "scripts": {
-    "start": "node backend/src/server.js",
+    "start": "node backend/src/app.js",
     "build": "echo 'No root build needed'",
     "install-backend": "npm install --prefix backend",
     "install-all": "npm install --prefix backend && npm install --prefix frontend"
