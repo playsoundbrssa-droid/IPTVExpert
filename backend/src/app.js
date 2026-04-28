@@ -11,7 +11,11 @@ if (dns.setDefaultResultOrder) {
     dns.setDefaultResultOrder('ipv4first');
 }
 
+// Carregar variáveis de ambiente (tenta na raiz e na pasta backend)
 dotenv.config();
+if (!process.env.DATABASE_URL) {
+    dotenv.config({ path: path.join(__dirname, '../.env') });
+}
 
 const User = require('./models/User');
 
