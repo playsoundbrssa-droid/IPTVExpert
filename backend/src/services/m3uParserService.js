@@ -63,10 +63,12 @@ const cleanGroupName = (name, type) => {
 
 // Custom DNS Resolver logic to bypass ISP blocks
 const customLookup = (hostname, options, callback) => {
-    // We call resolveDoh but handle it as a promise to remain inside the lookup callback pattern
     resolveDoh(hostname).then(dohIp => {
         if (dohIp) {
-            return callback(null, [{ address: dohIp, family: 4 }]);
+            if (options.all) {
+                return callback(null, [{ address: dohIp, family: 4 }]);
+            }
+            return callback(null, dohIp, 4);
         }
 
         // Fallback to dns.resolve4 if DoH fails
@@ -75,7 +77,11 @@ const customLookup = (hostname, options, callback) => {
                 // Last fallback to standard lookup
                 return dns.lookup(hostname, options, callback);
             }
-            callback(null, [{ address: addresses[0], family: 4 }]);
+            
+            if (options.all) {
+                return callback(null, [{ address: addresses[0], family: 4 }]);
+            }
+            callback(null, addresses[0], 4);
         });
     }).catch(err => {
         // Ultimate fallback on any unexpected error

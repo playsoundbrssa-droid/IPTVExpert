@@ -29,10 +29,18 @@ const resolveDoh = async (hostname) => {
 
 const customLookup = (hostname, options, callback) => {
     resolveDoh(hostname).then(ip => {
-        if (ip) return callback(null, [{ address: ip, family: 4 }]);
+        if (ip) {
+            if (options.all) {
+                return callback(null, [{ address: ip, family: 4 }]);
+            }
+            return callback(null, ip, 4);
+        }
         dns.resolve4(hostname, (err, addrs) => {
             if (err || !addrs?.length) return dns.lookup(hostname, options, callback);
-            callback(null, [{ address: addrs[0], family: 4 }]);
+            if (options.all) {
+                return callback(null, [{ address: addrs[0], family: 4 }]);
+            }
+            callback(null, addrs[0], 4);
         });
     }).catch(() => dns.lookup(hostname, options, callback));
 };
