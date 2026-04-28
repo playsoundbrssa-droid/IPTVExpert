@@ -9,7 +9,9 @@ const crypto = require('crypto');
 // Usamos instâncias limpas de axios para evitar loops de DNS
 const resolveDoh = async (hostname) => {
     const cleanHost = hostname.trim().split(':')[0]; 
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost; // Se já for IP, retorna
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost; 
+
+    console.log(`[DNS] Resolvendo: ${cleanHost} via DoH...`);
 
     const providers = [
         { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, headers: { 'accept': 'application/dns-json' } },
@@ -18,10 +20,9 @@ const resolveDoh = async (hostname) => {
 
     for (const provider of providers) {
         try {
-            // Chamada DoH usando agentes padrão do Node para evitar recursão
             const response = await axios.get(provider.url, { 
                 headers: provider.headers,
-                timeout: 5000,
+                timeout: 3000,
                 httpAgent: new http.Agent(),
                 httpsAgent: new https.Agent()
             });
@@ -30,12 +31,12 @@ const resolveDoh = async (hostname) => {
             if (data && data.Answer) {
                 const firstA = data.Answer.find(a => a.type === 1);
                 if (firstA) {
-                    console.log(`[DNS DoH] ✅ Resolvido (${cleanHost}): ${firstA.data}`);
+                    console.log(`[DNS] ✅ DoH (${provider.url.includes('1.1.1.1') ? 'Cloudflare' : 'Google'}): ${cleanHost} -> ${firstA.data}`);
                     return firstA.data;
                 }
             }
         } catch (error) {
-            console.warn(`[DNS DoH WARN] Provedor ${provider.url.split('/')[2]} indisponível.`);
+            console.warn(`[DNS] ❌ DoH Falhou (${provider.url.includes('1.1.1.1') ? 'Cloudflare' : 'Google'}): ${error.message}`);
         }
     }
     return null;
@@ -71,20 +72,26 @@ const customLookup = (hostname, options, callback) => {
             return callback(null, dohIp, 4);
         }
 
+        console.log(`[DNS] ⚠️ DoH falhou para ${hostname}, tentando DNS do sistema...`);
+
         // Fallback to dns.resolve4 if DoH fails
         dns.resolve4(hostname, (err, addresses) => {
             if (err || !addresses.length) {
                 // Last fallback to standard lookup
-                return dns.lookup(hostname, options, callback);
+                return dns.lookup(hostname, options, (lErr, address, family) => {
+                    if (lErr) console.error(`[DNS] ❌ Falha total para ${hostname}: ${lErr.message}`);
+                    callback(lErr, address, family);
+                });
             }
             
+            console.log(`[DNS] ✅ Sistema (resolve4): ${hostname} -> ${addresses[0]}`);
             if (options.all) {
                 return callback(null, [{ address: addresses[0], family: 4 }]);
             }
             callback(null, addresses[0], 4);
         });
     }).catch(err => {
-        // Ultimate fallback on any unexpected error
+        console.error(`[DNS] ❌ Erro inesperado em customLookup para ${hostname}:`, err.message);
         dns.lookup(hostname, options, callback);
     });
 };
@@ -162,41 +169,49 @@ const categorizeItem = (item) => {
 
 exports.parseM3U = async (url) => {
     try {
-        // Normalização agressiva do URL
-        let finalUrl = url.trim();
+        // Normalização agressiva do URL - Remove espaços e caracteres invisíveis
+        let finalUrl = url.trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
+        
         if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
             finalUrl = 'http://' + finalUrl;
         }
 
-        console.log(`[M3U PARSER] Iniciando busca robusta: ${finalUrl}`);
+        console.log(`[M3U] Buscando lista: ${finalUrl}`);
         
         const response = await axios.get(finalUrl, { 
             headers: {
-                'User-Agent': 'Mozilla/5.0 (SmartHub; SMART-TV; Linux/SmartTV) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.0 TV Safari/538.1',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': '*/*',
                 'Connection': 'keep-alive'
             },
-            timeout: 120000, 
+            timeout: 60000, 
             maxContentLength: 250 * 1024 * 1024,
             responseType: 'text',
-            ...axiosAgents // Usa nosso DNS Bypass
+            ...axiosAgents 
         });
         
         const playlist = response.data;
         if (!playlist || typeof playlist !== 'string' || !playlist.includes('#EXTM3U')) {
-            console.warn('[M3U PARSER] O conteúdo recebido não parece uma lista M3U válida.');
-            throw new Error('O link não retornou uma lista M3U válida. Verifique se o endereço está correto.');
+            console.warn('[M3U] Conteúdo inválido recebido.');
+            throw new Error('O link não retornou uma lista M3U válida. Verifique o endereço.');
         }
 
-        console.log(`[M3U PARSER] ✅ Download concluído: ${playlist.length} bytes`);
+        console.log(`[M3U] ✅ Download concluído: ${playlist.length} bytes`);
         return exports.parseM3UContent(playlist);
     } catch (error) {
         let errorMsg = error.message;
-        if (error.code === 'ECONNABORTED') errorMsg = 'O servidor de IPTV demorou muito para responder (Timeout).';
+        if (error.code === 'ECONNABORTED') errorMsg = 'O servidor demorou muito para responder (Timeout).';
         if (error.code === 'ENOTFOUND') errorMsg = 'Não foi possível encontrar o servidor (Erro de DNS).';
+        if (error.response) {
+            errorMsg = `Servidor retornou erro ${error.response.status}`;
+        }
         
-        console.error('[M3U PARSER FATAL ERROR]', error.code, error.message);
-        throw new Error(`Falha crítica na importação: ${errorMsg}`);
+        console.error('[M3U ERROR]', {
+            code: error.code,
+            message: error.message,
+            url: url
+        });
+        throw new Error(`Falha na importação: ${errorMsg}`);
     }
 };
 
