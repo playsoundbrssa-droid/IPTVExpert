@@ -21,9 +21,9 @@ if (isPostgres) {
 const query = (text, params) => {
     if (isPostgres) return db.query(text, params);
     return new Promise((resolve, reject) => {
-        db.all(text, params, (err, rows) => {
+        db.all(text, params, function(err, rows) {
             if (err) reject(err);
-            else resolve(rows);
+            else resolve({ rows, lastInsertId: this.lastID });
         });
     });
 };
