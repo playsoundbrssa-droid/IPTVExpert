@@ -6,7 +6,8 @@
     "start": "node backend/src/app.js",
     "build": "echo 'No root build needed'",
     "install-backend": "npm install --prefix backend",
-    "install-all": "npm install --prefix backend && npm install --prefix frontend"
+    "install-all": "npm install --prefix backend && npm install --prefix frontend",
+    "postinstall": "npm install --prefix backend"
   },
   "engines": {
     "node": ">=18.0.0"
