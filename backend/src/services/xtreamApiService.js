@@ -105,6 +105,19 @@ exports.importAsPlaylist = async (serverUrl, username, password) => {
     try {
         console.log(`[XTREAM IMPORT] Iniciando importação completa de ${serverUrl}`);
         
+        // Validar credenciais primeiro
+        try {
+            const authCheck = await makeRequest(serverUrl, username, password);
+            if (!authCheck || !authCheck.user_info) {
+                throw new Error('Falha na autenticação. Verifique suas credenciais.');
+            }
+            if (authCheck.user_info.status !== 'Active') {
+                throw new Error(`A conta Xtream não está ativa (Status: ${authCheck.user_info.status}).`);
+            }
+        } catch (authErr) {
+            throw new Error(`Erro ao conectar no servidor Xtream: ${authErr.message}`);
+        }
+
         // Buscamos categorias primeiro
         const [liveCats, vodCats, seriesCats] = await Promise.all([
             makeRequest(serverUrl, username, password, 'get_live_categories').catch(() => []),
@@ -192,8 +205,14 @@ exports.importAsPlaylist = async (serverUrl, username, password) => {
             return acc;
         }, Object.create(null));
 
+        const totalParsed = channelsList.length + moviesList.length + seriesList.length;
+
+        if (totalParsed === 0) {
+            throw new Error('Nenhuma mídia foi encontrada nesta conta Xtream.');
+        }
+
         return {
-            total: channelsList.length + moviesList.length + seriesList.length,
+            total: totalParsed,
             channels: { list: channelsList, groups: groupByType(channelsList) },
             movies: { list: moviesList, groups: groupByType(moviesList) },
             series: { list: seriesList, groups: groupByType(seriesList) }

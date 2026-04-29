@@ -271,10 +271,16 @@ exports.parseM3UContent = (playlist) => {
             return acc;
         }, Object.create(null));
 
+        const totalParsed = channels.length + movies.length + series.length;
+        
+        if (totalParsed === 0) {
+            throw new Error('Nenhum canal ou mídia válido encontrado na lista. O formato pode ser incompatível.');
+        }
+
         console.log(`[M3U PARSER] Sucesso: ${channels.length} canais, ${movies.length} filmes, ${series.length} séries.`);
 
         return {
-            total: channels.length + movies.length + series.length,
+            total: totalParsed,
             channels: { list: channels, groups: groupByType(channels) },
             movies: { list: movies, groups: groupByType(movies) },
             series: { list: series, groups: groupByType(series) }
