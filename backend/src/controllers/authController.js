@@ -9,7 +9,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const generateToken = (user) => {
     return jwt.sign(
         { userId: user.id, role: user.role },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || 'secret_fallback_iptvexpert',
         { expiresIn: '7d' }
     );
 };
