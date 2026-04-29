@@ -169,35 +169,121 @@ const categorizeItem = (item) => {
 
 exports.parseM3U = async (url) => {
     try {
-        // Normalização agressiva do URL - Remove espaços e caracteres invisíveis
         let finalUrl = url.trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
-        
         if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
             finalUrl = 'http://' + finalUrl;
         }
 
-        console.log(`[M3U] Buscando lista: ${finalUrl}`);
+        console.log(`[M3U] Buscando lista via STREAM: ${finalUrl}`);
         
-        const response = await axios.get(finalUrl, { 
+        const response = await axios({
+            method: 'GET',
+            url: finalUrl,
+            responseType: 'stream',
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': '*/*',
                 'Connection': 'keep-alive'
             },
             timeout: 60000, 
-            maxContentLength: 250 * 1024 * 1024,
-            responseType: 'text',
+            maxContentLength: 500 * 1024 * 1024, // Aumentado para 500MB
             ...axiosAgents 
         });
-        
-        const playlist = response.data;
-        if (!playlist || typeof playlist !== 'string' || !playlist.includes('#EXTM3U')) {
-            console.warn('[M3U] Conteúdo inválido recebido.');
-            throw new Error('O link não retornou uma lista M3U válida. Verifique o endereço.');
+
+        const readline = require('readline');
+        const rl = readline.createInterface({
+            input: response.data,
+            crlfDelay: Infinity
+        });
+
+        const channels = [];
+        const movies = [];
+        const series = [];
+
+        let currentItem = {};
+
+        for await (const line of rl) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            
+            if (trimmed.startsWith('#EXTINF:')) {
+                const commaIndex = trimmed.lastIndexOf(',');
+                const name = commaIndex !== -1 ? trimmed.substring(commaIndex + 1).trim() : 'Sem Nome';
+                
+                const getAttr = (attr) => {
+                    const match = trimmed.match(new RegExp(`${attr}="([^"]*)"`, 'i'));
+                    return match ? match[1] : null;
+                };
+
+                currentItem = {
+                    name,
+                    tvg: {
+                        id: getAttr('tvg-id'),
+                        name: getAttr('tvg-name'),
+                        logo: getAttr('tvg-logo'),
+                    },
+                    group: {
+                        title: getAttr('group-title')
+                    }
+                };
+            } else if (!trimmed.startsWith('#')) {
+                // É a URL
+                if (Object.keys(currentItem).length > 0) {
+                    currentItem.url = trimmed;
+                    
+                    const safeUrl = currentItem.url;
+                    const groupName = String(currentItem.group?.title || '');
+                    const itemName = String(currentItem.name || '');
+                    if (groupName.includes('[MSEController]') || itemName.includes('[MSEController]') ||
+                        groupName.includes('MediaSource') || itemName.includes('MediaSource')) {
+                        currentItem = {};
+                        continue;
+                    }
+
+                    const rawId = String(currentItem.tvg?.id || currentItem.name || 'item');
+                    const hash = crypto.createHash('md5').update(safeUrl).digest('hex').substring(0, 8);
+                    const uniqueId = `${rawId.replace(/\s+/g, '_')}-${hash}`;
+                    
+                    const type = categorizeItem(currentItem);
+                    const normalized = {
+                        id: uniqueId,
+                        name: String(currentItem.name || 'Sem Nome'),
+                        logo: currentItem.tvg?.logo ? String(currentItem.tvg.logo) : null,
+                        group: cleanGroupName(String(currentItem.group?.title || 'Geral'), type),
+                        streamUrl: safeUrl,
+                        tvgId: currentItem.tvg?.id ? String(currentItem.tvg.id) : null
+                    };
+                    if (type === 'series') series.push(normalized);
+                    else if (type === 'movies') movies.push(normalized);
+                    else channels.push(normalized);
+
+                    currentItem = {};
+                }
+            }
         }
 
-        console.log(`[M3U] ✅ Download concluído: ${playlist.length} bytes`);
-        return exports.parseM3UContent(playlist);
+        const groupByType = (arr) => arr.reduce((acc, item) => {
+            const groupName = item.group || 'Geral';
+            if (!acc[groupName]) acc[groupName] = [];
+            acc[groupName].push(item);
+            return acc;
+        }, Object.create(null));
+
+        const totalParsed = channels.length + movies.length + series.length;
+        
+        if (totalParsed === 0) {
+            throw new Error('Nenhum canal ou mídia válido encontrado na lista. O formato pode ser incompatível.');
+        }
+
+        console.log(`[M3U PARSER STREAM] Sucesso: ${channels.length} canais, ${movies.length} filmes, ${series.length} séries.`);
+
+        return {
+            total: totalParsed,
+            channels: { list: channels, groups: groupByType(channels) },
+            movies: { list: movies, groups: groupByType(movies) },
+            series: { list: series, groups: groupByType(series) }
+        };
+
     } catch (error) {
         let errorMsg = error.message;
         if (error.code === 'ECONNABORTED') errorMsg = 'O servidor demorou muito para responder (Timeout).';
@@ -206,7 +292,7 @@ exports.parseM3U = async (url) => {
             errorMsg = `Servidor retornou erro ${error.response.status}`;
         }
         
-        console.error('[M3U ERROR]', {
+        console.error('[M3U ERROR STREAM]', {
             code: error.code,
             message: error.message,
             url: url
