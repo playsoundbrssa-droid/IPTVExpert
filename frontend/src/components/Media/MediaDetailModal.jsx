@@ -209,9 +209,9 @@ export default function MediaDetailModal() {
         return list;
     }, [episodesBySeason]);
 
-    const { currentStream, isPiP } = usePlayerStore();
+    const { currentStream } = usePlayerStore();
     
-    if (!selectedMediaDetails || (currentStream && !isPiP)) return null;
+    if (!selectedMediaDetails || currentStream) return null;
 
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;

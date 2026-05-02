@@ -459,6 +459,8 @@ export default function VideoPlayer() {
 
     useEffect(() => {
         initPlayer();
+        // Sempre que trocar de canal/filme, volta para tela cheia para o usuário ver o novo conteúdo
+        setIsPiP(false);
         return cleanUp;
     }, [currentStream, useProxy, initPlayer]);
 
@@ -785,7 +787,7 @@ export default function VideoPlayer() {
                 <button 
                     onClick={(e) => {
                         e.stopPropagation();
-                        setIsPiP(true);
+                        if (!isPiP) handlePiP();
                     }} 
                     className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
                     title="Minimizar e continuar assistindo"
