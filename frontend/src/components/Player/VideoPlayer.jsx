@@ -36,6 +36,9 @@ export default function VideoPlayer() {
     const [showQualityMenu, setShowQualityMenu] = useState(false);
     const [airplayAvailable, setAirplayAvailable] = useState(false);
     const [resumeData, setResumeData] = useState(null);
+    const [isPiP, setIsPiP] = useState(false);
+    const [pipPosition, setPipPosition] = useState({ x: 16, y: 16 });
+    const pipDragRef = useRef({ dragging: false, startX: 0, startY: 0, initX: 0, initY: 0 });
     
     const [position, setPosition] = useState({ x: 20, y: 20 });
     const [isDragging, setIsDragging] = useState(false);
@@ -205,17 +208,72 @@ export default function VideoPlayer() {
         toast.success('Download iniciado...');
     };
 
+    const supportsNativePiP = () =>
+        !!(document.pictureInPictureEnabled && videoRef.current?.requestPictureInPicture);
+
     const handlePiP = async () => {
-        try {
-            if (document.pictureInPictureEnabled && videoRef.current !== document.pictureInPictureElement) {
-                await videoRef.current.requestPictureInPicture();
-            } else if (document.pictureInPictureElement) {
-                await document.exitPictureInPicture();
-            }
-        } catch (error) {
-            console.error('PiP Error:', error);
+        // If already in custom PiP mode, exit it
+        if (isPiP) {
+            setIsPiP(false);
+            return;
         }
+        // Try native PiP first (desktop Chrome, Safari)
+        if (supportsNativePiP()) {
+            try {
+                if (videoRef.current !== document.pictureInPictureElement) {
+                    await videoRef.current.requestPictureInPicture();
+                    videoRef.current.addEventListener('leavepictureinpicture', () => {}, { once: true });
+                    return; // native PiP worked, done
+                } else {
+                    await document.exitPictureInPicture();
+                    return;
+                }
+            } catch (e) {
+                console.warn('[PiP] Native PiP failed, falling back to custom:', e);
+            }
+        }
+        // Fallback: custom floating mini-player (mobile & unsupported browsers)
+        setIsPiP(true);
+        toast.success('Picture-in-Picture ativado', { icon: '📺', duration: 2000 });
     };
+
+    // Drag handlers for custom PiP window
+    const handlePipDragStart = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        pipDragRef.current = { dragging: true, startX: clientX, startY: clientY, initX: pipPosition.x, initY: pipPosition.y };
+    };
+
+    const handlePipDragMove = useCallback((e) => {
+        if (!pipDragRef.current.dragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const dx = clientX - pipDragRef.current.startX;
+        const dy = clientY - pipDragRef.current.startY;
+        setPipPosition({
+            x: Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx)),
+            y: Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy))
+        });
+    }, []);
+
+    const handlePipDragEnd = useCallback(() => {
+        pipDragRef.current.dragging = false;
+    }, []);
+
+    useEffect(() => {
+        if (isPiP) {
+            window.addEventListener('mousemove', handlePipDragMove);
+            window.addEventListener('mouseup', handlePipDragEnd);
+            window.addEventListener('touchmove', handlePipDragMove, { passive: true });
+            window.addEventListener('touchend', handlePipDragEnd);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handlePipDragMove);
+            window.removeEventListener('mouseup', handlePipDragEnd);
+            window.removeEventListener('touchmove', handlePipDragMove);
+            window.removeEventListener('touchend', handlePipDragEnd);
+        };
+    }, [isPiP, handlePipDragMove, handlePipDragEnd]);
 
     const handleAirPlay = async () => {
         if (videoRef.current?.webkitShowPlaybackTargetPicker) {
@@ -318,18 +376,23 @@ export default function VideoPlayer() {
     useEffect(() => {
         const handleVisibilityChange = async () => {
             if (document.visibilityState === 'hidden' && videoRef.current && isPlaying && !error) {
-                try {
-                    if (document.pictureInPictureEnabled && videoRef.current !== document.pictureInPictureElement) {
-                        await videoRef.current.requestPictureInPicture();
+                if (supportsNativePiP()) {
+                    try {
+                        if (videoRef.current !== document.pictureInPictureElement) {
+                            await videoRef.current.requestPictureInPicture();
+                        }
+                        return;
+                    } catch (e) {
+                        console.warn('[PiP] Auto-PiP failed:', e);
                     }
-                } catch (e) {
-                    console.warn('[PiP] Auto-PiP failed:', e);
                 }
+                // fallback: activate custom PiP
+                if (!isPiP) setIsPiP(true);
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [isPlaying, error]);
+    }, [isPlaying, error, isPiP]);
 
     useEffect(() => {
         let timeout;
@@ -378,6 +441,67 @@ export default function VideoPlayer() {
     }, [isDragging]);
 
     if (!currentStream) return null;
+
+    // ── Custom floating PiP mini-player (mobile fallback) ────────────────────────
+    if (isPiP) {
+        return (
+            <div
+                style={{
+                    position: 'fixed',
+                    left: pipPosition.x,
+                    top: pipPosition.y,
+                    width: 320,
+                    height: 180,
+                    zIndex: 99999,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 40px rgba(0,0,0,0.8)',
+                    background: '#000',
+                    cursor: 'grab',
+                    border: '2px solid rgba(255,255,255,0.15)',
+                    touchAction: 'none'
+                }}
+                onMouseDown={handlePipDragStart}
+                onTouchStart={handlePipDragStart}
+            >
+                <video
+                    ref={videoRef}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    autoPlay
+                    playsInline
+                    webkit-playsinline="true"
+                />
+                {/* Mini controls overlay */}
+                <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)',
+                    display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+                    padding: '8px 10px'
+                }}>
+                    <button
+                        onMouseDown={e => e.stopPropagation()}
+                        onTouchStart={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); togglePlay(); }}
+                        style={{ color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                    >
+                        {isPlaying ? <FiPause size={18} /> : <FiPlay size={18} />}
+                    </button>
+                    <span style={{ color: '#fff', fontSize: 11, fontWeight: 700, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {currentStream.name}
+                    </span>
+                    <button
+                        onMouseDown={e => e.stopPropagation()}
+                        onTouchStart={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); setIsPiP(false); }}
+                        style={{ color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                        title="Fechar PiP"
+                    >
+                        <FiX size={18} />
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div 
@@ -577,8 +701,8 @@ export default function VideoPlayer() {
 
                             {/* Speed Selector Removed */}
 
-                            {/* PiP */}
-                            <button onClick={handlePiP} className="p-2 text-white/70 hover:text-white transition-all hidden md:block" title="Picture-in-Picture">
+                            {/* PiP - visible on all devices */}
+                            <button onClick={handlePiP} className="p-2 text-white/70 hover:text-primary transition-all" title="Picture-in-Picture">
                                 <FiSquare size={22} />
                             </button>
 
