@@ -305,7 +305,7 @@ export default function VideoPlayer() {
         if (video.remote) {
             try {
                 // Verificar se há dispositivos disponíveis
-                const availability = await video.remote.watchAvailability((available) => {
+                await video.remote.watchAvailability((available) => {
                     if (!available) {
                         toast.error('Nenhum dispositivo de transmissão encontrado na rede.');
                     }
@@ -316,9 +316,10 @@ export default function VideoPlayer() {
             } catch (e) {
                 if (e.name === 'NotFoundError') {
                     toast.error('Nenhum dispositivo encontrado. Verifique se estão na mesma rede Wi-Fi.');
-                } else if (e.name === 'NotSupportedError') {
-                    // Sem suporte nativo, continuar para fallback
-                } else {
+                } else if (e.name === 'NotAllowedError' || e.name === 'AbortError' || e.message?.includes('dismissed')) {
+                    // O usuário apenas fechou a janela, ignorar silenciosamente
+                    console.log('[Cast] Seletor fechado pelo usuário.');
+                } else if (e.name !== 'NotSupportedError') {
                     console.warn('[Cast]', e.message);
                 }
             }
@@ -625,10 +626,11 @@ export default function VideoPlayer() {
     return (
         <div 
             ref={containerRef}
-            className={`fixed z-[99999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center group/container inset-0
+            className={`fixed z-[99999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center group/container inset-0 pointer-events-auto
                 ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
             onPointerDown={handleDragStart}
             onMouseDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
         >
             <video 

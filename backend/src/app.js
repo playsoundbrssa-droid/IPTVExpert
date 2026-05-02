@@ -97,6 +97,7 @@ app.use('/api/proxy', proxyRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/xtream', xtreamRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/epg', require('./routes/epg'));
 app.use('/api/progress', require('./routes/progress'));
 
 // Health check
