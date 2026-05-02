@@ -23,7 +23,8 @@ export default function MediaCard({ item, type, playlist = [] }) {
     const currentProgram = useMemo(() => {
         if (type !== 'channel') return null;
         // Tenta encontrar pelo ID do canal (alguns m3u usam tvg-id)
-        return nowPlaying[item.tvgId] || nowPlaying[item.id] || null;
+        const data = nowPlaying[item.tvgId] || nowPlaying[item.id];
+        return data?.current || null;
     }, [nowPlaying, item, type]);
 
     const programProgress = useMemo(() => {

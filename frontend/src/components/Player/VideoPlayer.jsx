@@ -644,13 +644,17 @@ export default function VideoPlayer() {
             )}
 
             {/* Repositioned Title/EPG Info (Top-Left) */}
-            <div className={`absolute left-0 top-0 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[80%] lg:max-w-md
+            <div className={`absolute left-0 top-0 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[90%] md:max-w-xl
                 ${(showControls) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
                 <div className="flex flex-col gap-1 md:gap-3">
-                    <h3 className="text-white text-xl lg:text-4xl font-black leading-tight drop-shadow-2xl">{currentStream.name}</h3>
+                    <h3 className="text-white text-xl lg:text-3xl font-black leading-tight drop-shadow-2xl opacity-60 mb-1">{currentStream.name}</h3>
                     
                     {currentStream.type === 'channel' && (() => {
-                        const prog = nowPlaying[currentStream.tvgId] || nowPlaying[currentStream.id];
+                        const data = nowPlaying[currentStream.tvgId] || nowPlaying[currentStream.id];
+                        if (!data) return null;
+
+                        const prog = data.current;
+                        const nextProg = data.next;
                         if (!prog) return null;
 
                         const parseDate = (d) => {
@@ -669,25 +673,39 @@ export default function VideoPlayer() {
                         const progress = start && stop ? Math.max(0, Math.min(100, ((now - start) / (stop - start)) * 100)) : 0;
 
                         return (
-                            <div className="space-y-2 animate-fade-in">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] lg:text-[14px] text-primary font-black uppercase tracking-widest">{prog.title}</span>
-                                    {start && stop && (
-                                        <span className="text-[9px] lg:text-[11px] text-gray-400 font-bold">
-                                            {new Date(start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(stop).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    )}
+                            <div className="space-y-3 animate-fade-in">
+                                {/* Current Program Row */}
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center px-2 py-0.5 bg-red-900/80 rounded text-[9px] lg:text-[11px] font-black text-red-200 uppercase tracking-widest border border-red-500/20">
+                                        AO VIVO
+                                    </div>
+                                    <span className="text-sm lg:text-xl text-white font-black uppercase tracking-tight drop-shadow-lg">
+                                        {prog.title}
+                                    </span>
                                 </div>
-                                <div className="w-full h-1 lg:h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${progress}%` }} />
+
+                                {/* Progress Bar - Clean & Bold like the image */}
+                                <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                                    <div 
+                                        className="h-full bg-white transition-all duration-1000 shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
+                                        style={{ width: `${progress}%` }} 
+                                    />
                                 </div>
+
+                                {/* Next Program Info */}
+                                {nextProg && (
+                                    <div className="flex items-center gap-2 text-[9px] lg:text-[12px] font-black uppercase tracking-[0.1em] text-gray-400 drop-shadow-md">
+                                        <span className="opacity-50">PRÓXIMO:</span>
+                                        <span className="opacity-80">{nextProg.title}</span>
+                                    </div>
+                                )}
                             </div>
                         );
                     })()}
 
-                    <div className="flex items-center gap-3">
-                        <span className="px-2 py-0.5 md:px-3 md:py-1 bg-primary text-white text-[9px] lg:text-[12px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
-                        {duration === 0 && <span className="flex items-center gap-1.5 md:gap-2 text-[9px] lg:text-[12px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> AO VIVO</span>}
+                    <div className="flex items-center gap-3 mt-2">
+                        <span className="px-2 py-0.5 md:px-3 md:py-1 bg-primary text-white text-[9px] lg:text-[11px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
+                        {duration === 0 && <span className="flex items-center gap-1.5 md:gap-2 text-[9px] lg:text-[11px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> AO VIVO</span>}
                     </div>
                 </div>
             </div>
