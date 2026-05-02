@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { FiTv, FiFilm, FiVideo, FiHeart, FiSettings, FiPlus, FiShield, FiTrendingUp, FiHome } from 'react-icons/fi';
+import { FiTv, FiFilm, FiVideo, FiHeart, FiSettings, FiPlus, FiShield, FiTrendingUp, FiHome, FiClock } from 'react-icons/fi';
 import { useUserStore } from '../../stores/useUserStore';
 
 export default function Sidebar({ onImportClick }) {
@@ -9,6 +9,7 @@ export default function Sidebar({ onImportClick }) {
         { path: '/', icon: FiHome, label: 'Início' },
         { path: '/favorites', icon: FiHeart, label: 'Favoritos' },
         { path: '/live-tv', icon: FiTv, label: 'TV ao Vivo' },
+        { path: '/epg', icon: FiClock, label: 'Guia TV' },
         { path: '/movies', icon: FiFilm, label: 'Filmes' },
         { path: '/series', icon: FiVideo, label: 'Séries' },
         ...(user?.role === 'admin' ? [{ path: '/admin', icon: FiShield, label: 'Admin' }] : []),
