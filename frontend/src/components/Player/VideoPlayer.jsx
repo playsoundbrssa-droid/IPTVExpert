@@ -580,9 +580,10 @@ export default function VideoPlayer() {
             </div>
 
             {/* Top Right Actions */}
-            <div className={`absolute top-0 right-0 p-6 flex flex-col items-end gap-3 transition-opacity duration-300 z-40
-                ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                
+            <div className={`absolute top-0 right-0 pt-12 md:pt-6 px-6 pb-6 flex flex-col items-end gap-3 transition-opacity duration-300 z-40
+                ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}
+            >
                 <button 
                     onClick={() => setCurrentStream(null)} 
                     className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
