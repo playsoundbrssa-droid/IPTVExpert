@@ -898,10 +898,12 @@ export default function VideoPlayer() {
                                 </button>
                             )}
 
-                            {/* Download */}
-                            <button onClick={handleDownload} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Download">
-                                <FiDownload size={20} className="md:w-[22px] md:h-[22px]" />
-                            </button>
+                            {/* Download - Only for Movies and Series */}
+                            {currentStream.type !== 'channel' && (
+                                <button onClick={handleDownload} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Download">
+                                    <FiDownload size={20} className="md:w-[22px] md:h-[22px]" />
+                                </button>
+                            )}
 
                             {/* PiP */}
                             <button onClick={handlePiP} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Picture-in-Picture">
