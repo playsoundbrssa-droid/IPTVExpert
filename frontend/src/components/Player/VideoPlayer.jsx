@@ -582,8 +582,11 @@ export default function VideoPlayer() {
                     webkit-playsinline="true"
                 />
                 
-                {/* Drag Handle Overlay (invisible but ensures capture) */}
-                <div className="absolute inset-0 z-10" />
+                {/* Click to restore full screen */}
+                <div 
+                    className="absolute inset-0 z-10 cursor-pointer" 
+                    onClick={() => setIsPiP(false)}
+                />
 
                 {/* Mini controls overlay */}
                 <div style={{
@@ -612,9 +615,11 @@ export default function VideoPlayer() {
                         onPointerDown={e => e.stopPropagation()}
                         onClick={e => { 
                             e.stopPropagation(); 
-                            setIsPiP(false); 
+                            setCurrentStream(null); 
+                            setIsPiP(false);
                         }}
-                        className="p-2 text-white/70 hover:text-white transition-colors"
+                        className="p-2 text-white/70 hover:bg-red-600/20 hover:text-red-500 rounded-lg transition-all"
+                        title="Fechar Player"
                     >
                         <FiX size={20} />
                     </button>
@@ -766,9 +771,12 @@ export default function VideoPlayer() {
                 style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}
             >
                 <button 
-                    onClick={() => setCurrentStream(null)} 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
-                    title="Sair da Reprodução"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsPiP(true);
+                    }} 
+                    className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
+                    title="Minimizar e continuar assistindo"
                 >
                     <FiChevronLeft size={18} className="group-hover/exit:-translate-x-1 transition-transform" />
                     <span>Voltar</span>
