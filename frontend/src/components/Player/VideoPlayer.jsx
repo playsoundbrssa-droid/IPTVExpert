@@ -848,6 +848,7 @@ export default function VideoPlayer() {
                         </div>
                     )}
 
+                    <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 md:gap-4 flex-1">
                             {/* Volume Control - Hidden on small mobile to save space, shown on MD+ */}
                             <div className="hidden md:flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/5 transition-all">
