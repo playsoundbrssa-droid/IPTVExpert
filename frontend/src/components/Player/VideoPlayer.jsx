@@ -378,17 +378,27 @@ export default function VideoPlayer() {
             if (local && local > 0) savedPosition = local;
         }
 
-        // Só mostrar prompt se já assistiu mais de 10s
+        // Só mostrar prompt se já assistiu mais de 10s e menos de 95% do vídeo
         if (savedPosition && savedPosition > 10) {
+            const dur = videoRef.current?.duration || 0;
+            // Se já viu quase tudo (95%), não pergunta, assume que quer ver de novo ou ignorar
+            if (dur > 0 && savedPosition > dur * 0.95) return;
+            
             setResumeData(savedPosition);
+            if (videoRef.current) videoRef.current.pause();
+            setIsPlaying(false);
         }
     }, [currentStream, progressKey, getActivePlaylist]);
 
     const handleResume = (shouldResume) => {
-        if (shouldResume && videoRef.current && resumeData) {
-            videoRef.current.currentTime = resumeData;
+        if (videoRef.current) {
+            if (shouldResume && resumeData) {
+                videoRef.current.currentTime = resumeData;
+            } else {
+                videoRef.current.currentTime = 0;
+            }
             videoRef.current.play().catch(() => {});
-            // Sem toast — apenas continua silenciosamente
+            setIsPlaying(true);
         }
         setResumeData(null);
     };
