@@ -5,7 +5,6 @@ export default function MobileBottomNav() {
     const navItems = [
         { path: '/',           icon: FiHome,     label: 'Início'    },
         { path: '/live-tv',    icon: FiTv,       label: 'Ao Vivo'   },
-        { path: '/epg',        icon: FiClock,    label: 'Guia'      },
         { path: '/movies',     icon: FiFilm,     label: 'Filmes'    },
         { path: '/series',     icon: FiVideo,    label: 'Séries'    },
         { path: '/favorites',  icon: FiHeart,    label: 'Favoritos' },

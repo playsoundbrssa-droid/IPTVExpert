@@ -6,7 +6,7 @@ import {
     FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiMinimize2, FiSkipBack, FiSkipForward,
     FiSettings, FiDownload, FiAirplay, FiSquare, FiMonitor,
-    FiRotateCcw, FiRotateCw, FiLogOut
+    FiRotateCcw, FiRotateCw, FiLogOut, FiClock
 } from 'react-icons/fi';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
@@ -471,6 +471,9 @@ export default function VideoPlayer() {
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [isPlaying, error, isPiP]);
 
+    const [showSchedule, setShowSchedule] = useState(false);
+    const [fullEpg, setFullEpg] = useState([]);
+
     useEffect(() => {
         let timeout;
         const resetTimer = () => {
@@ -478,13 +481,34 @@ export default function VideoPlayer() {
             clearTimeout(timeout);
             timeout = setTimeout(() => setShowControls(false), 3000);
         };
-        window.addEventListener('mousemove', resetTimer);
-        window.addEventListener('touchstart', resetTimer);
+        if (!showSchedule) {
+            window.addEventListener('mousemove', resetTimer);
+            window.addEventListener('touchstart', resetTimer);
+        }
         return () => {
             window.removeEventListener('mousemove', resetTimer);
             window.removeEventListener('touchstart', resetTimer);
         };
-    }, []);
+    }, [showSchedule]);
+
+    const fetchFullEpg = useCallback(async () => {
+        if (!currentStream || currentStream.type !== 'channel') return;
+        const active = getActivePlaylist();
+        if (!active?.epgCacheKey) return;
+
+        try {
+            const { data } = await api.get(`/epg/${currentStream.tvgId || currentStream.id}`, {
+                params: { cacheKey: active.epgCacheKey }
+            });
+            setFullEpg(data || []);
+        } catch (e) {
+            console.error('[EPG] Error fetching full grid:', e);
+        }
+    }, [currentStream, getActivePlaylist]);
+
+    useEffect(() => {
+        if (showSchedule) fetchFullEpg();
+    }, [showSchedule, fetchFullEpg]);
 
     const handleDragStart = (e) => {
         return;
@@ -849,6 +873,17 @@ export default function VideoPlayer() {
                         </div>
 
                         <div className="flex items-center gap-2 lg:gap-5">
+                            {/* Programação (EPG) */}
+                            {currentStream.type === 'channel' && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowSchedule(true); }} 
+                                    className={`p-2 transition-all ${showSchedule ? 'text-primary' : 'text-white/70 hover:text-white'}`} 
+                                    title="Ver Programação (EPG)"
+                                >
+                                    <FiClock size={22} />
+                                </button>
+                            )}
+
                             {/* Download */}
                             <button onClick={handleDownload} className="p-2 text-white/70 hover:text-white transition-all" title="Download">
                                 <FiDownload size={22} />
@@ -873,6 +908,72 @@ export default function VideoPlayer() {
                             <button onClick={toggleFullscreen} className="p-2 text-white/70 hover:text-white transition-all" title="Tela Cheia">
                                 <FiMaximize size={22} />
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Full EPG Schedule Overlay (Right Side) */}
+            {showSchedule && (
+                <div 
+                    className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[100] flex justify-end animate-fade-in"
+                    onClick={() => setShowSchedule(false)}
+                >
+                    <div 
+                        className="w-full max-w-sm md:max-w-md h-full bg-[#0F0F0F]/95 backdrop-blur-3xl border-l border-white/10 shadow-2xl flex flex-col animate-slide-left"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="p-6 md:p-8 border-b border-white/10 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-black text-white uppercase tracking-tight">Programação</h3>
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">{currentStream.name}</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowSchedule(false)}
+                                className="p-3 bg-white/5 hover:bg-red-600/20 hover:text-red-500 text-white/70 rounded-2xl transition-all"
+                            >
+                                <FiX size={24} />
+                            </button>
+                        </div>
+
+                        {/* List */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-3">
+                            {fullEpg.length > 0 ? (
+                                fullEpg.map((prog, idx) => {
+                                    const parseDate = (d) => {
+                                        if (!d) return null;
+                                        const y = d.substring(0, 4), m = d.substring(4, 6), day = d.substring(6, 8);
+                                        const h = d.substring(8, 10), min = d.substring(10, 12);
+                                        return new Date(`${y}-${m}-${day}T${h}:${min}:00`);
+                                    };
+                                    const start = parseDate(prog.start);
+                                    const stop = parseDate(prog.stop);
+                                    const now = new Date();
+                                    const isCurrent = start && stop && now >= start && now <= stop;
+
+                                    return (
+                                        <div 
+                                            key={idx} 
+                                            className={`p-4 rounded-2xl border transition-all ${isCurrent ? 'bg-primary/20 border-primary/30' : 'bg-white/5 border-white/5 hover:bg-white/[0.08] hover:border-white/10'}`}
+                                        >
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest ${isCurrent ? 'bg-primary text-white' : 'bg-white/10 text-gray-400'}`}>
+                                                    {start?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                {isCurrent && <span className="text-[9px] font-black text-primary uppercase tracking-widest animate-pulse">Agora</span>}
+                                            </div>
+                                            <h4 className="text-sm md:text-base font-black text-white uppercase leading-tight mb-1">{prog.title}</h4>
+                                            {prog.desc && <p className="text-[11px] text-gray-500 font-medium line-clamp-2 leading-relaxed">{prog.desc}</p>}
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                                    <FiClock size={48} className="mb-4" />
+                                    <p className="text-xs font-bold uppercase tracking-widest">Nenhuma programação encontrada</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

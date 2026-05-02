@@ -27,8 +27,6 @@ const toasterStyle = {
     duration: 4000,
 };
 
-import EpgPage from './pages/EpgPage';
-
 function App() {
     const { isAuthenticated, init, user } = useUserStore();
     const { currentStream } = usePlayerStore();
@@ -77,7 +75,6 @@ function App() {
                     <Routes>
                         <Route path="/" element={<DashboardPage />} />
                         <Route path="/live-tv" element={<LiveTvPage />} />
-                        <Route path="/epg" element={<EpgPage />} />
                         <Route path="/movies" element={<MoviesPage />} />
                         <Route path="/series" element={<SeriesPage />} />
                         <Route path="/favorites" element={<FavoritesPage />} />
