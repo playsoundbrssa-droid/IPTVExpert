@@ -41,6 +41,7 @@ export default function VideoPlayer() {
     const [isPiP, setIsPiP] = useState(false);
     const [pipPosition, setPipPosition] = useState({ x: 16, y: 16 });
     const pipDragRef = useRef({ dragging: false, startX: 0, startY: 0, initX: 0, initY: 0 });
+    const [isNativePiP, setIsNativePiP] = useState(false);
     
     const [position, setPosition] = useState({ x: 20, y: 20 });
     const [isDragging, setIsDragging] = useState(false);
@@ -165,6 +166,32 @@ export default function VideoPlayer() {
             }
         };
         checkAirPlay();
+
+        // Listeners para PiP Nativo
+        const handleEnterPiP = () => {
+            setIsNativePiP(true);
+            setIsPiP(false); // Desativa PiP customizado se o nativo entrar
+        };
+        const handleLeavePiP = () => {
+            setIsNativePiP(false);
+        };
+
+        video.addEventListener('enterpictureinpicture', handleEnterPiP);
+        video.addEventListener('leavepictureinpicture', handleLeavePiP);
+        
+        // iOS Safari específico
+        if (video.webkitSupportsPresentationMode && typeof video.webkitSetPresentationMode === 'function') {
+            video.addEventListener('webkitpresentationmodechanged', () => {
+                const isWebkitPiP = video.webkitPresentationMode === 'picture-in-picture';
+                setIsNativePiP(isWebkitPiP);
+                if (isWebkitPiP) setIsPiP(false);
+            });
+        }
+
+        return () => {
+            video.removeEventListener('enterpictureinpicture', handleEnterPiP);
+            video.removeEventListener('leavepictureinpicture', handleLeavePiP);
+        };
     }, []);
 
     const toggleFullscreen = () => {
@@ -207,35 +234,52 @@ export default function VideoPlayer() {
         toast.success('Download iniciado...');
     };
 
-    const supportsNativePiP = () =>
-        !!(document.pictureInPictureEnabled && videoRef.current?.requestPictureInPicture);
+    const supportsNativePiP = () => {
+        const video = videoRef.current;
+        if (!video) return false;
+        return !!(document.pictureInPictureEnabled || (video.webkitSupportsPresentationMode && video.webkitSupportsPresentationMode('picture-in-picture')));
+    };
 
     const handlePiP = async () => {
-        // If already in custom PiP mode, exit it
+        const video = videoRef.current;
+        if (!video) return;
+
+        // Se já estiver no PiP customizado, apenas sai dele
         if (isPiP) {
             setIsPiP(false);
             return;
         }
-        // Try native PiP first (desktop Chrome, Safari)
-        // Só tenta o nativo se o vídeo já tiver carregado os metadados (obrigatório pelo navegador)
-        if (supportsNativePiP() && videoRef.current?.readyState >= 1) {
+
+        // 1. Tentar PiP Nativo (Chrome, Safari Moderno)
+        if (video.requestPictureInPicture) {
             try {
-                if (videoRef.current !== document.pictureInPictureElement) {
-                    await videoRef.current.requestPictureInPicture();
-                    // Se o nativo funcionar, garantimos que o custom PiP está desativado
-                    setIsPiP(false);
-                    return;
-                } else {
+                if (document.pictureInPictureElement) {
                     await document.exitPictureInPicture();
+                } else if (video.readyState >= 1) {
+                    await video.requestPictureInPicture();
                     return;
                 }
             } catch (e) {
-                console.warn('[PiP] Native PiP failed, falling back to custom:', e);
+                console.warn('[PiP] Native requestPictureInPicture failed:', e);
+            }
+        } 
+        
+        // 2. Tentar PiP Nativo iOS Safari (mais antigo ou específico)
+        if (video.webkitSetPresentationMode) {
+            try {
+                const newMode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
+                video.webkitSetPresentationMode(newMode);
+                return;
+            } catch (e) {
+                console.warn('[PiP] WebKit presentation mode failed:', e);
             }
         }
-        // Fallback: custom floating mini-player (mobile & unsupported browsers ou vídeo ainda carregando)
+
+        // 3. Fallback: PiP Customizado (Janela flutuante no DOM)
         setIsPiP(!isPiP);
-        toast.success('Picture-in-Picture ativado', { icon: '📺', duration: 2000 });
+        if (!isPiP) {
+            toast.success('Mini player ativado', { icon: '📺', duration: 2000 });
+        }
     };
 
     // Drag handlers for custom PiP window
@@ -449,6 +493,12 @@ export default function VideoPlayer() {
         }
     };
 
+    const handleTimeUpdate = () => {
+        if (videoRef.current) {
+            setCurrentTime(videoRef.current.currentTime);
+        }
+    };
+
     useEffect(() => {
         if (!videoRef.current) return;
         if (isPlaying) {
@@ -560,123 +610,42 @@ export default function VideoPlayer() {
     // ── Render Decision ───────────────────────────────────────────────────────
     if (!currentStream) return null;
 
-    // Detect if we are in ANY kind of PiP (custom or native)
-    const isInAnyPiP = isPiP || (videoRef.current && document.pictureInPictureElement === videoRef.current);
-
-    // ── Custom floating PiP mini-player (mobile fallback) ────────────────────────
-    if (isPiP) {
-        return (
-            <div
-                style={{
-                    position: 'fixed',
-                    left: pipPosition.x,
-                    top: pipPosition.y,
-                    width: 280, // Slightly smaller for better mobile fit
-                    height: 157,
-                    zIndex: 999999, // Ensure it's above everything
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
-                    background: '#000',
-                    cursor: 'grab',
-                    touchAction: 'none',
-                    userSelect: 'none',
-                    WebkitUserSelect: 'none',
-                    pointerEvents: 'auto'
-                }}
-                onPointerDown={handlePipDragStart}
-                onMouseDown={e => e.stopPropagation()} // Extra block
-                onClick={e => e.stopPropagation()}     // Extra block
-            >
-                <video 
-                    ref={videoRef}
-                    className="w-full h-full object-cover"
-                    onTimeUpdate={handleTimeUpdate}
-                    onWaiting={() => setIsBuffering(true)}
-                    onPlaying={() => setIsBuffering(false)}
-                    onEnded={() => setIsPlaying(false)}
-                    autoPlay
-                    playsInline
-                    webkit-playsinline="true"
-                />
-                
-                {/* Click to restore full screen */}
-                <div 
-                    className="absolute inset-0 z-10 cursor-pointer" 
-                    onClick={() => setIsPiP(false)}
-                />
-
-                {/* Mini controls overlay */}
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%)',
-                    display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    zIndex: 20
-                }}>
-                    <button
-                        onPointerDown={e => e.stopPropagation()}
-                        onClick={e => { 
-                            e.stopPropagation(); 
-                            togglePlay(); 
-                        }}
-                        className="p-2 text-white hover:text-primary transition-colors"
-                    >
-                        {isPlaying ? <FiPause size={20} /> : <FiPlay size={20} />}
-                    </button>
-                    
-                    <span className="text-[10px] font-black text-white/90 uppercase tracking-wider truncate max-w-[140px] pointer-events-none">
-                        {currentStream.name}
-                    </span>
-
-                    <button
-                        onPointerDown={e => e.stopPropagation()}
-                        onClick={e => { 
-                            e.stopPropagation(); 
-                            setCurrentStream(null); 
-                            setIsPiP(false);
-                        }}
-                        className="p-2 text-white/70 hover:bg-red-600/20 hover:text-red-500 rounded-lg transition-all"
-                        title="Fechar Player"
-                    >
-                        <FiX size={20} />
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    // Se estiver no PiP NATIVO (Safari/Chrome/etc), não renderiza nada no DOM principal
-    // para não bloquear a navegação com camadas invisíveis
-    if (document.pictureInPictureElement === videoRef.current) {
-        return (
-            <video ref={videoRef} className="hidden" />
-        );
-    }
-
+    // ── Unified Render ──────────────────────────────────
     return (
         <div 
             ref={containerRef}
-            className={`fixed z-[99999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center group/container inset-0 pointer-events-auto
+            className={`fixed z-[99999] transition-all duration-500 ease-out flex items-center justify-center group/container pointer-events-auto
+                ${isNativePiP ? 'opacity-0 pointer-events-none z-[-1]' : 'opacity-100'}
+                ${isPiP ? 'rounded-2xl overflow-hidden shadow-2xl' : 'inset-0 bg-black'}
                 ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
-            onPointerDown={handleDragStart}
+            style={isPiP ? {
+                left: pipPosition.x,
+                top: pipPosition.y,
+                width: 280,
+                height: 157,
+                boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
+                cursor: 'grab',
+                touchAction: 'none'
+            } : {}}
+            onPointerDown={isPiP ? handlePipDragStart : handleDragStart}
             onMouseDown={e => e.stopPropagation()}
             onTouchStart={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
         >
             <video 
                 ref={videoRef}
-                className="w-full h-full object-contain"
+                className={`w-full h-full transition-all duration-300 ${isPiP ? 'object-cover' : 'object-contain'}`}
                 onWaiting={() => setIsBuffering(true)}
                 onPlaying={() => setIsBuffering(false)}
-                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={() => setIsPlaying(false)}
                 onLoadedMetadata={() => {
                     setDuration(videoRef.current?.duration || 0);
-                    // Carregar progresso aqui: o video já está pronto para receber currentTime
                     loadProgress();
                 }}
                 onClick={() => {
-                    setShowControls(!showControls);
+                    if (isPiP) setIsPiP(false);
+                    else setShowControls(!showControls);
                 }}
                 playsInline
                 autoPlay
@@ -684,132 +653,166 @@ export default function VideoPlayer() {
                 webkit-playsinline="true"
             />
 
-            {/* Resume Prompt Overlay */}
-            {resumeData && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center animate-fade-in">
-                    <div className="bg-surface/90 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl text-center max-w-sm mx-4 transform animate-scale-up">
-                        <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
-                            <FiRotateCw size={32} />
-                        </div>
-                        <h3 className="text-xl font-black text-white mb-2">Continuar assistindo?</h3>
-                        <p className="text-gray-400 text-sm mb-8 font-medium">Você parou em <span className="text-white font-bold">{formatTime(resumeData)}</span>. Como deseja prosseguir?</p>
-                        <div className="grid grid-cols-1 gap-3">
-                            <button 
-                                onClick={() => handleResume(true)}
-                                className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-wider hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20"
-                            >
-                                Continuar de onde parei
-                            </button>
-                            <button 
-                                onClick={() => handleResume(false)}
-                                className="w-full py-4 bg-white/5 text-white/70 hover:text-white rounded-2xl font-black uppercase tracking-wider hover:bg-white/10 transition-all"
-                            >
-                                Começar do início
-                            </button>
-                        </div>
+            {/* Custom PiP Overlay Controls */}
+            {isPiP && (
+                <div className="absolute inset-0 z-20 flex flex-col justify-between p-3 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none">
+                    <div className="flex justify-end pointer-events-auto">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setCurrentStream(null); setIsPiP(false); }}
+                            className="p-1.5 bg-black/40 hover:bg-red-600/40 text-white rounded-full backdrop-blur-md transition-all"
+                        >
+                            <FiX size={16} />
+                        </button>
+                    </div>
+                    <div className="flex items-center justify-between pointer-events-auto">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                            className="p-2 text-white hover:text-primary transition-colors"
+                        >
+                            {isPlaying ? <FiPause size={18} /> : <FiPlay size={18} />}
+                        </button>
+                        <span className="text-[10px] font-bold text-white/90 truncate max-w-[120px] uppercase tracking-wider">
+                            {currentStream.name}
+                        </span>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setIsPiP(false); }}
+                            className="p-2 text-white hover:text-primary transition-colors"
+                        >
+                            <FiMaximize size={18} />
+                        </button>
                     </div>
                 </div>
             )}
 
-            {isBuffering && !error && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
-                    <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                </div>
-            )}
-
-            {error && (
-                <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-4 text-center z-50">
-                    <p className="text-red-500 font-bold mb-4">{error}</p>
-                    <button onClick={() => initPlayer()} className="px-6 py-3 bg-primary rounded-xl text-sm font-black uppercase tracking-wider shadow-lg shadow-primary/20">Tentar Novamente</button>
-                </div>
-            )}
-
-            {/* Repositioned Title/EPG Info (Top-Left) */}
-            <div className={`absolute left-0 top-0 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[90%] md:max-w-xl
-                ${(showControls) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
-                <div className="flex flex-col gap-1 md:gap-3">
-                    <h3 className="text-white text-xl lg:text-3xl font-black leading-tight drop-shadow-2xl opacity-60 mb-1">{currentStream.name}</h3>
-                    
-                    {currentStream.type === 'channel' && (() => {
-                        const data = nowPlaying[currentStream.tvgId] || nowPlaying[currentStream.id];
-                        if (!data) return null;
-
-                        const prog = data.current;
-                        const nextProg = data.next;
-                        if (!prog) return null;
-
-                        const parseDate = (d) => {
-                            if (!d) return null;
-                            const y = d.substring(0, 4);
-                            const m = d.substring(4, 6);
-                            const day = d.substring(6, 8);
-                            const h = d.substring(8, 10);
-                            const min = d.substring(10, 12);
-                            return new Date(`${y}-${m}-${day}T${h}:${min}:00`).getTime();
-                        };
-
-                        const start = parseDate(prog.start);
-                        const stop = parseDate(prog.stop);
-                        const now = Date.now();
-                        const progress = start && stop ? Math.max(0, Math.min(100, ((now - start) / (stop - start)) * 100)) : 0;
-
-                        return (
-                            <div className="space-y-3 animate-fade-in">
-                                {/* Current Program Row */}
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center px-2 py-0.5 bg-red-900/80 rounded text-[9px] lg:text-[11px] font-black text-red-200 uppercase tracking-widest border border-red-500/20">
-                                        AO VIVO
-                                    </div>
-                                    <span className="text-sm lg:text-xl text-white font-black uppercase tracking-tight drop-shadow-lg">
-                                        {prog.title}
-                                    </span>
+            {!isPiP && !isNativePiP && (
+                <>
+                    {/* Resume Prompt Overlay */}
+                    {resumeData && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center animate-fade-in">
+                            <div className="bg-surface/90 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl text-center max-w-sm mx-4 transform animate-scale-up">
+                                <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <FiRotateCw size={32} />
                                 </div>
-
-                                {/* Progress Bar - Clean & Bold like the image */}
-                                <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                                    <div 
-                                        className="h-full bg-white transition-all duration-1000 shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
-                                        style={{ width: `${progress}%` }} 
-                                    />
+                                <h3 className="text-xl font-black text-white mb-2">Continuar assistindo?</h3>
+                                <p className="text-gray-400 text-sm mb-8 font-medium">Você parou em <span className="text-white font-bold">{formatTime(resumeData)}</span>. Como deseja prosseguir?</p>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <button 
+                                        onClick={() => handleResume(true)}
+                                        className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-wider hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20"
+                                    >
+                                        Continuar de onde parei
+                                    </button>
+                                    <button 
+                                        onClick={() => handleResume(false)}
+                                        className="w-full py-4 bg-white/5 text-white/70 hover:text-white rounded-2xl font-black uppercase tracking-wider hover:bg-white/10 transition-all"
+                                    >
+                                        Começar do início
+                                    </button>
                                 </div>
-
-                                {/* Next Program Info */}
-                                {nextProg && (
-                                    <div className="flex items-center gap-2 text-[9px] lg:text-[12px] font-black uppercase tracking-[0.1em] text-gray-400 drop-shadow-md">
-                                        <span className="opacity-50">PRÓXIMO:</span>
-                                        <span className="opacity-80">{nextProg.title}</span>
-                                    </div>
-                                )}
                             </div>
-                        );
-                    })()}
+                        </div>
+                    )}
 
-                    <div className="flex items-center gap-3 mt-2">
-                        <span className="px-2 py-0.5 md:px-3 md:py-1 bg-primary text-white text-[9px] lg:text-[11px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
-                        {duration === 0 && <span className="flex items-center gap-1.5 md:gap-2 text-[9px] lg:text-[11px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> AO VIVO</span>}
+                    {isBuffering && !error && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                            <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-4 text-center z-50">
+                            <p className="text-red-500 font-bold mb-4">{error}</p>
+                            <button onClick={() => initPlayer()} className="px-6 py-3 bg-primary rounded-xl text-sm font-black uppercase tracking-wider shadow-lg shadow-primary/20">Tentar Novamente</button>
+                        </div>
+                    )}
+
+                    {/* Repositioned Title/EPG Info (Top-Left) */}
+                    <div className={`absolute left-0 top-0 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[90%] md:max-w-xl
+                        ${(showControls) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
+                        <div className="flex flex-col gap-1 md:gap-3">
+                            <h3 className="text-white text-xl lg:text-3xl font-black leading-tight drop-shadow-2xl opacity-60 mb-1">{currentStream.name}</h3>
+                            
+                            {currentStream.type === 'channel' && (() => {
+                                const data = nowPlaying[currentStream.tvgId] || nowPlaying[currentStream.id];
+                                if (!data) return null;
+
+                                const prog = data.current;
+                                const nextProg = data.next;
+                                if (!prog) return null;
+
+                                const parseDate = (d) => {
+                                    if (!d) return null;
+                                    const y = d.substring(0, 4);
+                                    const m = d.substring(4, 6);
+                                    const day = d.substring(6, 8);
+                                    const h = d.substring(8, 10);
+                                    const min = d.substring(10, 12);
+                                    return new Date(`${y}-${m}-${day}T${h}:${min}:00`).getTime();
+                                };
+
+                                const start = parseDate(prog.start);
+                                const stop = parseDate(prog.stop);
+                                const now = Date.now();
+                                const progress = start && stop ? Math.max(0, Math.min(100, ((now - start) / (stop - start)) * 100)) : 0;
+
+                                return (
+                                    <div className="space-y-3 animate-fade-in">
+                                        {/* Current Program Row */}
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center px-2 py-0.5 bg-red-900/80 rounded text-[9px] lg:text-[11px] font-black text-red-200 uppercase tracking-widest border border-red-500/20">
+                                                AO VIVO
+                                            </div>
+                                            <span className="text-sm lg:text-xl text-white font-black uppercase tracking-tight drop-shadow-lg">
+                                                {prog.title}
+                                            </span>
+                                        </div>
+
+                                        {/* Progress Bar - Clean & Bold like the image */}
+                                        <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                                            <div 
+                                                className="h-full bg-white transition-all duration-1000 shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
+                                                style={{ width: `${progress}%` }} 
+                                            />
+                                        </div>
+
+                                        {/* Next Program Info */}
+                                        {nextProg && (
+                                            <div className="flex items-center gap-2 text-[9px] lg:text-[12px] font-black uppercase tracking-[0.1em] text-gray-400 drop-shadow-md">
+                                                <span className="opacity-50">PRÓXIMO:</span>
+                                                <span className="opacity-80">{nextProg.title}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            <div className="flex items-center gap-3 mt-2">
+                                <span className="px-2 py-0.5 md:px-3 md:py-1 bg-primary text-white text-[9px] lg:text-[11px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
+                                {duration === 0 && <span className="flex items-center gap-1.5 md:gap-2 text-[9px] lg:text-[11px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> AO VIVO</span>}
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Top Right Actions */}
-            <div className={`absolute top-0 right-0 pt-12 md:pt-6 px-6 pb-6 flex flex-col items-end gap-3 transition-opacity duration-300 z-40
-                ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}
-            >
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setCurrentStream(null);
-                        }} 
-                        className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-red-600/40 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
-                        title="Sair da Reprodução"
+                    {/* Top Right Actions */}
+                    <div className={`absolute top-0 right-0 pt-12 md:pt-6 px-6 pb-6 flex flex-col items-end gap-3 transition-opacity duration-300 z-40
+                        ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}
                     >
-                        <FiChevronLeft size={18} className="group-hover/exit:-translate-x-1 transition-transform" />
-                        <span>Sair</span>
-                    </button>
-                </div>
-            </div>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentStream(null);
+                                }} 
+                                className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-red-600/40 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
+                                title="Sair da Reprodução"
+                            >
+                                <FiChevronLeft size={18} className="group-hover/exit:-translate-x-1 transition-transform" />
+                                <span>Sair</span>
+                            </button>
+                        </div>
+                    </div>
+
 
             {/* Middle Controls Indicator */}
             {!isBuffering && (
