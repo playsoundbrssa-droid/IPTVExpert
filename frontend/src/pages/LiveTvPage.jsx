@@ -64,7 +64,12 @@ export default function LiveTvPage() {
         setIsSyncing(true);
         const tid = toast.loading('Atualizando programação...');
         try {
-            const res = await api.post('/epg/import', { url: url || active.config.server }); 
+            const res = await api.post('/epg/import', { 
+                url: url || active.config.server,
+                type: active.type,
+                username: active.config.username,
+                password: active.config.password
+            }); 
             updatePlaylistStats(active.id, { epgCacheKey: res.data.cacheKey });
             toast.dismiss(tid);
             toast.success(`✅ Programação atualizada!`);

@@ -238,14 +238,15 @@ export default function VideoPlayer() {
 
     // Drag handlers for custom PiP window
     const handlePipDragStart = (e) => {
-        // Prevent page scroll/swipe when starting to drag PiP
-        if (e.cancelable) e.preventDefault();
+        // Prevent default only for touch to stop scroll, but keep click working
+        if (e.pointerType === 'touch' && e.cancelable) e.preventDefault();
+        
         e.stopPropagation();
-        const touch = e.touches ? e.touches[0] : e;
+        
         pipDragRef.current = {
             dragging: true,
-            startX: touch.clientX,
-            startY: touch.clientY,
+            startX: e.clientX,
+            startY: e.clientY,
             initX: pipPosition.x,
             initY: pipPosition.y
         };
@@ -253,34 +254,40 @@ export default function VideoPlayer() {
 
     const handlePipDragMove = useCallback((e) => {
         if (!pipDragRef.current.dragging) return;
-        // CRITICAL: prevent page scroll while dragging PiP on mobile
+        
+        // Block interaction leakage
         if (e.cancelable) e.preventDefault();
-        const touch = e.touches ? e.touches[0] : e;
-        const dx = touch.clientX - pipDragRef.current.startX;
-        const dy = touch.clientY - pipDragRef.current.startY;
+        e.stopPropagation();
+
+        const dx = e.clientX - pipDragRef.current.startX;
+        const dy = e.clientY - pipDragRef.current.startY;
+        
         setPipPosition({
-            x: Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx)),
-            y: Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy))
+            x: Math.max(0, Math.min(window.innerWidth - 280, pipDragRef.current.initX + dx)),
+            y: Math.max(0, Math.min(window.innerHeight - 157, pipDragRef.current.initY + dy))
         });
     }, []);
 
-    const handlePipDragEnd = useCallback(() => {
-        pipDragRef.current.dragging = false;
+    const handlePipDragEnd = useCallback((e) => {
+        if (pipDragRef.current.dragging) {
+            e.stopPropagation();
+            pipDragRef.current.dragging = false;
+        }
     }, []);
 
     useEffect(() => {
         if (!isPiP) return;
-        // passive: false is REQUIRED so we can call preventDefault() and stop page scroll
+        
+        // Use pointer events for universal support (mouse, touch, pen)
         const opts = { passive: false };
-        window.addEventListener('mousemove', handlePipDragMove, opts);
-        window.addEventListener('mouseup', handlePipDragEnd);
-        window.addEventListener('touchmove', handlePipDragMove, opts);
-        window.addEventListener('touchend', handlePipDragEnd);
+        window.addEventListener('pointermove', handlePipDragMove, opts);
+        window.addEventListener('pointerup', handlePipDragEnd);
+        window.addEventListener('pointercancel', handlePipDragEnd);
+        
         return () => {
-            window.removeEventListener('mousemove', handlePipDragMove, opts);
-            window.removeEventListener('mouseup', handlePipDragEnd);
-            window.removeEventListener('touchmove', handlePipDragMove, opts);
-            window.removeEventListener('touchend', handlePipDragEnd);
+            window.removeEventListener('pointermove', handlePipDragMove, opts);
+            window.removeEventListener('pointerup', handlePipDragEnd);
+            window.removeEventListener('pointercancel', handlePipDragEnd);
         };
     }, [isPiP, handlePipDragMove, handlePipDragEnd]);
 
@@ -520,55 +527,71 @@ export default function VideoPlayer() {
                     position: 'fixed',
                     left: pipPosition.x,
                     top: pipPosition.y,
-                    width: 320,
-                    height: 180,
-                    zIndex: 99999,
+                    width: 280, // Slightly smaller for better mobile fit
+                    height: 157,
+                    zIndex: 999999, // Ensure it's above everything
                     borderRadius: 16,
                     overflow: 'hidden',
-                    boxShadow: '0 8px 40px rgba(0,0,0,0.8)',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
                     background: '#000',
                     cursor: 'grab',
-                    border: '2px solid rgba(255,255,255,0.15)',
-                    touchAction: 'none',   // bloqueia scroll/zoom do browser no elemento
+                    touchAction: 'none',
                     userSelect: 'none',
-                    WebkitUserSelect: 'none'
+                    WebkitUserSelect: 'none',
+                    pointerEvents: 'auto'
                 }}
-                onMouseDown={handlePipDragStart}
-                onTouchStart={handlePipDragStart}
+                onPointerDown={handlePipDragStart}
+                onMouseDown={e => e.stopPropagation()} // Extra block
+                onClick={e => e.stopPropagation()}     // Extra block
             >
                 <video
                     ref={videoRef}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'contain',
+                        pointerEvents: 'none' // Important: let events pass to container for drag
+                    }}
                     autoPlay
                     playsInline
                     webkit-playsinline="true"
                 />
+                
+                {/* Drag Handle Overlay (invisible but ensures capture) */}
+                <div className="absolute inset-0 z-10" />
+
                 {/* Mini controls overlay */}
                 <div style={{
                     position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%)',
                     display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-                    padding: '8px 10px'
+                    padding: '8px 12px',
+                    zIndex: 20
                 }}>
                     <button
-                        onMouseDown={e => e.stopPropagation()}
-                        onTouchStart={e => e.stopPropagation()}
-                        onClick={e => { e.stopPropagation(); togglePlay(); }}
-                        style={{ color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={e => { 
+                            e.stopPropagation(); 
+                            togglePlay(); 
+                        }}
+                        className="p-2 text-white hover:text-primary transition-colors"
                     >
-                        {isPlaying ? <FiPause size={18} /> : <FiPlay size={18} />}
+                        {isPlaying ? <FiPause size={20} /> : <FiPlay size={20} />}
                     </button>
-                    <span style={{ color: '#fff', fontSize: 11, fontWeight: 700, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    
+                    <span className="text-[10px] font-black text-white/90 uppercase tracking-wider truncate max-w-[140px] pointer-events-none">
                         {currentStream.name}
                     </span>
+
                     <button
-                        onMouseDown={e => e.stopPropagation()}
-                        onTouchStart={e => e.stopPropagation()}
-                        onClick={e => { e.stopPropagation(); setIsPiP(false); }}
-                        style={{ color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-                        title="Fechar PiP"
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={e => { 
+                            e.stopPropagation(); 
+                            setIsPiP(false); 
+                        }}
+                        className="p-2 text-white/70 hover:text-white transition-colors"
                     >
-                        <FiX size={18} />
+                        <FiX size={20} />
                     </button>
                 </div>
             </div>
