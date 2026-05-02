@@ -28,8 +28,11 @@ export default function MediaDetailModal() {
 
     useEffect(() => {
         if (selectedMediaDetails) {
+            // Bloquear scroll e interação do fundo ao abrir o modal
+            document.body.style.overflow = 'hidden';
+            document.body.style.touchAction = 'none';
+
             fetchMetadata();
-            // Reset season to 1 when changing media
             setSelectedSeason(1);
             const isXtream = selectedMediaDetails.id.includes('xtream_');
             if (selectedMediaDetails.type === 'series' && isXtream) {
@@ -38,10 +41,19 @@ export default function MediaDetailModal() {
                 fetchXtreamMovieInfo();
             }
         } else {
+            // Restaurar scroll ao fechar
+            document.body.style.overflow = '';
+            document.body.style.touchAction = '';
             setMetadata(null);
             setXtreamEpisodes(null);
             setXtreamInfo(null);
         }
+
+        // Garantir limpeza se o componente desmontar com modal aberto
+        return () => {
+            document.body.style.overflow = '';
+            document.body.style.touchAction = '';
+        };
     }, [selectedMediaDetails]);
 
     const fetchXtreamSeriesInfo = async () => {
@@ -224,7 +236,7 @@ export default function MediaDetailModal() {
                 onClose={() => setSelectedMediaDetails(null)}
                 className="relative z-50"
             >
-                {/* Backdrop Layer */}
+                {/* Backdrop — bloqueia toque no fundo em mobile */}
                 <Transition.Child
                     enter="ease-out duration-300"
                     enterFrom="opacity-0"
@@ -233,11 +245,22 @@ export default function MediaDetailModal() {
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div className="fixed inset-0 bg-black/90 backdrop-blur-xl" aria-hidden="true" />
+                    <div
+                        className="fixed inset-0 bg-black/90 backdrop-blur-xl"
+                        aria-hidden="true"
+                        style={{ touchAction: 'none' }}
+                        onTouchStart={e => e.stopPropagation()}
+                        onTouchMove={e => e.stopPropagation()}
+                    />
                 </Transition.Child>
 
-                {/* Modal Container */}
-                <div className="fixed inset-0 overflow-y-auto">
+                {/* Modal Container — captura todos os eventos, impede propagação para o fundo */}
+                <div
+                    className="fixed inset-0 overflow-y-auto"
+                    onTouchStart={e => e.stopPropagation()}
+                    onTouchMove={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
+                >
                     <div className="flex min-h-full items-center justify-center p-0 md:p-6">
                         <Transition.Child
                             enter="ease-out duration-300"

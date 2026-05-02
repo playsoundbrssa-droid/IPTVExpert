@@ -141,10 +141,7 @@ export default function VideoPlayer() {
             });
         }
 
-        // Tentar restaurar progresso após o vídeo carregar
-        if (currentStream.type === 'movie' || currentStream.type === 'series') {
-            loadProgress();
-        }
+        // Progresso é carregado via evento loadedmetadata (veja abaixo)
     }, [currentStream, getStreamUrl, cleanUp, useProxy]);
 
     useEffect(() => {
@@ -291,67 +288,90 @@ export default function VideoPlayer() {
 
     const { getActivePlaylist } = usePlaylistManagerStore();
 
-    const loadProgress = async () => {
-        const active = getActivePlaylist();
-        if (!active || !currentStream) return;
-        
+    // Chave do localStorage como fallback quando usuário não está logado ou API falha
+    const progressKey = currentStream
+        ? `progress_${currentStream.id}`
+        : null;
+
+    const loadProgress = useCallback(async () => {
+        if (!currentStream || !progressKey) return;
+        if (currentStream.type === 'channel') return;
+
+        let savedPosition = null;
+
+        // 1) Tentar API do backend
         try {
-            const response = await api.get('/progress', {
-                params: { mediaId: currentStream.id, playlistId: active.id }
-            });
-            
-            if (response.data?.progress) {
-                const pos = response.data.progress.last_position;
-                if (pos > 10) {
-                    setResumeData(pos);
+            const active = getActivePlaylist();
+            if (active) {
+                const response = await api.get('/progress', {
+                    params: { mediaId: currentStream.id, playlistId: active.id }
+                });
+                if (response.data?.progress) {
+                    savedPosition = response.data.progress.last_position;
                 }
             }
-        } catch (error) {
-            console.warn('[PROGRESS] Falha ao carregar:', error.message);
+        } catch (e) {
+            console.warn('[PROGRESS] API indisponível, usando localStorage:', e.message);
         }
-    };
+
+        // 2) Fallback: localStorage
+        if (!savedPosition) {
+            const local = parseFloat(localStorage.getItem(progressKey));
+            if (local && local > 0) savedPosition = local;
+        }
+
+        // Só mostrar prompt se já assistiu mais de 10s
+        if (savedPosition && savedPosition > 10) {
+            setResumeData(savedPosition);
+        }
+    }, [currentStream, progressKey, getActivePlaylist]);
 
     const handleResume = (shouldResume) => {
         if (shouldResume && videoRef.current && resumeData) {
             videoRef.current.currentTime = resumeData;
             videoRef.current.play().catch(() => {});
-            toast.success(`Continuando de ${formatTime(resumeData)}`, { icon: '🕒' });
+            // Sem toast — apenas continua silenciosamente
         }
         setResumeData(null);
     };
 
-    const saveProgress = async () => {
+    const saveProgress = useCallback(async () => {
         if (!videoRef.current || !currentStream) return;
-        if (currentStream.type === 'channel') return;
+        if (currentStream.type !== 'movie' && currentStream.type !== 'series') return;
 
-        const active = getActivePlaylist();
-        if (!active) return;
+        const pos = videoRef.current.currentTime;
+        const dur = videoRef.current.duration;
+        if (!pos || pos < 5) return; // não salvar se não iniciou
 
+        // Sempre salvar no localStorage como fallback instantâneo
+        if (progressKey) localStorage.setItem(progressKey, String(pos));
+
+        // Tentar salvar na API (sem bloquear se falhar)
         try {
-            await api.post('/progress', {
-                mediaId: currentStream.id,
-                playlistId: active.id,
-                currentTime: videoRef.current.currentTime,
-                duration: videoRef.current.duration
-            });
+            const active = getActivePlaylist();
+            if (active) {
+                await api.post('/progress', {
+                    mediaId: currentStream.id,
+                    playlistId: active.id,
+                    currentTime: pos,
+                    duration: dur
+                });
+            }
         } catch (error) {
-            console.warn('[PROGRESS] Falha ao salvar:', error.message);
+            console.warn('[PROGRESS] Falha ao salvar na API (salvo localmente):', error.message);
         }
-    };
+    }, [currentStream, progressKey, getActivePlaylist]);
 
-    // Salvar progresso periodicamente
+    // Salvar progresso a cada 15s e ao sair
     useEffect(() => {
-        if (currentStream?.type === 'channel') return;
-        
-        const interval = setInterval(() => {
-            saveProgress();
-        }, 15000); // A cada 15 segundos
+        if (currentStream?.type !== 'movie' && currentStream?.type !== 'series') return;
 
+        const interval = setInterval(saveProgress, 15000);
         return () => {
             clearInterval(interval);
-            saveProgress(); // Salvar ao fechar
+            saveProgress();
         };
-    }, [currentStream]);
+    }, [currentStream, saveProgress]);
 
     const seek = (seconds) => {
         if (videoRef.current) {
@@ -517,7 +537,11 @@ export default function VideoPlayer() {
                 onWaiting={() => setIsBuffering(true)}
                 onPlaying={() => setIsBuffering(false)}
                 onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
-                onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+                onLoadedMetadata={() => {
+                    setDuration(videoRef.current?.duration || 0);
+                    // Carregar progresso aqui: o video já está pronto para receber currentTime
+                    loadProgress();
+                }}
                 onClick={() => {
                     setShowControls(!showControls);
                 }}
