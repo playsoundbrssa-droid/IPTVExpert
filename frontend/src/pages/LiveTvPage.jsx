@@ -6,10 +6,12 @@ import { FiSearch, FiTv, FiRefreshCw } from 'react-icons/fi';
 import { usePlaylistManagerStore } from '../stores/usePlaylistManagerStore';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
+import { useEpgStore } from '../stores/useEpgStore';
 
 export default function LiveTvPage() {
     const { channelsList, channelsGroups, selectedLiveGroup, setSelectedLiveGroup } = usePlaylistStore();
     const { getActivePlaylist, updatePlaylistStats } = usePlaylistManagerStore();
+    const { fetchNowPlaying } = useEpgStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(50);
@@ -20,6 +22,14 @@ export default function LiveTvPage() {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // Fetch EPG bulk data
+    React.useEffect(() => {
+        const active = getActivePlaylist();
+        if (active?.epgCacheKey) {
+            fetchNowPlaying(active.epgCacheKey);
+        }
+    }, [getActivePlaylist, fetchNowPlaying]);
 
     const filteredChannels = useMemo(() => {
         let list = (selectedLiveGroup ? channelsGroups[selectedLiveGroup] : channelsList) || [];

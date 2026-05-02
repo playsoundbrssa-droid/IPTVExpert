@@ -13,6 +13,7 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { useEpgStore } from '../../stores/useEpgStore';
 
 export default function VideoPlayer() {
     const videoRef = useRef(null);
@@ -22,6 +23,7 @@ export default function VideoPlayer() {
     
     const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
+    const { nowPlaying } = useEpgStore();
     
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
@@ -236,17 +238,26 @@ export default function VideoPlayer() {
 
     // Drag handlers for custom PiP window
     const handlePipDragStart = (e) => {
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        pipDragRef.current = { dragging: true, startX: clientX, startY: clientY, initX: pipPosition.x, initY: pipPosition.y };
+        // Prevent page scroll/swipe when starting to drag PiP
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches ? e.touches[0] : e;
+        pipDragRef.current = {
+            dragging: true,
+            startX: touch.clientX,
+            startY: touch.clientY,
+            initX: pipPosition.x,
+            initY: pipPosition.y
+        };
     };
 
     const handlePipDragMove = useCallback((e) => {
         if (!pipDragRef.current.dragging) return;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const dx = clientX - pipDragRef.current.startX;
-        const dy = clientY - pipDragRef.current.startY;
+        // CRITICAL: prevent page scroll while dragging PiP on mobile
+        if (e.cancelable) e.preventDefault();
+        const touch = e.touches ? e.touches[0] : e;
+        const dx = touch.clientX - pipDragRef.current.startX;
+        const dy = touch.clientY - pipDragRef.current.startY;
         setPipPosition({
             x: Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx)),
             y: Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy))
@@ -258,32 +269,71 @@ export default function VideoPlayer() {
     }, []);
 
     useEffect(() => {
-        if (isPiP) {
-            window.addEventListener('mousemove', handlePipDragMove);
-            window.addEventListener('mouseup', handlePipDragEnd);
-            window.addEventListener('touchmove', handlePipDragMove, { passive: true });
-            window.addEventListener('touchend', handlePipDragEnd);
-        }
+        if (!isPiP) return;
+        // passive: false is REQUIRED so we can call preventDefault() and stop page scroll
+        const opts = { passive: false };
+        window.addEventListener('mousemove', handlePipDragMove, opts);
+        window.addEventListener('mouseup', handlePipDragEnd);
+        window.addEventListener('touchmove', handlePipDragMove, opts);
+        window.addEventListener('touchend', handlePipDragEnd);
         return () => {
-            window.removeEventListener('mousemove', handlePipDragMove);
+            window.removeEventListener('mousemove', handlePipDragMove, opts);
             window.removeEventListener('mouseup', handlePipDragEnd);
-            window.removeEventListener('touchmove', handlePipDragMove);
+            window.removeEventListener('touchmove', handlePipDragMove, opts);
             window.removeEventListener('touchend', handlePipDragEnd);
         };
     }, [isPiP, handlePipDragMove, handlePipDragEnd]);
 
     const handleAirPlay = async () => {
-        if (videoRef.current?.webkitShowPlaybackTargetPicker) {
-            videoRef.current.webkitShowPlaybackTargetPicker();
-        } else if (videoRef.current?.remote) {
-            try {
-                await videoRef.current.remote.prompt();
-            } catch (e) {
-                console.error('Cast Error:', e);
-            }
-        } else {
-            toast.error('Transmissão não suportada neste navegador.');
+        const video = videoRef.current;
+        if (!video) return;
+
+        // 1) Safari / iOS — AirPlay nativo
+        if (video.webkitShowPlaybackTargetPicker) {
+            video.webkitShowPlaybackTargetPicker();
+            return;
         }
+
+        // 2) Chrome / Android — Remote Playback API (Chromecast, TVs DIAL)
+        if (video.remote) {
+            try {
+                // Verificar se há dispositivos disponíveis
+                const availability = await video.remote.watchAvailability((available) => {
+                    if (!available) {
+                        toast.error('Nenhum dispositivo de transmissão encontrado na rede.');
+                    }
+                }).catch(() => null);
+
+                await video.remote.prompt();
+                return;
+            } catch (e) {
+                if (e.name === 'NotFoundError') {
+                    toast.error('Nenhum dispositivo encontrado. Verifique se estão na mesma rede Wi-Fi.');
+                } else if (e.name === 'NotSupportedError') {
+                    // Sem suporte nativo, continuar para fallback
+                } else {
+                    console.warn('[Cast]', e.message);
+                }
+            }
+        }
+
+        // 3) Fallback universal — copiar URL para o usuário abrir em outro dispositivo
+        const streamUrl = getStreamUrl();
+        if (streamUrl && navigator.clipboard) {
+            try {
+                await navigator.clipboard.writeText(streamUrl);
+                toast.success(
+                    'URL do stream copiada! Cole no VLC ou no seu app de TV para assistir.',
+                    { duration: 5000, icon: '📺' }
+                );
+                return;
+            } catch (e) {}
+        }
+
+        toast('Para assistir na TV: abra o VLC ou seu app de TV e cole a URL do stream.', {
+            icon: '📺',
+            duration: 5000
+        });
     };
 
     const { getActivePlaylist } = usePlaylistManagerStore();
@@ -479,7 +529,9 @@ export default function VideoPlayer() {
                     background: '#000',
                     cursor: 'grab',
                     border: '2px solid rgba(255,255,255,0.15)',
-                    touchAction: 'none'
+                    touchAction: 'none',   // bloqueia scroll/zoom do browser no elemento
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none'
                 }}
                 onMouseDown={handlePipDragStart}
                 onTouchStart={handlePipDragStart}
@@ -594,8 +646,45 @@ export default function VideoPlayer() {
             {/* Repositioned Title/EPG Info (Top-Left) */}
             <div className={`absolute left-0 top-0 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[80%] lg:max-w-md
                 ${(showControls) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
-                <div className="flex flex-col gap-1 md:gap-2">
+                <div className="flex flex-col gap-1 md:gap-3">
                     <h3 className="text-white text-xl lg:text-4xl font-black leading-tight drop-shadow-2xl">{currentStream.name}</h3>
+                    
+                    {currentStream.type === 'channel' && (() => {
+                        const prog = nowPlaying[currentStream.tvgId] || nowPlaying[currentStream.id];
+                        if (!prog) return null;
+
+                        const parseDate = (d) => {
+                            if (!d) return null;
+                            const y = d.substring(0, 4);
+                            const m = d.substring(4, 6);
+                            const day = d.substring(6, 8);
+                            const h = d.substring(8, 10);
+                            const min = d.substring(10, 12);
+                            return new Date(`${y}-${m}-${day}T${h}:${min}:00`).getTime();
+                        };
+
+                        const start = parseDate(prog.start);
+                        const stop = parseDate(prog.stop);
+                        const now = Date.now();
+                        const progress = start && stop ? Math.max(0, Math.min(100, ((now - start) / (stop - start)) * 100)) : 0;
+
+                        return (
+                            <div className="space-y-2 animate-fade-in">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] lg:text-[14px] text-primary font-black uppercase tracking-widest">{prog.title}</span>
+                                    {start && stop && (
+                                        <span className="text-[9px] lg:text-[11px] text-gray-400 font-bold">
+                                            {new Date(start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(stop).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="w-full h-1 lg:h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                    <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${progress}%` }} />
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     <div className="flex items-center gap-3">
                         <span className="px-2 py-0.5 md:px-3 md:py-1 bg-primary text-white text-[9px] lg:text-[12px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
                         {duration === 0 && <span className="flex items-center gap-1.5 md:gap-2 text-[9px] lg:text-[12px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> AO VIVO</span>}

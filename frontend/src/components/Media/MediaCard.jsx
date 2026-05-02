@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FiPlay, FiHeart, FiDownload } from 'react-icons/fi';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
@@ -6,17 +6,49 @@ import toast from 'react-hot-toast';
 import { getProxyImageUrl } from '../../services/api';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
 import { useNavigate } from 'react-router-dom';
+import { useEpgStore } from '../../stores/useEpgStore';
 
 export default function MediaCard({ item, type, playlist = [] }) {
     const { addFavorite, removeFavorite, favorites } = usePlaylistStore();
     const { setCurrentStream } = usePlayerStore();
     const { setSelectedMediaDetails } = usePlaylistStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
+    const { nowPlaying } = useEpgStore();
     const navigate = useNavigate();
     
     const activePlaylist = getActivePlaylist();
-    
     const isFavorite = favorites.some(f => f.id === item.id);
+
+    // EPG Logic
+    const currentProgram = useMemo(() => {
+        if (type !== 'channel') return null;
+        // Tenta encontrar pelo ID do canal (alguns m3u usam tvg-id)
+        return nowPlaying[item.tvgId] || nowPlaying[item.id] || null;
+    }, [nowPlaying, item, type]);
+
+    const programProgress = useMemo(() => {
+        if (!currentProgram) return 0;
+        
+        const parseDate = (d) => {
+            if (!d) return null;
+            // EPG Date Format: 20231027120000 +0000
+            const y = d.substring(0, 4);
+            const m = d.substring(4, 6);
+            const day = d.substring(6, 8);
+            const h = d.substring(8, 10);
+            const min = d.substring(10, 12);
+            return new Date(`${y}-${m}-${day}T${h}:${min}:00`).getTime();
+        };
+
+        const start = parseDate(currentProgram.start);
+        const stop = parseDate(currentProgram.stop);
+        const now = Date.now();
+
+        if (!start || !stop) return 0;
+        const total = stop - start;
+        const elapsed = now - start;
+        return Math.max(0, Math.min(100, (elapsed / total) * 100));
+    }, [currentProgram]);
 
     const toggleFavorite = (e) => {
         e.stopPropagation();
@@ -31,24 +63,18 @@ export default function MediaCard({ item, type, playlist = [] }) {
 
     const handleDownload = (e) => {
         e.stopPropagation();
-        
         if (!activePlaylist) {
             toast.error('Adicione uma lista nas configurações para fazer downloads.');
             navigate('/settings');
             return;
         }
-
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         const rawUrl = item.streamUrl || item.url;
-        
-        // HLS (m3u8) downloads are complex, so we limit to direct formats if possible
         const isHls = rawUrl.includes('.m3u8') || rawUrl.includes('type=m3u8');
-        
         if (isHls) {
             toast.error('Download não disponível para este formato (HLS)');
             return;
         }
-
         const downloadUrl = `${apiUrl}/proxy/download?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(item.name)}`;
         window.open(downloadUrl, '_blank');
         toast.success('Download iniciado...');
@@ -60,7 +86,6 @@ export default function MediaCard({ item, type, playlist = [] }) {
             navigate('/settings');
             return;
         }
-
         if (type === 'movie' || type === 'series') {
             setSelectedMediaDetails({ ...item, type });
         } else {
@@ -69,13 +94,10 @@ export default function MediaCard({ item, type, playlist = [] }) {
     };
 
     const isVOD = type === 'movie' || type === 'series';
-
     const [imgSrc, setImgSrc] = React.useState(() => getProxyImageUrl(item.logo));
     const [imgError, setImgError] = React.useState(false);
 
-    const handleImgError = () => {
-        setImgError(true);
-    };
+    const handleImgError = () => setImgError(true);
 
     return (
         <div 
@@ -106,9 +128,8 @@ export default function MediaCard({ item, type, playlist = [] }) {
                     </div>
                 </div>
 
-                {/* Top Action Buttons */}
-                <div className="absolute top-3 right-3 flex flex-col gap-2">
-                    {/* Favorite Button */}
+                {/* Favorite Button */}
+                <div className="absolute top-3 right-3">
                     <button 
                         onClick={toggleFavorite}
                         className={`p-2.5 rounded-xl backdrop-blur-md border transition-all ${
@@ -120,30 +141,47 @@ export default function MediaCard({ item, type, playlist = [] }) {
                     >
                         <FiHeart size={18} fill={isFavorite ? "currentColor" : "none"} />
                     </button>
-
-                    {/* Download Button (Only for VOD) */}
-                    {(type === 'movie' || type === 'series') && (
-                        <button 
-                            onClick={handleDownload}
-                            className="p-2.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-primary transition-all shadow-lg"
-                            title="Download"
-                        >
-                            <FiDownload size={18} />
-                        </button>
-                    )}
                 </div>
 
                 {/* Badge for Type/Group */}
                 <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] uppercase font-bold text-gray-400">
                     {item.group}
                 </div>
+
+                {/* Live Indicator if it's a channel */}
+                {type === 'channel' && (
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-red-600 rounded-md text-[9px] font-black uppercase tracking-widest animate-pulse">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full" /> AO VIVO
+                    </div>
+                )}
             </div>
 
             {/* Info Area */}
-            <div className="p-3 md:p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex-1 flex flex-col justify-end">
-                <h3 className="font-bold text-xs md:text-sm text-white line-clamp-2 md:truncate group-hover:text-primary transition-colors leading-tight">
+            <div className="p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex-1 flex flex-col justify-start gap-1">
+                <h3 className="font-bold text-xs md:text-sm text-white line-clamp-1 group-hover:text-primary transition-colors leading-tight">
                     {item.name}
                 </h3>
+                
+                {type === 'channel' && currentProgram && (
+                    <div className="space-y-1.5 mt-1">
+                        <p className="text-[10px] text-gray-400 font-medium line-clamp-1 italic">
+                            {currentProgram.title}
+                        </p>
+                        {/* Progress Bar */}
+                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-primary transition-all duration-1000" 
+                                style={{ width: `${programProgress}%` }}
+                            />
+                        </div>
+                    </div>
+                )}
+                
+                {type === 'channel' && !currentProgram && (
+                    <p className="text-[10px] text-gray-500 font-medium mt-1">
+                        Programação indisponível
+                    </p>
+                )}
             </div>
         </div>
     );

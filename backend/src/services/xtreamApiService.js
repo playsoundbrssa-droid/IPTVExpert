@@ -195,7 +195,8 @@ exports.importAsPlaylist = async (serverUrl, username, password) => {
                         return g;
                     })(),
                     streamUrl,
-                    type: type === 'live' ? 'channel' : (type === 'movie' ? 'movie' : 'series')
+                    type: type === 'live' ? 'channel' : (type === 'movie' ? 'movie' : 'series'),
+                    tvgId: item.epg_channel_id || null
                 };
             });
         };
