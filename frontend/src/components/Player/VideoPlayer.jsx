@@ -221,8 +221,9 @@ export default function VideoPlayer() {
             try {
                 if (videoRef.current !== document.pictureInPictureElement) {
                     await videoRef.current.requestPictureInPicture();
-                    videoRef.current.addEventListener('leavepictureinpicture', () => {}, { once: true });
-                    return; // native PiP worked, done
+                    // Se o nativo funcionar, garantimos que o custom PiP está desativado
+                    setIsPiP(false);
+                    return;
                 } else {
                     await document.exitPictureInPicture();
                     return;
@@ -232,7 +233,7 @@ export default function VideoPlayer() {
             }
         }
         // Fallback: custom floating mini-player (mobile & unsupported browsers)
-        setIsPiP(true);
+        setIsPiP(!isPiP);
         toast.success('Picture-in-Picture ativado', { icon: '📺', duration: 2000 });
     };
 
@@ -464,18 +465,19 @@ export default function VideoPlayer() {
     useEffect(() => {
         const handleVisibilityChange = async () => {
             if (document.visibilityState === 'hidden' && videoRef.current && isPlaying && !error) {
+                // Se já estiver em algum tipo de PiP, não faz nada
+                if (isPiP || document.pictureInPictureElement) return;
+
                 if (supportsNativePiP()) {
                     try {
-                        if (videoRef.current !== document.pictureInPictureElement) {
-                            await videoRef.current.requestPictureInPicture();
-                        }
+                        await videoRef.current.requestPictureInPicture();
                         return;
                     } catch (e) {
                         console.warn('[PiP] Auto-PiP failed:', e);
                     }
                 }
                 // fallback: activate custom PiP
-                if (!isPiP) setIsPiP(true);
+                setIsPiP(true);
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
