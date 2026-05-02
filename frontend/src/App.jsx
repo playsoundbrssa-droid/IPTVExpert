@@ -89,8 +89,8 @@ function App() {
                 {/* Mobile Bottom Navigation (hidden on desktop) */}
                 <MobileBottomNav />
 
-                {currentStream && <VideoPlayer />}
                 <MediaDetailModal />
+                {currentStream && <VideoPlayer />}
             </div>
             )}
             <Toaster position="top-right" toastOptions={toasterStyle} />

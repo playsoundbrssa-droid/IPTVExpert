@@ -625,10 +625,11 @@ export default function VideoPlayer() {
     return (
         <div 
             ref={containerRef}
-            className={`fixed z-[999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center group/container inset-0
+            className={`fixed z-[99999] bg-black shadow-2xl transition-all duration-500 ease-out flex items-center justify-center group/container inset-0
                 ${isDragging ? 'scale-105 cursor-grabbing' : ''}`}
-            onMouseDown={handleDragStart}
-            onTouchStart={handleDragStart}
+            onPointerDown={handleDragStart}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
         >
             <video 
                 ref={videoRef}
@@ -847,9 +848,9 @@ export default function VideoPlayer() {
                         </div>
                     )}
 
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 lg:gap-8">
-                            <div className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/5 transition-all">
+                        <div className="flex items-center gap-2 md:gap-4 flex-1">
+                            {/* Volume Control - Hidden on small mobile to save space, shown on MD+ */}
+                            <div className="hidden md:flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/5 transition-all">
                                 <button onClick={() => setIsMuted(!isMuted)} className="text-white hover:text-primary transition-colors">
                                     {isMuted || volume === 0 ? <FiVolumeX size={20} /> : <FiVolume2 size={20} />}
                                 </button>
@@ -860,53 +861,63 @@ export default function VideoPlayer() {
                                     onChange={(e) => {
                                         const v = parseFloat(e.target.value);
                                         setVolume(v);
-                                        videoRef.current.volume = v;
+                                        if (videoRef.current) videoRef.current.volume = v;
                                         if (v > 0) setIsMuted(false);
+                                        localStorage.setItem('player_volume', v);
                                     }}
-                                    className="w-20 lg:w-32 transition-all duration-300 accent-primary h-1 cursor-pointer"
+                                    className="w-20 lg:w-32 accent-primary h-1 cursor-pointer"
                                 />
                             </div>
 
-                            <span className="text-sm font-bold text-white/90 tracking-tight">
-                                {formatTime(currentTime)} <span className="text-white/40 mx-1">/</span> {duration > 0 ? formatTime(duration) : 'AO VIVO'}
-                            </span>
+                            {/* Time Display - Simplified for mobile */}
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded-lg border border-white/5">
+                                <span className="text-[10px] md:text-sm font-black text-white whitespace-nowrap">
+                                    {duration > 0 ? formatTime(currentTime) : 'AO VIVO'}
+                                </span>
+                                {duration > 0 && (
+                                    <>
+                                        <span className="text-white/30 text-[10px]">/</span>
+                                        <span className="text-[10px] md:text-sm font-bold text-white/50 whitespace-nowrap">
+                                            {formatTime(duration)}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2 lg:gap-5">
+                        {/* Right side controls - Organized with better spacing */}
+                        <div className="flex items-center gap-1.5 sm:gap-3 md:gap-5">
                             {/* Programação (EPG) */}
                             {currentStream.type === 'channel' && (
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); setShowSchedule(true); }} 
-                                    className={`p-2 transition-all ${showSchedule ? 'text-primary' : 'text-white/70 hover:text-white'}`} 
-                                    title="Ver Programação (EPG)"
+                                    className={`p-2 rounded-lg transition-all ${showSchedule ? 'bg-primary text-white' : 'text-white/70 hover:bg-white/10'}`} 
+                                    title="Guia de Programação"
                                 >
-                                    <FiClock size={22} />
+                                    <FiClock size={20} className="md:w-[22px] md:h-[22px]" />
                                 </button>
                             )}
 
                             {/* Download */}
-                            <button onClick={handleDownload} className="p-2 text-white/70 hover:text-white transition-all" title="Download">
-                                <FiDownload size={22} />
+                            <button onClick={handleDownload} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Download">
+                                <FiDownload size={20} className="md:w-[22px] md:h-[22px]" />
                             </button>
 
-                            {/* Speed Selector Removed */}
-
-                            {/* PiP - visible on all devices */}
-                            <button onClick={handlePiP} className="p-2 text-white/70 hover:text-primary transition-all" title="Picture-in-Picture">
-                                <FiSquare size={22} />
+                            {/* PiP */}
+                            <button onClick={handlePiP} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Picture-in-Picture">
+                                <FiSquare size={20} className="md:w-[22px] md:h-[22px]" />
                             </button>
 
-                            {/* Transmitir (AirPlay / Cast) */}
-                            <button onClick={handleAirPlay} className={`p-2 transition-all ${airplayAvailable ? 'text-primary' : 'text-white/30'}`} title="Transmitir Tela">
-                                <FiAirplay size={22} />
-                            </button>
+                            {/* Transmitir */}
+                            {airplayAvailable && (
+                                <button onClick={handleAirPlay} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Transmitir">
+                                    <FiAirplay size={20} className="md:w-[22px] md:h-[22px]" />
+                                </button>
+                            )}
 
-                            {/* Theater Mode Removed as requested */}
-
-                            {/* Favorites Removed */}
-                            
-                            <button onClick={toggleFullscreen} className="p-2 text-white/70 hover:text-white transition-all" title="Tela Cheia">
-                                <FiMaximize size={22} />
+                            {/* Fullscreen */}
+                            <button onClick={toggleFullscreen} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Tela Cheia">
+                                <FiMaximize size={20} className="md:w-[22px] md:h-[22px]" />
                             </button>
                         </div>
                     </div>
