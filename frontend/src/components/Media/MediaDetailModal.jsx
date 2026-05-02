@@ -161,11 +161,13 @@ export default function MediaDetailModal() {
                     type: selectedMediaDetails.type
                 }
             });
-            setMetadata(response.data);
-            
-            // Tentar associar nomes de episódios se for série
-            if (selectedMediaDetails.type === 'series' && response.data.id) {
-                fetchTmdbEpisodes(response.data.id);
+            if (response.data) {
+                setMetadata(response.data);
+                
+                // Tentar associar nomes de episódios se for série
+                if (selectedMediaDetails.type === 'series' && response.data.id) {
+                    fetchTmdbEpisodes(response.data.id);
+                }
             }
         } catch (error) {
             console.error('Falha ao buscar metadados:', error);

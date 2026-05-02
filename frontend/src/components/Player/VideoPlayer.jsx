@@ -784,17 +784,29 @@ export default function VideoPlayer() {
                 ${(showControls) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}
             >
-                <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isPiP) handlePiP();
-                    }} 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
-                    title="Minimizar e continuar assistindo"
-                >
-                    <FiChevronLeft size={18} className="group-hover/exit:-translate-x-1 transition-transform" />
-                    <span>Voltar</span>
-                </button>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handlePiP();
+                        }} 
+                        className="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl" 
+                        title="Minimizar (PiP)"
+                    >
+                        <FiSquare size={18} />
+                    </button>
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentStream(null);
+                        }} 
+                        className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-red-600/40 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group/exit shadow-2xl" 
+                        title="Sair da Reprodução"
+                    >
+                        <FiChevronLeft size={18} className="group-hover/exit:-translate-x-1 transition-transform" />
+                        <span>Sair</span>
+                    </button>
+                </div>
             </div>
 
             {/* Middle Controls Indicator */}
