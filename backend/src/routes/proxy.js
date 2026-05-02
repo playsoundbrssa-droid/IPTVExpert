@@ -207,12 +207,14 @@ router.get('/stream', async (req, res) => {
                 if (response.headers[h]) res.setHeader(h, response.headers[h]);
             });
 
-            // Forçar detecção de MPEG-TS para IPTV se for genérico
+            // Forçar detecção de MPEG-TS ou MP4 para IPTV se for genérico
             const currentContentType = response.headers['content-type'] || '';
-            const isTsPath = targetUrl.toLowerCase().includes('.ts') || targetUrl.toLowerCase().includes('output=ts');
+            const lowUrl = targetUrl.toLowerCase();
+            const isTsPath = lowUrl.includes('.ts') || lowUrl.includes('output=ts');
+            const isMp4Path = lowUrl.includes('.mp4');
             
-            if (isTsPath && (!currentContentType || currentContentType === 'application/octet-stream')) {
-                res.setHeader('Content-Type', 'video/mp2t');
+            if ((isTsPath || isMp4Path) && (!currentContentType || currentContentType === 'application/octet-stream')) {
+                res.setHeader('Content-Type', isTsPath ? 'video/mp2t' : 'video/mp4');
             }
 
             res.setHeader('Access-Control-Allow-Origin', '*');

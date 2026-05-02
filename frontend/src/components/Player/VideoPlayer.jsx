@@ -217,7 +217,8 @@ export default function VideoPlayer() {
             return;
         }
         // Try native PiP first (desktop Chrome, Safari)
-        if (supportsNativePiP()) {
+        // Só tenta o nativo se o vídeo já tiver carregado os metadados (obrigatório pelo navegador)
+        if (supportsNativePiP() && videoRef.current?.readyState >= 1) {
             try {
                 if (videoRef.current !== document.pictureInPictureElement) {
                     await videoRef.current.requestPictureInPicture();
@@ -232,7 +233,7 @@ export default function VideoPlayer() {
                 console.warn('[PiP] Native PiP failed, falling back to custom:', e);
             }
         }
-        // Fallback: custom floating mini-player (mobile & unsupported browsers)
+        // Fallback: custom floating mini-player (mobile & unsupported browsers ou vídeo ainda carregando)
         setIsPiP(!isPiP);
         toast.success('Picture-in-Picture ativado', { icon: '📺', duration: 2000 });
     };
