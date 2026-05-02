@@ -557,7 +557,11 @@ export default function VideoPlayer() {
         };
     }, [isDragging]);
 
+    // ── Render Decision ───────────────────────────────────────────────────────
     if (!currentStream) return null;
+
+    // Detect if we are in ANY kind of PiP (custom or native)
+    const isInAnyPiP = isPiP || (videoRef.current && document.pictureInPictureElement === videoRef.current);
 
     // ── Custom floating PiP mini-player (mobile fallback) ────────────────────────
     if (isPiP) {
@@ -584,14 +588,13 @@ export default function VideoPlayer() {
                 onMouseDown={e => e.stopPropagation()} // Extra block
                 onClick={e => e.stopPropagation()}     // Extra block
             >
-                <video
+                <video 
                     ref={videoRef}
-                    style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        objectFit: 'contain',
-                        pointerEvents: 'none' // Important: let events pass to container for drag
-                    }}
+                    className="w-full h-full object-cover"
+                    onTimeUpdate={handleTimeUpdate}
+                    onWaiting={() => setIsBuffering(true)}
+                    onPlaying={() => setIsBuffering(false)}
+                    onEnded={() => setIsPlaying(false)}
                     autoPlay
                     playsInline
                     webkit-playsinline="true"
@@ -640,6 +643,14 @@ export default function VideoPlayer() {
                     </button>
                 </div>
             </div>
+        );
+    }
+
+    // Se estiver no PiP NATIVO (Safari/Chrome/etc), não renderiza nada no DOM principal
+    // para não bloquear a navegação com camadas invisíveis
+    if (document.pictureInPictureElement === videoRef.current) {
+        return (
+            <video ref={videoRef} className="hidden" />
         );
     }
 
@@ -786,16 +797,6 @@ export default function VideoPlayer() {
                 style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}
             >
                 <div className="flex items-center gap-2">
-                    <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handlePiP();
-                        }} 
-                        className="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl" 
-                        title="Minimizar (PiP)"
-                    >
-                        <FiSquare size={18} />
-                    </button>
                     <button 
                         onClick={(e) => {
                             e.stopPropagation();

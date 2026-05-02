@@ -16,8 +16,7 @@ exports.getEpgForChannel = async (req, res, next) => {
 
 exports.importEpg = async (req, res, next) => {
     try {
-        const { url } = req.body;
-        const result = await epgService.fetchAndParse(url);
+        const result = await epgService.fetchAndParse(req.body);
         res.json(result);
     } catch (error) {
         next(error);
