@@ -850,10 +850,10 @@ export default function VideoPlayer() {
 
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 md:gap-4 flex-1">
-                            {/* Volume Control - Hidden on small mobile to save space, shown on MD+ */}
-                            <div className="hidden md:flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/5 transition-all">
+                            {/* Volume Control - Always visible, but compact on mobile */}
+                            <div className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-2 md:px-3 py-1.5 rounded-xl border border-white/5 transition-all">
                                 <button onClick={() => setIsMuted(!isMuted)} className="text-white hover:text-primary transition-colors">
-                                    {isMuted || volume === 0 ? <FiVolumeX size={20} /> : <FiVolume2 size={20} />}
+                                    {isMuted || volume === 0 ? <FiVolumeX size={18} className="md:w-5 md:h-5" /> : <FiVolume2 size={18} className="md:w-5 md:h-5" />}
                                 </button>
                                 <input 
                                     type="range" 
@@ -866,7 +866,7 @@ export default function VideoPlayer() {
                                         if (v > 0) setIsMuted(false);
                                         localStorage.setItem('player_volume', v);
                                     }}
-                                    className="w-20 lg:w-32 accent-primary h-1 cursor-pointer"
+                                    className="w-16 md:w-24 lg:w-32 accent-primary h-1 cursor-pointer"
                                 />
                             </div>
 
@@ -930,35 +930,49 @@ export default function VideoPlayer() {
             {/* Full EPG Schedule Overlay (Right Side) */}
             {showSchedule && (
                 <div 
-                    className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[100] flex justify-end animate-fade-in"
+                    className="absolute inset-0 bg-black/20 backdrop-blur-sm z-[100] flex justify-end animate-fade-in"
                     onClick={() => setShowSchedule(false)}
                 >
                     <div 
-                        className="w-full max-w-sm md:max-w-md h-full bg-[#0F0F0F]/95 backdrop-blur-3xl border-l border-white/10 shadow-2xl flex flex-col animate-slide-left"
+                        className="w-full max-w-sm md:max-w-md h-full bg-black/40 backdrop-blur-3xl border-l border-white/10 shadow-2xl flex flex-col animate-slide-left relative overflow-hidden"
                         onClick={e => e.stopPropagation()}
                     >
+                        {/* Decorative background glow */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none" />
+
                         {/* Header */}
-                        <div className="p-6 md:p-8 border-b border-white/10 flex items-center justify-between">
+                        <div className="p-6 md:p-8 border-b border-white/10 flex items-center justify-between relative z-10">
                             <div>
                                 <h3 className="text-xl font-black text-white uppercase tracking-tight">Programação</h3>
-                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">{currentStream.name}</p>
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1 truncate max-w-[200px]">{currentStream.name}</p>
                             </div>
-                            <button 
-                                onClick={() => setShowSchedule(false)}
-                                className="p-3 bg-white/5 hover:bg-red-600/20 hover:text-red-500 text-white/70 rounded-2xl transition-all"
-                            >
-                                <FiX size={24} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); fetchFullEpg(); }}
+                                    className="p-3 bg-white/5 hover:bg-white/10 text-white/70 rounded-2xl transition-all"
+                                    title="Atualizar"
+                                >
+                                    <FiRefreshCw size={20} />
+                                </button>
+                                <button 
+                                    onClick={() => setShowSchedule(false)}
+                                    className="p-3 bg-white/5 hover:bg-red-600/20 hover:text-red-500 text-white/70 rounded-2xl transition-all"
+                                >
+                                    <FiX size={24} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* List */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-3">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-3 relative z-10">
                             {fullEpg.length > 0 ? (
                                 fullEpg.map((prog, idx) => {
                                     const parseDate = (d) => {
                                         if (!d) return null;
-                                        const y = d.substring(0, 4), m = d.substring(4, 6), day = d.substring(6, 8);
-                                        const h = d.substring(8, 10), min = d.substring(10, 12);
+                                        // Handle formats like "20260502040000 +0000"
+                                        const clean = d.split(' ')[0];
+                                        const y = clean.substring(0, 4), m = clean.substring(4, 6), day = clean.substring(6, 8);
+                                        const h = clean.substring(8, 10), min = clean.substring(10, 12);
                                         return new Date(`${y}-${m}-${day}T${h}:${min}:00`);
                                     };
                                     const start = parseDate(prog.start);
@@ -975,17 +989,28 @@ export default function VideoPlayer() {
                                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest ${isCurrent ? 'bg-primary text-white' : 'bg-white/10 text-gray-400'}`}>
                                                     {start?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
-                                                {isCurrent && <span className="text-[9px] font-black text-primary uppercase tracking-widest animate-pulse">Agora</span>}
+                                                {isCurrent && <span className="text-[9px] font-black text-primary uppercase tracking-widest animate-pulse">Agora Passando</span>}
                                             </div>
                                             <h4 className="text-sm md:text-base font-black text-white uppercase leading-tight mb-1">{prog.title}</h4>
-                                            {prog.desc && <p className="text-[11px] text-gray-500 font-medium line-clamp-2 leading-relaxed">{prog.desc}</p>}
+                                            {prog.desc && <p className="text-[11px] text-gray-400 font-medium line-clamp-2 leading-relaxed">{prog.desc}</p>}
                                         </div>
                                     );
                                 })
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                                    <FiClock size={48} className="mb-4" />
-                                    <p className="text-xs font-bold uppercase tracking-widest">Nenhuma programação encontrada</p>
+                                <div className="h-full flex flex-col items-center justify-center text-center px-8">
+                                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10 text-white/20">
+                                        <FiClock size={40} />
+                                    </div>
+                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-white/40 mb-2">Nenhuma programação encontrada</p>
+                                    <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
+                                        Certifique-se de que o EPG está sincronizado nas configurações do canal.
+                                    </p>
+                                    <button 
+                                        onClick={fetchFullEpg}
+                                        className="mt-8 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all"
+                                    >
+                                        Tentar Carregar Novamente
+                                    </button>
                                 </div>
                             )}
                         </div>
