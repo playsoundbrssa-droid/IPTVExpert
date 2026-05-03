@@ -85,18 +85,10 @@ export default function DashboardPage() {
         <div className="pb-20 space-y-12 animate-fade-in max-w-[1600px] mx-auto">
             {/* Hero Banner (Estilo Amazon) */}
             <div className="relative h-[40vh] lg:h-[60vh] rounded-[2.5rem] overflow-hidden group/hero mb-16 shadow-2xl shadow-black/50">
-                {/* Camada de Fundo (Blur para preencher o espaço) */}
                 <img 
                     src={dashboardData.movies[0]?.cover || "/new_logo_banner.jpg"} 
-                    className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110"
-                    alt=""
-                />
-                
-                {/* Camada Principal (Imagem sem cortes) */}
-                <img 
-                    src={dashboardData.movies[0]?.cover || "/new_logo_banner.jpg"} 
-                    className="relative w-full h-full object-contain p-8 lg:p-12 transition-transform duration-700 group-hover/hero:scale-105 z-10"
-                    style={{ objectPosition: 'center 10%' }}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover/hero:scale-105"
+                    style={{ objectPosition: 'center 15%' }}
                     alt="Featured"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
