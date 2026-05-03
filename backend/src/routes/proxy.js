@@ -208,9 +208,10 @@ router.get('/stream', async (req, res) => {
                     absoluteUrl = new URL(trimmed, baseUrl).href;
                 }
 
-                // Retornar a linha passando pelo nosso proxy
+                // Retornar a linha passando pelo nosso proxy e propagando o token de auth
                 const currentProxyCall = `${req.protocol}://${req.get('host')}/api/proxy/stream?url=`;
-                return `${currentProxyCall}${encodeURIComponent(absoluteUrl)}`;
+                const userToken = req.query.token || '';
+                return `${currentProxyCall}${encodeURIComponent(absoluteUrl)}${userToken ? `&token=${userToken}` : ''}`;
             });
 
             res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');

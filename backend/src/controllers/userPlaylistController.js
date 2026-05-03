@@ -55,14 +55,14 @@ const userPlaylistController = {
                 // Update
                 const updateSql = formatQuery(`
                     UPDATE user_playlists 
-                    SET name = ?, type = ?, total = ?, config = ?, channelsCount = ?, moviesCount = ?, seriesCount = ?
+                    SET name = ?, type = ?, total = ?, config = ?, "channelsCount" = ?, "moviesCount" = ?, "seriesCount" = ?
                     WHERE client_id = ? AND user_id = ?
                 `);
                 await db.query(updateSql, [name, type, totalVal, configStr, channelsCount || 0, moviesCount || 0, seriesCount || 0, id, userId]);
             } else {
                 // Insert
                 const insertSql = formatQuery(`
-                    INSERT INTO user_playlists (user_id, client_id, name, type, total, config, channelsCount, moviesCount, seriesCount) 
+                    INSERT INTO user_playlists (user_id, client_id, name, type, total, config, "channelsCount", "moviesCount", "seriesCount") 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `);
                 await db.query(insertSql, [userId, id, name, type, totalVal, configStr, channelsCount || 0, moviesCount || 0, seriesCount || 0]);

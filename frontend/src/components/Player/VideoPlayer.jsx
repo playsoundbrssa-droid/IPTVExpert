@@ -71,7 +71,11 @@ export default function VideoPlayer() {
         if ((isMixedContent || useProxy) && !url.includes('/api/proxy/stream')) {
             let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             if (!apiBase.endsWith('/api')) apiBase += '/api';
-            return `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
+            
+            // Adicionar token de autenticação se disponível
+            const token = localStorage.getItem('token');
+            const proxyUrl = `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
+            return token ? `${proxyUrl}&token=${token}` : proxyUrl;
         }
         return url;
     }, [currentStream, useProxy]);
@@ -89,8 +93,10 @@ export default function VideoPlayer() {
         if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
             videoRef.current.src = streamUrl;
             videoRef.current.play().catch(() => {
-                videoRef.current.muted = true;
-                videoRef.current.play();
+                if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                }
                 setIsMuted(true);
             });
         } else if (isHls && Hls.isSupported()) {
@@ -103,11 +109,17 @@ export default function VideoPlayer() {
             hls.loadSource(streamUrl);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
-            hls.on(Hls.Events.MANIFEST_PARSED, () => videoRef.current.play().catch(() => {
-                videoRef.current.muted = true;
-                videoRef.current.play();
-                setIsMuted(true);
-            }));
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                if (videoRef.current) {
+                    videoRef.current.play().catch(() => {
+                        if (videoRef.current) {
+                            videoRef.current.muted = true;
+                            videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                        }
+                        setIsMuted(true);
+                    });
+                }
+            });
             hls.on(Hls.Events.ERROR, (e, data) => {
                 if (data.fatal) {
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !useProxy) {
@@ -123,8 +135,10 @@ export default function VideoPlayer() {
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
                 mpeg.play().catch(() => {
-                    videoRef.current.muted = true;
-                    videoRef.current.play();
+                    if (videoRef.current) {
+                        videoRef.current.muted = true;
+                        videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                    }
                     setIsMuted(true);
                 });
                 mpegPlayerRef.current = mpeg;
@@ -132,8 +146,10 @@ export default function VideoPlayer() {
         } else {
             videoRef.current.src = streamUrl;
             videoRef.current.play().catch(() => {
-                videoRef.current.muted = true;
-                videoRef.current.play();
+                if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                }
                 setIsMuted(true);
             });
         }
@@ -181,9 +197,12 @@ export default function VideoPlayer() {
                     await document.exitPictureInPicture();
                     setIsPiP(false);
                 } else {
+                    // Verificar se metadados estão carregados antes de pedir PiP
+                    if (video.readyState < 1) {
+                        toast.error('Aguarde o vídeo carregar para usar PiP');
+                        return;
+                    }
                     await video.requestPictureInPicture();
-                    // O evento 'enterpictureinpicture' cuidará do estado se necessário, 
-                    // mas aqui usamos nosso estado isPiP para o mini-player interno como fallback/complemento
                 }
                 return;
             }
