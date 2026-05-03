@@ -93,18 +93,11 @@ export default function DashboardPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
                 <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent" />
                 
-                <div className="absolute bottom-0 left-0 p-8 lg:p-16 space-y-4 max-w-4xl">
+                <div className="absolute bottom-0 left-0 p-8 lg:p-16 space-y-4 max-w-2xl">
                     <span className="px-3 py-1 bg-primary text-white text-[10px] font-black rounded-lg uppercase tracking-widest shadow-lg shadow-primary/20">Em Destaque</span>
-                    <div className="flex flex-col md:flex-row md:items-center gap-6">
-                        <h1 className="text-4xl lg:text-7xl font-black text-white leading-tight drop-shadow-2xl">
-                            Explore o Melhor do <br/> <span className="text-primary">IPTV Expert</span>
-                        </h1>
-                        <img 
-                            src="/logo.png" 
-                            className="w-20 h-20 lg:w-36 lg:h-36 object-contain drop-shadow-[0_0_30px_rgba(108,92,231,0.5)] transform hover:scale-110 transition-transform duration-500" 
-                            alt="Logo" 
-                        />
-                    </div>
+                    <h1 className="text-4xl lg:text-7xl font-black text-white leading-tight drop-shadow-2xl">
+                        Explore o Melhor do <span className="text-primary">IPTV Expert</span>
+                    </h1>
                     <p className="text-gray-300 text-lg lg:text-xl font-medium max-w-xl line-clamp-2 lg:line-clamp-none">
                         Milhares de canais, filmes e séries organizados para você. Comece a assistir agora com a melhor experiência.
                     </p>
