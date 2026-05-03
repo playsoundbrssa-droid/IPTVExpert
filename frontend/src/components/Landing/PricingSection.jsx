@@ -28,7 +28,7 @@ export default function PricingSection({ onLoginClick }) {
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto text-left">
+                <div className="grid sm:landscape:grid-cols-2 md:grid-cols-2 gap-4 md:gap-8 max-w-4xl mx-auto text-left">
                     {/* Plano 1 Mês */}
                     <div className="glass-panel p-6 md:p-8 rounded-3xl neon-border-blue neon-glow-blue transition-all duration-500 reveal group relative">
                         <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl pointer-events-none" />

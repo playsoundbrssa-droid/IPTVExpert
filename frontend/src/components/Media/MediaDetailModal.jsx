@@ -253,7 +253,7 @@ export default function MediaDetailModal() {
                         >
                             <Dialog.Panel className="relative w-full bg-surface/40 border border-white/10 md:rounded-[2.5rem] overflow-hidden shadow-2xl h-screen md:h-auto md:max-h-[90vh] flex flex-col">
                                 
-                                <div className="absolute inset-0 -z-10 h-48 md:h-[60%] overflow-hidden">
+                                <div className="absolute inset-0 -z-10 h-32 md:h-[60%] overflow-hidden">
                                     <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent z-10" />
                                     <img 
                                         src={backdropUrl}
@@ -301,7 +301,7 @@ export default function MediaDetailModal() {
                                                     </span>
                                                 </div>
 
-                                                <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                                                <h2 className="text-2xl md:text-6xl font-black tracking-tight leading-tight line-clamp-2">
                                                     {selectedMediaDetails.name}
                                                 </h2>
 
@@ -309,13 +309,13 @@ export default function MediaDetailModal() {
                                                 <div className="w-full grid grid-cols-2 gap-3 pt-2">
                                                     <button 
                                                         onClick={() => handlePlay()}
-                                                        className="flex items-center justify-center gap-2 py-4 bg-primary rounded-2xl font-black text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-wider"
+                                                        className="flex items-center justify-center gap-2 py-3 md:py-4 bg-primary rounded-2xl font-black text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-xs md:text-sm uppercase tracking-wider"
                                                     >
                                                         <FiPlay fill="currentColor" /> Assistir
                                                     </button>
                                                     <button 
                                                         onClick={toggleFavorite}
-                                                        className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black border transition-all active:scale-95 text-sm uppercase tracking-wider ${
+                                                        className={`flex items-center justify-center gap-2 py-3 md:py-4 rounded-2xl font-black border transition-all active:scale-95 text-xs md:text-sm uppercase tracking-wider ${
                                                             isFavorite 
                                                             ? 'bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/20' 
                                                             : 'bg-white/5 border-white/10 text-white hover:bg-white/10'

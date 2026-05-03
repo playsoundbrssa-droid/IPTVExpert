@@ -522,9 +522,9 @@ export default function VideoPlayer() {
                         </div>
                     )}
 
-                    <div className={`absolute left-0 top-0 p-6 lg:p-10 transition-all duration-500 z-40 max-w-[90%] md:max-w-xl ${showControls ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
+                    <div className={`absolute left-0 top-0 p-4 md:p-6 lg:p-10 transition-all duration-500 z-40 max-w-[90%] md:max-w-xl ${showControls ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
                         <div className="flex flex-col gap-1 md:gap-3">
-                            <h3 className="text-white text-xl lg:text-3xl font-black leading-tight drop-shadow-2xl opacity-60 mb-1">{currentStream.name}</h3>
+                            <h3 className="text-white text-base md:text-xl lg:text-3xl font-black leading-tight drop-shadow-2xl opacity-80 mb-1 line-clamp-1">{currentStream.name}</h3>
                             {currentStream.type === 'channel' && (() => {
                                 const data = nowPlaying[currentStream.tvgId] || nowPlaying[currentStream.id];
                                 if (!data?.current) return null;
@@ -533,66 +533,66 @@ export default function VideoPlayer() {
                                 const start = parseDate(prog.start), stop = parseDate(prog.stop), now = Date.now();
                                 const progress = start && stop ? Math.max(0, Math.min(100, ((now - start) / (stop - start)) * 100)) : 0;
                                 return (
-                                    <div className="space-y-3 animate-fade-in">
+                                    <div className="space-y-1 md:space-y-3 animate-fade-in landscape:hidden md:landscape:block">
                                         <div className="flex items-center gap-3">
                                             <div className="px-2 py-0.5 bg-red-900/80 rounded text-[9px] lg:text-[11px] font-black text-red-200 uppercase tracking-widest border border-red-500/20">AO VIVO</div>
-                                            <span className="text-sm lg:text-xl text-white font-black uppercase tracking-tight drop-shadow-lg">{prog.title}</span>
+                                            <span className="text-xs lg:text-xl text-white font-black uppercase tracking-tight drop-shadow-lg truncate max-w-[200px]">{prog.title}</span>
                                         </div>
-                                        <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                                        <div className="w-full h-1 md:h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
                                             <div className="h-full bg-white transition-all duration-1000" style={{ width: `${progress}%` }} />
                                         </div>
                                     </div>
                                 );
                             })()}
-                            <div className="flex items-center gap-3 mt-2">
-                                <span className="px-2 py-0.5 md:px-3 md:py-1 bg-primary text-white text-[9px] lg:text-[11px] font-black rounded-lg uppercase tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
-                                {duration === 0 && <span className="flex items-center gap-1.5 text-[9px] lg:text-[11px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> AO VIVO</span>}
+                            <div className="flex items-center gap-2 md:gap-3 mt-1">
+                                <span className="px-1.5 py-0.5 md:px-3 md:py-1 bg-primary text-white text-[8px] md:text-[11px] font-black rounded-lg uppercase tracking-wider md:tracking-[0.2em] shadow-lg shadow-primary/20">{currentStream.group}</span>
+                                {duration === 0 && <span className="flex items-center gap-1 text-[8px] md:text-[11px] text-red-500 font-black uppercase tracking-widest animate-pulse"><div className="w-1 h-1 bg-red-500 rounded-full" /> AO VIVO</span>}
                             </div>
                         </div>
                     </div>
 
-                    <div className={`absolute top-0 right-0 p-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] transition-opacity duration-300 z-40 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                        <button onClick={() => setCurrentStream(null)} className="flex items-center gap-2 px-5 py-2.5 bg-black/40 hover:bg-red-600/40 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl">
-                            <FiChevronLeft size={18} /><span>Sair</span>
+                    <div className={`absolute top-0 right-0 p-4 md:p-6 pt-[calc(env(safe-area-inset-top,0px)+1rem)] transition-opacity duration-300 z-40 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                        <button onClick={() => setCurrentStream(null)} className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 bg-black/60 hover:bg-red-600/40 text-white rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl">
+                            <FiChevronLeft size={16} /><span className="landscape:hidden md:landscape:inline">Sair</span>
                         </button>
                     </div>
 
                     {!isBuffering && (
-                        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 lg:gap-12 transition-all z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                            <button onClick={(e) => { e.stopPropagation(); playPrev(); }} className="w-10 h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all border border-white/10"><FiSkipBack size={24} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); seek(-10); }} className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all border border-white/10"><FiRotateCcw size={24} /><span className="text-[10px] font-bold mt-1">10s</span></button>
-                            <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-20 h-20 lg:w-28 lg:h-28 bg-primary text-white rounded-full flex items-center justify-center shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all">{isPlaying ? <FiPause size={48} /> : <FiPlay size={48} className="ml-2" />}</button>
-                            <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all border border-white/10"><FiRotateCw size={24} /><span className="text-[10px] font-bold mt-1">10s</span></button>
-                            <button onClick={(e) => { e.stopPropagation(); playNext(); }} className="w-10 h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all border border-white/10"><FiSkipForward size={24} /></button>
+                        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 md:gap-4 lg:gap-12 transition-all z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                            <button onClick={(e) => { e.stopPropagation(); playPrev(); }} className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all border border-white/10"><FiSkipBack size={18} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); seek(-10); }} className="w-10 h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all border border-white/10"><FiRotateCcw size={18} /><span className="text-[8px] md:text-[10px] font-bold mt-0.5">10s</span></button>
+                            <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-14 h-14 md:w-20 md:h-20 lg:w-28 lg:h-28 bg-primary text-white rounded-full flex items-center justify-center shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all">{isPlaying ? <FiPause size={28} className="md:size-[48px]" /> : <FiPlay size={28} className="md:size-[48px] ml-1" />}</button>
+                            <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="w-10 h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all border border-white/10"><FiRotateCw size={18} /><span className="text-[8px] md:text-[10px] font-bold mt-0.5">10s</span></button>
+                            <button onClick={(e) => { e.stopPropagation(); playNext(); }} className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all border border-white/10"><FiSkipForward size={18} /></button>
                         </div>
                     )}
 
-                    <div className={`absolute bottom-0 left-0 right-0 p-6 lg:p-10 transition-all duration-500 z-40 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
-                        <div className="max-w-7xl mx-auto flex flex-col gap-6">
+                    <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-10 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] transition-all duration-500 z-40 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+                        <div className="max-w-7xl mx-auto flex flex-col gap-3 md:gap-6">
                             {duration > 0 && (
-                                <div className="group/seek relative w-full h-2 bg-white/10 rounded-full cursor-pointer overflow-hidden backdrop-blur-md border border-white/5" onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const x = e.clientX - rect.left; const pct = x / rect.width; if (videoRef.current) videoRef.current.currentTime = pct * duration; }}>
+                                <div className="group/seek relative w-full h-1.5 md:h-2 bg-white/10 rounded-full cursor-pointer overflow-hidden backdrop-blur-md border border-white/5" onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const x = e.clientX - rect.left; const pct = x / rect.width; if (videoRef.current) videoRef.current.currentTime = pct * duration; }}>
                                     <div className="absolute top-0 left-0 h-full bg-primary transition-all duration-100" style={{ width: `${(currentTime / duration) * 100}%` }} />
                                     <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover/seek:opacity-100 transition-opacity shadow-xl" style={{ left: `calc(${(currentTime / duration) * 100}% - 8px)` }} />
                                 </div>
                             )}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-3">
-                                        <button onClick={() => setIsMuted(!isMuted)} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all">{isMuted || volume === 0 ? <FiVolumeX size={24} /> : <FiVolume2 size={24} />}</button>
-                                        <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume} onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); setIsMuted(v === 0); localStorage.setItem('player_volume', v); if (videoRef.current) videoRef.current.volume = v; }} className="w-24 lg:w-32 accent-primary cursor-pointer" />
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-2 md:gap-6">
+                                    <div className="flex items-center gap-1 md:gap-3 landscape:hidden md:landscape:flex">
+                                        <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 md:p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all">{isMuted || volume === 0 ? <FiVolumeX size={18} className="md:size-[24px]" /> : <FiVolume2 size={18} className="md:size-[24px]" />}</button>
+                                        <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume} onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); setIsMuted(v === 0); localStorage.setItem('player_volume', v); if (videoRef.current) videoRef.current.volume = v; }} className="w-16 md:w-24 lg:w-32 accent-primary cursor-pointer" />
                                     </div>
-                                    <div className="text-[12px] font-black text-white/50 tracking-widest uppercase">{formatTime(currentTime)} <span className="mx-2 opacity-20">/</span> {duration > 0 ? formatTime(duration) : 'AO VIVO'}</div>
+                                    <div className="text-[10px] md:text-[12px] font-black text-white/50 tracking-widest uppercase">{formatTime(currentTime)} <span className="mx-1 md:mx-2 opacity-20">/</span> {duration > 0 ? formatTime(duration) : 'AO VIVO'}</div>
                                 </div>
-                                <div className="flex items-center gap-2 md:gap-4">
-                                    <button onClick={handlePiP} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Mini Player"><FiMinimize2 size={22} /></button>
+                                <div className="flex items-center gap-1 md:gap-4 overflow-x-auto no-scrollbar">
+                                    <button onClick={handlePiP} className="p-1.5 md:p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Mini Player"><FiMinimize2 size={18} className="md:size-[22px]" /></button>
                                     {currentStream.type === 'channel' && (
-                                        <button onClick={() => setShowSchedule(true)} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Programação"><FiClock size={22} /></button>
+                                        <button onClick={() => setShowSchedule(true)} className="p-1.5 md:p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Programação"><FiClock size={18} className="md:size-[22px]" /></button>
                                     )}
                                     {currentStream.type !== 'channel' && user?.canDownload && (
-                                        <button onClick={handleDownload} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Download"><FiDownload size={22} /></button>
+                                        <button onClick={handleDownload} className="p-1.5 md:p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Download"><FiDownload size={18} className="md:size-[22px]" /></button>
                                     )}
-                                    {airplayAvailable && <button onClick={handleAirPlay} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Transmitir"><FiAirplay size={22} /></button>}
-                                    <button onClick={toggleFullscreen} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Tela Cheia"><FiMaximize size={22} /></button>
+                                    {airplayAvailable && <button onClick={handleAirPlay} className="p-1.5 md:p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Transmitir"><FiAirplay size={18} className="md:size-[22px]" /></button>}
+                                    <button onClick={toggleFullscreen} className="p-1.5 md:p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Tela Cheia"><FiMaximize size={18} className="md:size-[22px]" /></button>
                                 </div>
                             </div>
                         </div>
