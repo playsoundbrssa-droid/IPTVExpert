@@ -195,13 +195,31 @@ export default function VideoPlayer() {
         video.addEventListener('webkitbeginfullscreen', onEnterNativePiP);
         video.addEventListener('webkitendfullscreen', onLeaveNativePiP);
 
+        // Media Session API para controle fora do navegador no Mobile
+        if ('mediaSession' in navigator && currentStream) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: currentStream.name || 'IPTV Expert',
+                artist: 'IPTV Stream',
+                artwork: currentStream.logo ? [
+                    { src: getProxyImageUrl(currentStream.logo), sizes: '512x512', type: 'image/png' }
+                ] : []
+            });
+            navigator.mediaSession.setActionHandler('play', () => video.play());
+            navigator.mediaSession.setActionHandler('pause', () => video.pause());
+        }
+
         return () => {
             video.removeEventListener('enterpictureinpicture', onEnterNativePiP);
             video.removeEventListener('leavepictureinpicture', onLeaveNativePiP);
             video.removeEventListener('webkitbeginfullscreen', onEnterNativePiP);
             video.removeEventListener('webkitendfullscreen', onLeaveNativePiP);
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = null;
+                navigator.mediaSession.setActionHandler('play', null);
+                navigator.mediaSession.setActionHandler('pause', null);
+            }
         };
-    }, []);
+    }, [currentStream]);
 
     useEffect(() => {
         if (!videoRef.current) return;
@@ -277,12 +295,17 @@ export default function VideoPlayer() {
         e.stopPropagation();
         setIsDragging(true);
         
+        const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
+        const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0);
+        
         pipDragRef.current = {
             dragging: true,
-            startX: e.clientX,
-            startY: e.clientY,
+            startX: clientX,
+            startY: clientY,
             initX: pipPosition.x,
             initY: pipPosition.y,
+            lastX: pipPosition.x,
+            lastY: pipPosition.y,
             rafId: null
         };
     };
@@ -292,25 +315,40 @@ export default function VideoPlayer() {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
 
+        const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
+        const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0);
+
         const updatePosition = () => {
-            const dx = e.clientX - pipDragRef.current.startX;
-            const dy = e.clientY - pipDragRef.current.startY;
+            const dx = clientX - pipDragRef.current.startX;
+            const dy = clientY - pipDragRef.current.startY;
             
-            setPipPosition({
-                x: Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx)),
-                y: Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy))
-            });
+            const newX = Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx));
+            const newY = Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy));
+            
+            // Atualização direta no DOM para máxima performance sem causar re-renders pesados
+            if (containerRef.current) {
+                containerRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+            }
+            pipDragRef.current.lastX = newX;
+            pipDragRef.current.lastY = newY;
+            
             pipDragRef.current.rafId = null;
         };
 
         if (pipDragRef.current.rafId) cancelAnimationFrame(pipDragRef.current.rafId);
         pipDragRef.current.rafId = requestAnimationFrame(updatePosition);
-    }, [pipPosition]);
+    }, []);
 
     const handlePipDragEnd = useCallback(() => {
+        if (!pipDragRef.current.dragging) return;
         pipDragRef.current.dragging = false;
         if (pipDragRef.current.rafId) cancelAnimationFrame(pipDragRef.current.rafId);
         setIsDragging(false);
+        
+        // Sincroniza a posição final com o estado do React
+        if (pipDragRef.current.lastX !== undefined) {
+            setPipPosition({ x: pipDragRef.current.lastX, y: pipDragRef.current.lastY });
+        }
     }, []);
 
     const handleDownload = (e) => {
