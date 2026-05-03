@@ -102,9 +102,12 @@ export default function VideoPlayer() {
             });
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({ 
-                enableWorker: true, 
-                lowLatencyMode: true, 
+                enableWorker: true,
+                liveSyncDurationCount: 3, // Melhor sincronização para ao vivo
+                maxBufferLength: 30, // Mantém 30s de buffer para evitar travamentos
+                maxMaxBufferLength: 60,
                 manifestLoadingMaxRetry: 10,
+                fragLoadingMaxRetry: 10,
                 xhrSetup: (xhr) => { xhr.withCredentials = false; }
             });
             hls.loadSource(streamUrl);
@@ -140,9 +143,12 @@ export default function VideoPlayer() {
                 }, {
                     enableWorker: true,
                     enableStallDetached: true,
-                    stashInitialSize: 128, // Reduz buffer inicial para carregar mais rápido
+                    stashInitialSize: 384, // Aumentado para 384KB para criar uma gordura de buffer inicial
                     autoCleanupSourceBuffer: true,
-                    lazyLoad: false
+                    lazyLoad: false,
+                    liveBufferLatencyChasing: true, // Persegue a latência ideal
+                    liveBufferLatencyMaxLatency: 15, // Pula se atrasar mais de 15s
+                    liveBufferLatencyMinRemain: 2 // Mantém pelo menos 2s no buffer
                 });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();

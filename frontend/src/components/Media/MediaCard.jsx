@@ -100,7 +100,15 @@ export default function MediaCard({ item, type, playlist = [] }) {
     const [imgSrc, setImgSrc] = React.useState(() => getProxyImageUrl(item.logo));
     const [imgError, setImgError] = React.useState(false);
 
-    const handleImgError = () => setImgError(true);
+    const handleImgError = () => {
+        // Se a imagem falhou e estávamos tentando acessar direto via HTTPS, 
+        // tentamos novamente usando o nosso proxy que ignora certificados inválidos.
+        if (imgSrc === item.logo && item.logo.startsWith('https://')) {
+            setImgSrc(getProxyImageUrl(item.logo, true));
+        } else {
+            setImgError(true);
+        }
+    };
 
     return (
         <div 

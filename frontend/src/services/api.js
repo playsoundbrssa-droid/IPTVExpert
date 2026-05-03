@@ -35,9 +35,10 @@ export const getProxyUrl = (url, isFetch = false) => {
     return token ? `${proxyUrl}&token=${token}` : proxyUrl;
 };
 
-export const getProxyImageUrl = (url) => {
+export const getProxyImageUrl = (url, forceProxy = false) => {
     if (!url) return '';
-    if (url.startsWith('https://')) return url; // Já é seguro
+    // Se for HTTPS e não forçamos o proxy, tentamos carregar direto
+    if (url.startsWith('https://') && !forceProxy) return url; 
     
     const token = localStorage.getItem('token');
     const proxyUrl = `${baseURL}/proxy/image?url=${encodeURIComponent(url)}`;

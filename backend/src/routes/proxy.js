@@ -302,6 +302,7 @@ router.get('/image', async (req, res) => {
             url: targetUrl,
             responseType: 'stream',
             timeout: 10000,
+            httpsAgent: new https.Agent({ rejectUnauthorized: false }), // Permite ignorar certificados inválidos
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept': 'image/*'
