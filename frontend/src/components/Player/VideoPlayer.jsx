@@ -28,6 +28,7 @@ export default function VideoPlayer() {
     const { nowPlaying } = useEpgStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
     const navigate = useNavigate();
+    const resumedRef = useRef(null);
     
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
@@ -246,6 +247,7 @@ export default function VideoPlayer() {
 
     const loadProgress = useCallback(async () => {
         if (!currentStream || !progressKey || currentStream.type === 'channel') return;
+        if (resumedRef.current === currentStream.id) return;
         let savedPosition = null;
         try {
             const active = getActivePlaylist();
@@ -268,7 +270,9 @@ export default function VideoPlayer() {
         }
     }, [currentStream, progressKey, getActivePlaylist]);
 
-    const handleResume = (shouldResume) => {
+    const handleResume = (shouldResume, e) => {
+        if (e) e.stopPropagation();
+        resumedRef.current = currentStream?.id;
         if (videoRef.current) {
             videoRef.current.currentTime = shouldResume && resumeData ? resumeData : 0;
             videoRef.current.play().catch(() => {});
@@ -435,8 +439,8 @@ export default function VideoPlayer() {
                                 <h3 className="text-xl font-black text-white mb-2">Continuar assistindo?</h3>
                                 <p className="text-gray-400 text-sm mb-8 font-medium">Você parou em <span className="text-white font-bold">{formatTime(resumeData)}</span></p>
                                 <div className="grid grid-cols-1 gap-3">
-                                    <button onClick={() => handleResume(true)} className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-wider hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20">Continuar</button>
-                                    <button onClick={() => handleResume(false)} className="w-full py-4 bg-white/5 text-white/70 hover:text-white rounded-2xl font-black uppercase tracking-wider hover:bg-white/10 transition-all">Do início</button>
+                                    <button onClick={(e) => handleResume(true, e)} className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-wider hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20">Continuar</button>
+                                    <button onClick={(e) => handleResume(false, e)} className="w-full py-4 bg-white/5 text-white/70 hover:text-white rounded-2xl font-black uppercase tracking-wider hover:bg-white/10 transition-all">Do início</button>
                                 </div>
                             </div>
                         </div>
