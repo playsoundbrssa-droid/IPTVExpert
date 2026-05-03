@@ -88,7 +88,7 @@ export default function DashboardPage() {
                 <img 
                     src={dashboardData.movies[0]?.cover || "/new_logo_banner.jpg"} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover/hero:scale-105"
-                    style={{ objectPosition: 'center 15%' }}
+                    style={{ objectPosition: 'center 10%' }}
                     alt="Featured"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
