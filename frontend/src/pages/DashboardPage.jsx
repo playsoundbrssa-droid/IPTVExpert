@@ -87,7 +87,7 @@ export default function DashboardPage() {
             <div className="relative h-[40vh] lg:h-[60vh] rounded-[2.5rem] overflow-hidden group/hero mb-16 shadow-2xl shadow-black/50">
                 <img 
                     src={dashboardData.movies[0]?.cover || "/new_logo_banner.jpg"} 
-                    className="w-full h-full object-cover object-right-top transition-transform duration-700 group-hover/hero:scale-105"
+                    className="w-full h-full object-cover object-top transition-transform duration-700 group-hover/hero:scale-105"
                     alt="Featured"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
