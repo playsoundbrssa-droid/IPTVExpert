@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePlaylistStore } from '../stores/usePlaylistStore';
 import MediaCard from '../components/Media/MediaCard';
 import CategoryFilter from '../components/Media/CategoryFilter';
@@ -7,6 +7,9 @@ import { FiSearch, FiFilm } from 'react-icons/fi';
 export default function MoviesPage() {
     const { moviesList, moviesGroups, selectedMovieGroup, setSelectedMovieGroup } = usePlaylistStore();
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [visibleCount, setVisibleCount] = useState(60);
+    const loadMoreRef = useRef(null);
 
     // Prevenção de etiquetas erradas (Séries | em Filmes) vindo do provedor
     const cleanedGroups = useMemo(() => {
@@ -24,11 +27,8 @@ export default function MoviesPage() {
         return selectedMovieGroup.replace(/^Séries\s*\|\s*/i, 'Filmes | ');
     }, [selectedMovieGroup]);
 
-    const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [visibleCount, setVisibleCount] = useState(50);
-
     // Debounce search term
-    React.useEffect(() => {
+    useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
         return () => clearTimeout(timer);
     }, [searchTerm]);
@@ -50,9 +50,17 @@ export default function MoviesPage() {
         return filteredMovies.slice(0, visibleCount).map(item => ({ ...item, type: 'movie' }));
     }, [filteredMovies, visibleCount]);
 
-    const handleLoadMore = () => {
-        setVisibleCount(prev => prev + 50);
-    };
+    // Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && visibleCount < filteredMovies.length) {
+                setVisibleCount(prev => prev + 60);
+            }
+        }, { threshold: 0.1 });
+
+        if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+        return () => observer.disconnect();
+    }, [filteredMovies.length, visibleCount]);
 
     if (moviesList.length === 0) {
         return (
@@ -85,7 +93,7 @@ export default function MoviesPage() {
                         value={searchTerm}
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
-                            setVisibleCount(50);
+                            setVisibleCount(60);
                         }}
                         className="glass-input pl-12 w-full py-3"
                     />
@@ -103,7 +111,7 @@ export default function MoviesPage() {
 
                     setSelectedMovieGroup(originalGroup);
                     setSearchTerm('');
-                    setVisibleCount(50);
+                    setVisibleCount(60);
                 }} 
             />
 
@@ -119,14 +127,10 @@ export default function MoviesPage() {
                 ))}
             </div>
 
+            {/* Infinite Scroll Trigger */}
             {visibleCount < filteredMovies.length && (
-                <div className="flex justify-center pt-8 pb-12">
-                    <button
-                        onClick={handleLoadMore}
-                        className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-bold text-white transition-all active:scale-95 shadow-xl"
-                    >
-                        Carregar Mais Filmes (+50)
-                    </button>
+                <div ref={loadMoreRef} className="flex justify-center py-12">
+                    <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </div>
             )}
 
@@ -135,7 +139,6 @@ export default function MoviesPage() {
                     Nenhum filme encontrado para sua busca.
                 </div>
             )}
-
         </div>
     );
 }

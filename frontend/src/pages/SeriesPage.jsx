@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePlaylistStore } from '../stores/usePlaylistStore';
 import MediaCard from '../components/Media/MediaCard';
 import CategoryFilter from '../components/Media/CategoryFilter';
@@ -9,7 +9,8 @@ export default function SeriesPage() {
     const { seriesList, moviesList, seriesGroups, selectedSeriesGroup, setSelectedSeriesGroup } = usePlaylistStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [visibleCount, setVisibleCount] = useState(50);
+    const [visibleCount, setVisibleCount] = useState(60);
+    const loadMoreRef = useRef(null);
 
     // Prevenção de etiquetas erradas (Filmes | em Séries) vindo do provedor
     const cleanedGroups = useMemo(() => {
@@ -41,7 +42,7 @@ export default function SeriesPage() {
     }, [selectedSeriesGroup]);
 
     // Debounce search term
-    React.useEffect(() => {
+    useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
         return () => clearTimeout(timer);
     }, [searchTerm]);
@@ -49,11 +50,7 @@ export default function SeriesPage() {
     const consolidatedSeries = useMemo(() => {
         if (!seriesList.length && !moviesList.length) return [];
 
-        // 1. Criamos um Set para busca O(1)
         const seriesIdSet = new Set(seriesList.map(s => s.id));
-        
-        // 2. Mapeamos TODA a lista para agrupamento (independente da busca)
-        // Isso garante que o modal de detalhes tenha acesso a todos os episódios
         const fullList = [...seriesList, ...moviesList];
         const globalSeriesMap = {};
 
@@ -69,15 +66,10 @@ export default function SeriesPage() {
             globalSeriesMap[baseName].push(item);
         });
 
-        // 3. Geramos o resultado final baseado na busca ou no grupo selecionado
         const lowTerm = debouncedSearch.toLowerCase();
-        
         const result = [];
         for (const [name, items] of Object.entries(globalSeriesMap)) {
-            // Filtro por busca: o nome da série deve conter o termo
             if (debouncedSearch && !name.toLowerCase().includes(lowTerm)) continue;
-
-            // Filtro por grupo: ao menos um episódio deve pertencer ao grupo
             if (selectedSeriesGroup && !items.some(ep => ep.group === selectedSeriesGroup)) continue;
 
             const representative = items.find(it => {
@@ -92,7 +84,7 @@ export default function SeriesPage() {
                 name: name,
                 logo: getBestSeriesLogo(items),
                 episodeCount: items.length,
-                allEpisodes: items, // Agora contém TODOS os episódios globais daquela série
+                allEpisodes: items,
                 type: 'series'
             });
         }
@@ -105,14 +97,17 @@ export default function SeriesPage() {
         return consolidatedSeries.slice(0, visibleCount);
     }, [consolidatedSeries, visibleCount]);
 
-    const handleLoadMore = () => {
-        setVisibleCount(prev => prev + 50);
-    };
+    // Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && visibleCount < consolidatedSeries.length) {
+                setVisibleCount(prev => prev + 60);
+            }
+        }, { threshold: 0.1 });
 
-    // Debug logs to help identify why it's empty
-    React.useEffect(() => {
-        console.log(`[SeriesPage] Debug: seriesList=${seriesList?.length}, moviesList=${moviesList?.length}, consolidated=${consolidatedSeries?.length}`);
-    }, [seriesList, moviesList, consolidatedSeries]);
+        if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+        return () => observer.disconnect();
+    }, [consolidatedSeries.length, visibleCount]);
 
     if (seriesList.length === 0 && moviesList.length === 0) {
         return (
@@ -145,7 +140,7 @@ export default function SeriesPage() {
                         value={searchTerm}
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
-                            setVisibleCount(50);
+                            setVisibleCount(60);
                         }}
                         className="glass-input pl-12 w-full py-3"
                     />
@@ -170,7 +165,7 @@ export default function SeriesPage() {
 
                     setSelectedSeriesGroup(originalGroup);
                     setSearchTerm('');
-                    setVisibleCount(50);
+                    setVisibleCount(60);
                 }} 
             />
 
@@ -186,14 +181,10 @@ export default function SeriesPage() {
                 ))}
             </div>
 
+            {/* Infinite Scroll Trigger */}
             {visibleCount < consolidatedSeries.length && (
-                <div className="flex justify-center pt-8 pb-12">
-                    <button
-                        onClick={handleLoadMore}
-                        className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-bold text-white transition-all active:scale-95 shadow-xl"
-                    >
-                        Carregar Mais Séries (+50)
-                    </button>
+                <div ref={loadMoreRef} className="flex justify-center py-12">
+                    <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </div>
             )}
 
@@ -202,7 +193,6 @@ export default function SeriesPage() {
                     Nenhuma série encontrada para sua busca.
                 </div>
             )}
-
         </div>
     );
 }

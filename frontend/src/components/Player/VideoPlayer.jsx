@@ -170,7 +170,35 @@ export default function VideoPlayer() {
         }
     };
 
-    const handlePiP = () => {
+    const handlePiP = async () => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        try {
+            // Tenta PiP Nativo primeiro (mais estável e funciona fora do navegador)
+            if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                    setIsPiP(false);
+                } else {
+                    await video.requestPictureInPicture();
+                    // O evento 'enterpictureinpicture' cuidará do estado se necessário, 
+                    // mas aqui usamos nosso estado isPiP para o mini-player interno como fallback/complemento
+                }
+                return;
+            }
+            
+            // Fallback para iOS/Safari (WebKit)
+            if (video.webkitSupportsPresentationMode && typeof video.webkitSetPresentationMode === 'function') {
+                const mode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
+                video.webkitSetPresentationMode(mode);
+                return;
+            }
+        } catch (err) {
+            console.warn('Native PiP failed, using custom fallback:', err);
+        }
+
+        // Se não houver suporte nativo, usa o custom draggable
         setIsPiP(!isPiP);
         if (!isPiP) {
             toast.success('Mini player ativado', { icon: '📺', duration: 2000 });
@@ -181,12 +209,14 @@ export default function VideoPlayer() {
         if (e.pointerType === 'touch' && e.cancelable) e.preventDefault();
         e.stopPropagation();
         setIsDragging(true);
+        
         pipDragRef.current = {
             dragging: true,
             startX: e.clientX,
             startY: e.clientY,
             initX: pipPosition.x,
-            initY: pipPosition.y
+            initY: pipPosition.y,
+            rafId: null
         };
     };
 
@@ -194,16 +224,25 @@ export default function VideoPlayer() {
         if (!pipDragRef.current.dragging) return;
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
-        const dx = e.clientX - pipDragRef.current.startX;
-        const dy = e.clientY - pipDragRef.current.startY;
-        setPipPosition({
-            x: Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx)),
-            y: Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy))
-        });
-    }, []);
+
+        const updatePosition = () => {
+            const dx = e.clientX - pipDragRef.current.startX;
+            const dy = e.clientY - pipDragRef.current.startY;
+            
+            setPipPosition({
+                x: Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx)),
+                y: Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy))
+            });
+            pipDragRef.current.rafId = null;
+        };
+
+        if (pipDragRef.current.rafId) cancelAnimationFrame(pipDragRef.current.rafId);
+        pipDragRef.current.rafId = requestAnimationFrame(updatePosition);
+    }, [pipPosition]);
 
     const handlePipDragEnd = useCallback(() => {
         pipDragRef.current.dragging = false;
+        if (pipDragRef.current.rafId) cancelAnimationFrame(pipDragRef.current.rafId);
         setIsDragging(false);
     }, []);
 
@@ -243,6 +282,26 @@ export default function VideoPlayer() {
             videoRef.current.webkitShowPlaybackTargetPicker();
         }
     };
+
+    // Listeners para PiP Nativo
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const handleEnterNativePiP = () => {
+            console.log('[PiP] Native Enter');
+            setIsPiP(false); // Desativa o custom se o nativo entrar
+        };
+        const handleLeaveNativePiP = () => console.log('[PiP] Native Leave');
+
+        video.addEventListener('enterpictureinpicture', handleEnterNativePiP);
+        video.addEventListener('leavepictureinpicture', handleLeaveNativePiP);
+        
+        return () => {
+            video.removeEventListener('enterpictureinpicture', handleEnterNativePiP);
+            video.removeEventListener('leavepictureinpicture', handleLeaveNativePiP);
+        };
+    }, []);
 
 
     const progressKey = currentStream ? `progress_${currentStream.id}` : null;

@@ -3,15 +3,46 @@ const axios   = require('axios');
 const http    = require('http');
 const https   = require('https');
 const dns     = require('dns');
+const auth    = require('../middleware/auth');
 const router  = express.Router();
 
-// ── DoH Resolver (igual ao m3uParserService) ─────────────────────────────────
+// ── SSRF Prevention ──────────────────────────────────────────────────────────
+const isSafeUrl = (urlStr) => {
+    try {
+        const url = new URL(urlStr);
+        const hostname = url.hostname.toLowerCase();
+        
+        // Block obvious local targets
+        const blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
+        if (blockedHosts.includes(hostname)) return false;
+
+        // Block private IP ranges (basic check)
+        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+        if (hostname.startsWith('10.') || 
+            hostname.startsWith('192.168.') || 
+            /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)) {
+            return false;
+        }
+
+        // Block cloud metadata services
+        if (hostname === '169.254.169.254') return false;
+
+        return true;
+    } catch (e) {
+        return false;
+    }
+};
+
+// ── DoH Resolver ──────────────────────────────────────────────────────────────
 const resolveDoh = async (hostname) => {
     const cleanHost = hostname.trim().split(':')[0]; 
     if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost; 
 
-    console.log(`[PROXY DNS] Resolvendo: ${cleanHost} via DoH...`);
+    // Don't resolve blocked hosts
+    if (['localhost', '127.0.0.1'].includes(cleanHost)) return null;
 
+    console.log(`[PROXY DNS] Resolvendo: ${cleanHost} via DoH...`);
+    
     const providers = [
         { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, headers: { 'accept': 'application/dns-json' } },
         { url: `https://dns.google/resolve?name=${cleanHost}&type=A`, headers: { 'accept': 'application/json' } }
@@ -78,10 +109,17 @@ const proxyAgents = {
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Proteger todas as rotas de proxy
+router.use(auth);
+
 // GET /api/proxy/fetch?url=...  — retorna texto bruto com bypass de DNS/CORS
 router.get('/fetch', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).json({ error: 'Parâmetro url obrigatório.' });
+
+    if (!isSafeUrl(targetUrl)) {
+        return res.status(403).json({ error: 'Acesso a esta URL não é permitido por motivos de segurança.' });
+    }
 
     let finalUrl = targetUrl.trim();
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
@@ -117,6 +155,10 @@ router.get('/stream', async (req, res) => {
 
         if (!targetUrl) {
             return res.status(400).json({ error: 'URL is required' });
+        }
+
+        if (!isSafeUrl(targetUrl)) {
+            return res.status(403).json({ error: 'Security block: Private URLs are not allowed.' });
         }
 
         // Sanitizar URL - remover espaços extras e garantir que o # não quebre a requisição
@@ -249,6 +291,10 @@ router.get('/image', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('URL is required');
 
+    if (!isSafeUrl(targetUrl)) {
+        return res.status(403).send('Security block');
+    }
+
     try {
         const response = await axios({
             method: 'GET',
@@ -278,6 +324,10 @@ router.get('/download', async (req, res) => {
 
         if (!targetUrl) {
             return res.status(400).json({ error: 'URL is required' });
+        }
+
+        if (!isSafeUrl(targetUrl)) {
+            return res.status(403).json({ error: 'Security block' });
         }
 
         // Limpar nome do arquivo para evitar problemas de header
