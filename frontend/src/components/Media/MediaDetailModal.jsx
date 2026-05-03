@@ -213,7 +213,7 @@ export default function MediaDetailModal() {
 
     const { currentStream } = usePlayerStore();
     
-    if (!selectedMediaDetails || currentStream) return null;
+    if (!selectedMediaDetails) return null;
 
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;
