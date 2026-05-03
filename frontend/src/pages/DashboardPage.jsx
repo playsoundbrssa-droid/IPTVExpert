@@ -84,10 +84,11 @@ export default function DashboardPage() {
     return (
         <div className="pb-20 space-y-12 animate-fade-in max-w-[1600px] mx-auto">
             {/* Hero Banner (Estilo Amazon) */}
-            <div className="relative h-[40vh] lg:h-[60vh] rounded-[2.5rem] overflow-hidden group/hero mb-16 shadow-2xl shadow-black/50">
+            <div className="relative h-[40vh] lg:h-[60vh] rounded-[2.5rem] overflow-hidden group/hero mb-16 shadow-2xl shadow-black/50 bg-[#0f081d]">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(108,92,231,0.2)_0%,_transparent_70%)]" />
                 <img 
                     src={dashboardData.movies[0]?.cover || "/new_logo_banner.jpg"} 
-                    className="w-full h-full object-contain p-8 lg:p-12 transition-transform duration-700 group-hover/hero:scale-105"
+                    className="w-full h-full object-contain p-8 lg:p-12 transition-transform duration-700 group-hover/hero:scale-105 relative z-10"
                     style={{ objectPosition: 'center 10%' }}
                     alt="Featured"
                 />
