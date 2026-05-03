@@ -345,17 +345,23 @@ export default function VideoPlayer() {
     return (
         <div 
             ref={containerRef}
-            className={`fixed z-[99999] transition-all duration-500 ease-out flex items-center justify-center group/container pointer-events-auto
-                ${isPiP ? 'rounded-2xl overflow-hidden shadow-2xl' : 'inset-0 bg-black'}`}
+            className={`fixed z-[99999] flex items-center justify-center group/container
+                ${isPiP ? 'rounded-2xl overflow-hidden shadow-2xl' : 'inset-0 bg-black'}
+                ${pipDragRef.current.dragging ? '' : 'transition-all duration-500 ease-out'}`}
             style={isPiP ? {
                 left: pipPosition.x,
                 top: pipPosition.y,
                 width: 320,
                 height: 180,
+                bottom: 'auto',
+                right: 'auto',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
                 cursor: 'grab',
-                touchAction: 'none'
-            } : {}}
+                touchAction: 'none',
+                pointerEvents: 'auto'
+            } : {
+                pointerEvents: 'auto'
+            }}
             onPointerDown={isPiP ? handlePipDragStart : undefined}
             onMouseDown={e => e.stopPropagation()}
             onTouchStart={e => e.stopPropagation()}
