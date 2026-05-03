@@ -28,10 +28,7 @@ export default function MediaDetailModal() {
 
     useEffect(() => {
         if (selectedMediaDetails) {
-            // Bloquear scroll e interação do fundo ao abrir o modal
             document.body.style.overflow = 'hidden';
-            document.body.style.touchAction = 'none';
-
             fetchMetadata();
             setSelectedSeason(1);
             const isXtream = selectedMediaDetails.id.includes('xtream_');
@@ -41,18 +38,14 @@ export default function MediaDetailModal() {
                 fetchXtreamMovieInfo();
             }
         } else {
-            // Restaurar scroll ao fechar
             document.body.style.overflow = '';
-            document.body.style.touchAction = '';
             setMetadata(null);
             setXtreamEpisodes(null);
             setXtreamInfo(null);
         }
 
-        // Garantir limpeza se o componente desmontar com modal aberto
         return () => {
             document.body.style.overflow = '';
-            document.body.style.touchAction = '';
         };
     }, [selectedMediaDetails]);
 
@@ -81,7 +74,6 @@ export default function MediaDetailModal() {
                     const normalized = [];
                     const seasonsData = response.data.episodes;
                     
-                    // Xtream pode retornar episódios como um objeto de temporadas ou como um array plano
                     if (typeof seasonsData === 'object' && !Array.isArray(seasonsData)) {
                         Object.keys(seasonsData).forEach(seasonNum => {
                             const episodesList = seasonsData[seasonNum];
@@ -164,7 +156,6 @@ export default function MediaDetailModal() {
             if (response.data) {
                 setMetadata(response.data);
                 
-                // Tentar associar nomes de episódios se for série
                 if (selectedMediaDetails.type === 'series' && response.data.id) {
                     fetchTmdbEpisodes(response.data.id);
                 }
@@ -185,14 +176,11 @@ export default function MediaDetailModal() {
         } catch (err) {}
     };
 
-    // Agrupar episódios se for série
     const episodesBySeason = useMemo(() => {
         if (!selectedMediaDetails) return null;
         
-        // Prioridade 1: Episódios vindos do Xtream (carregados via API)
         if (xtreamEpisodes) return organizeBySeasons(xtreamEpisodes);
 
-        // Prioridade 2: Episódios agrupados localmente (M3U)
         let siblings = selectedMediaDetails.allEpisodes;
 
         if (!siblings) {
@@ -218,8 +206,6 @@ export default function MediaDetailModal() {
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;
         setCurrentStream(itemToPlay, []);
-        // Não fechamos mais o modal aqui, para que o usuário possa voltar a ele
-        // O VideoPlayer tem z-index maior e cobrirá o modal.
     };
 
     const toggleFavorite = () => {
@@ -240,7 +226,6 @@ export default function MediaDetailModal() {
                 onClose={() => setSelectedMediaDetails(null)}
                 className="relative z-50"
             >
-                {/* Backdrop — bloqueia toque no fundo em mobile */}
                 <Transition.Child
                     enter="ease-out duration-300"
                     enterFrom="opacity-0"
@@ -252,19 +237,10 @@ export default function MediaDetailModal() {
                     <div
                         className="fixed inset-0 bg-black/90 backdrop-blur-xl"
                         aria-hidden="true"
-                        style={{ touchAction: 'none' }}
-                        onTouchStart={e => e.stopPropagation()}
-                        onTouchMove={e => e.stopPropagation()}
                     />
                 </Transition.Child>
 
-                {/* Modal Container — captura todos os eventos, impede propagação para o fundo */}
-                <div
-                    className="fixed inset-0 overflow-y-auto"
-                    onTouchStart={e => e.stopPropagation()}
-                    onTouchMove={e => e.stopPropagation()}
-                    onClick={e => e.stopPropagation()}
-                >
+                <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-0 md:p-6">
                         <Transition.Child
                             enter="ease-out duration-300"
@@ -277,7 +253,6 @@ export default function MediaDetailModal() {
                         >
                             <Dialog.Panel className="relative w-full bg-surface/40 border border-white/10 md:rounded-[2.5rem] overflow-hidden shadow-2xl h-screen md:h-auto md:max-h-[90vh] flex flex-col">
                                 
-                                {/* Background Image & Overlay - Adjusted for better mobile visibility */}
                                 <div className="absolute inset-0 -z-10 h-48 md:h-[60%] overflow-hidden">
                                     <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent z-10" />
                                     <img 
@@ -287,7 +262,6 @@ export default function MediaDetailModal() {
                                     />
                                 </div>
 
-                                {/* Close Button */}
                                 <button 
                                     onClick={() => setSelectedMediaDetails(null)}
                                     className="absolute top-6 right-6 z-50 p-3 bg-black/40 hover:bg-white/10 rounded-full text-white backdrop-blur-md transition-all border border-white/10"
@@ -295,11 +269,9 @@ export default function MediaDetailModal() {
                                     <FiX size={24} />
                                 </button>
 
-                                {/* Scrollable Content */}
                                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12 pt-24 md:pt-12">
                                     <div className="grid grid-cols-1 md:grid-cols-[300px,1fr] gap-10">
                                         
-                                        {/* Poster Column - Hidden on small mobile to save space, shown on MD+ */}
                                         <div className="hidden md:flex flex-col items-center gap-6">
                                             <div className="w-full aspect-[2/3] rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
                                                 <img 

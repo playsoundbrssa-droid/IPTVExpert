@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import Hls from 'hls.js';
 import mpegjs from 'mpegts.js';
 import { 
@@ -345,7 +346,7 @@ export default function VideoPlayer() {
 
     if (!currentStream) return null;
 
-    return (
+    const playerContent = (
         <div 
             ref={containerRef}
             className={`fixed z-[99999] flex items-center justify-center group/container pointer-events-auto
@@ -532,6 +533,8 @@ export default function VideoPlayer() {
             )}
         </div>
     );
+
+    return createPortal(playerContent, document.body);
 }
 
 function formatTime(seconds) {
