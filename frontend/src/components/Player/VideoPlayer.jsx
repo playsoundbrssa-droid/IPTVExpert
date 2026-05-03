@@ -132,7 +132,18 @@ export default function VideoPlayer() {
             });
         } else if (isTs && mpegjs.isSupported()) {
             try {
-                const mpeg = mpegjs.createPlayer({ type: 'mse', url: streamUrl, isLive: true });
+                const mpeg = mpegjs.createPlayer({
+                    type: 'mse',
+                    url: streamUrl,
+                    isLive: true,
+                    cors: true
+                }, {
+                    enableWorker: true,
+                    enableStallDetached: true,
+                    stashInitialSize: 128, // Reduz buffer inicial para carregar mais rápido
+                    autoCleanupSourceBuffer: true,
+                    lazyLoad: false
+                });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
                 mpeg.play().catch(() => {
@@ -143,6 +154,12 @@ export default function VideoPlayer() {
                     setIsMuted(true);
                 });
                 mpegPlayerRef.current = mpeg;
+
+                mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
+                    console.error('[MPEG-TS ERROR]', type, detail, info);
+                    if (!useProxy) setUseProxy(true);
+                    else setError("Erro na stream MPEG-TS.");
+                });
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
         } else {
             videoRef.current.src = streamUrl;
