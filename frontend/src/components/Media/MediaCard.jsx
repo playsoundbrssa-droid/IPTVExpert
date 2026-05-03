@@ -106,7 +106,7 @@ export default function MediaCard({ item, type, playlist = [] }) {
             className="group relative bg-surface/30 border border-white/5 rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-300 active:scale-[0.98] md:hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-primary/20 flex flex-col h-full"
         >
             {/* Poster / Logo Area */}
-            <div className={`${isVOD ? 'aspect-[2/3]' : 'aspect-[16/9]'} relative bg-black/40 flex items-center justify-center shrink-0`}>
+            <div className="aspect-[2/3] relative bg-black/40 flex items-center justify-center shrink-0">
                 {imgSrc && !imgError ? (
                     <img 
                         src={imgSrc} 

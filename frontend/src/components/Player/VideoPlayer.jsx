@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
 import mpegjs from 'mpegts.js';
 import { 
@@ -25,6 +26,8 @@ export default function VideoPlayer() {
     const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     const { nowPlaying } = useEpgStore();
+    const { getActivePlaylist } = usePlaylistManagerStore();
+    const navigate = useNavigate();
     
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
@@ -200,6 +203,26 @@ export default function VideoPlayer() {
         pipDragRef.current.dragging = false;
         setIsDragging(false);
     }, []);
+
+    const handleDownload = (e) => {
+        e.stopPropagation();
+        const activePlaylist = getActivePlaylist();
+        if (!activePlaylist) {
+            toast.error('Adicione uma lista nas configurações para fazer downloads.');
+            navigate('/settings');
+            return;
+        }
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const rawUrl = currentStream.streamUrl || currentStream.url;
+        const isHls = rawUrl.includes('.m3u8') || rawUrl.includes('type=m3u8');
+        if (isHls) {
+            toast.error('Download não disponível para este formato (HLS)');
+            return;
+        }
+        const downloadUrl = `${apiUrl}/proxy/download?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(currentStream.name)}`;
+        window.open(downloadUrl, '_blank');
+        toast.success('Download iniciado...');
+    };
 
     useEffect(() => {
         if (!isPiP) return;
@@ -493,9 +516,14 @@ export default function VideoPlayer() {
                                     </div>
                                     <div className="text-[12px] font-black text-white/50 tracking-widest uppercase">{formatTime(currentTime)} <span className="mx-2 opacity-20">/</span> {duration > 0 ? formatTime(duration) : 'AO VIVO'}</div>
                                 </div>
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 md:gap-4">
                                     <button onClick={handlePiP} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Mini Player"><FiMinimize2 size={22} /></button>
-                                    <button onClick={() => setShowSchedule(true)} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Programação"><FiClock size={22} /></button>
+                                    {currentStream.type === 'channel' && (
+                                        <button onClick={() => setShowSchedule(true)} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Programação"><FiClock size={22} /></button>
+                                    )}
+                                    {currentStream.type !== 'channel' && (
+                                        <button onClick={handleDownload} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Download"><FiDownload size={22} /></button>
+                                    )}
                                     {airplayAvailable && <button onClick={handleAirPlay} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Transmitir"><FiAirplay size={22} /></button>}
                                     <button onClick={toggleFullscreen} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Tela Cheia"><FiMaximize size={22} /></button>
                                 </div>
