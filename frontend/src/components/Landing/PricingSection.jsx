@@ -1,7 +1,18 @@
 import React from 'react';
 import { FiCheck, FiStar } from 'react-icons/fi';
 
+const WHATSAPP_NUMBER = "5511999999999"; // Substitua pelo seu número (55 + DDD + Número)
+
+const getWhatsAppLink = (planName) => {
+    const message = `Olá! Gostaria de assinar o *${planName}* do IPTV Expert. Pode me ajudar?`;
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+};
+
 export default function PricingSection({ onLoginClick }) {
+    const handleSubscribe = (planName) => {
+        window.open(getWhatsAppLink(planName), '_blank');
+    };
+
     return (
         <div id="pricing" className="w-full pb-16 relative overflow-hidden">
             {/* Background elements */}
@@ -54,7 +65,7 @@ export default function PricingSection({ onLoginClick }) {
                         </ul>
 
                         <button 
-                            onClick={onLoginClick}
+                            onClick={() => handleSubscribe('Plano Mensal')}
                             className="w-full py-4 bg-gradient-to-r from-neon-blue to-primary text-white rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-neon-blue/40 relative z-10"
                         >
                             Assinar Mensal
@@ -108,7 +119,7 @@ export default function PricingSection({ onLoginClick }) {
                         </ul>
 
                         <button 
-                            onClick={onLoginClick}
+                            onClick={() => handleSubscribe('Plano Bimestral')}
                             className="w-full py-4 bg-gradient-to-r from-primary to-neon-purple text-white rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-neon-purple/40 relative z-10"
                         >
                             Assinar Bimestral
