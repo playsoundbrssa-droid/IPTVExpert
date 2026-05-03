@@ -241,7 +241,7 @@ export default function VideoPlayer() {
         }
     };
 
-    const { getActivePlaylist } = usePlaylistManagerStore();
+
     const progressKey = currentStream ? `progress_${currentStream.id}` : null;
 
     const loadProgress = useCallback(async () => {
