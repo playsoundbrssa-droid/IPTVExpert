@@ -143,12 +143,10 @@ export default function VideoPlayer() {
                 }, {
                     enableWorker: true,
                     enableStallDetached: true,
-                    stashInitialSize: 384, // Aumentado para 384KB para criar uma gordura de buffer inicial
+                    stashInitialSize: 128, // Reduzido novamente para 128KB para um carregamento "leve" e instantâneo
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
-                    liveBufferLatencyChasing: true, // Persegue a latência ideal
-                    liveBufferLatencyMaxLatency: 15, // Pula se atrasar mais de 15s
-                    liveBufferLatencyMinRemain: 2 // Mantém pelo menos 2s no buffer
+                    liveBufferLatencyChasing: false // Desativado: causa engasgos ao tentar forçar a sincronia exata no IPTV
                 });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
