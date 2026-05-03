@@ -272,13 +272,15 @@ export default function VideoPlayer() {
 
     const handleResume = (shouldResume, e) => {
         if (e) e.stopPropagation();
+        const savedPos = resumeData;
+        setResumeData(null);
         resumedRef.current = currentStream?.id;
+        
         if (videoRef.current) {
-            videoRef.current.currentTime = shouldResume && resumeData ? resumeData : 0;
+            videoRef.current.currentTime = shouldResume && savedPos ? savedPos : 0;
             videoRef.current.play().catch(() => {});
             setIsPlaying(true);
         }
-        setResumeData(null);
     };
 
     const saveProgress = useCallback(async () => {
