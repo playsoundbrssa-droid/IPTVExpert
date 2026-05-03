@@ -37,6 +37,7 @@ export default function VideoPlayer() {
     const [resumeData, setResumeData] = useState(null);
     
     const [isPiP, setIsPiP] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
     const [pipPosition, setPipPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 200 });
     const pipDragRef = useRef({ dragging: false, startX: 0, startY: 0, initX: 0, initY: 0 });
 
@@ -172,6 +173,7 @@ export default function VideoPlayer() {
     const handlePipDragStart = (e) => {
         if (e.pointerType === 'touch' && e.cancelable) e.preventDefault();
         e.stopPropagation();
+        setIsDragging(true);
         pipDragRef.current = {
             dragging: true,
             startX: e.clientX,
@@ -195,6 +197,7 @@ export default function VideoPlayer() {
 
     const handlePipDragEnd = useCallback(() => {
         pipDragRef.current.dragging = false;
+        setIsDragging(false);
     }, []);
 
     useEffect(() => {
@@ -345,16 +348,20 @@ export default function VideoPlayer() {
     return (
         <div 
             ref={containerRef}
-            className={`fixed z-[99999] transition-all duration-500 ease-out flex items-center justify-center group/container pointer-events-auto
-                ${isPiP ? 'rounded-2xl overflow-hidden shadow-2xl' : 'inset-0 bg-black'}`}
+            className={`fixed z-[99999] flex items-center justify-center group/container pointer-events-auto
+                ${isPiP ? 'rounded-2xl overflow-hidden shadow-2xl' : 'inset-0 bg-black'}
+                ${isPiP && !isDragging ? 'transition-all duration-500 ease-out' : ''}
+                ${isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''}`}
             style={isPiP ? {
-                left: pipPosition.x,
-                top: pipPosition.y,
+                transform: `translate(${pipPosition.x}px, ${pipPosition.y}px)`,
                 width: 320,
                 height: 180,
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-                cursor: 'grab',
-                touchAction: 'none'
+                left: 0,
+                top: 0,
+                boxShadow: isDragging ? '0 35px 60px -15px rgba(0,0,0,0.6)' : '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                touchAction: 'none',
+                willChange: 'transform'
             } : {}}
             onPointerDown={isPiP ? handlePipDragStart : undefined}
             onMouseDown={e => e.stopPropagation()}
