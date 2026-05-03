@@ -43,7 +43,8 @@ export default function VideoPlayer() {
     const [airplayAvailable, setAirplayAvailable] = useState(false);
     const [resumeData, setResumeData] = useState(null);
     
-    const [isPiP, setIsPiP] = useState(false);
+    const [isPiP, setIsPiP] = useState(false); // Custom PiP
+    const [isNativePiP, setIsNativePiP] = useState(false); // Browser PiP
     const [isDragging, setIsDragging] = useState(false);
     const [pipPosition, setPipPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 200 });
     const pipDragRef = useRef({ dragging: false, startX: 0, startY: 0, initX: 0, initY: 0 });
@@ -154,6 +155,30 @@ export default function VideoPlayer() {
             });
         }
     }, [currentStream, getStreamUrl, cleanUp, useProxy]);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const onEnterNativePiP = () => {
+            setIsNativePiP(true);
+            setIsPiP(false); // Desativa o custom se o nativo entrar
+        };
+        const onLeaveNativePiP = () => setIsNativePiP(false);
+
+        video.addEventListener('enterpictureinpicture', onEnterNativePiP);
+        video.addEventListener('leavepictureinpicture', onLeaveNativePiP);
+        // Fallback para WebKit (iOS)
+        video.addEventListener('webkitbeginfullscreen', onEnterNativePiP);
+        video.addEventListener('webkitendfullscreen', onLeaveNativePiP);
+
+        return () => {
+            video.removeEventListener('enterpictureinpicture', onEnterNativePiP);
+            video.removeEventListener('leavepictureinpicture', onLeaveNativePiP);
+            video.removeEventListener('webkitbeginfullscreen', onEnterNativePiP);
+            video.removeEventListener('webkitendfullscreen', onLeaveNativePiP);
+        };
+    }, []);
 
     useEffect(() => {
         if (!videoRef.current) return;
@@ -302,27 +327,6 @@ export default function VideoPlayer() {
         }
     };
 
-    // Listeners para PiP Nativo
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        const handleEnterNativePiP = () => {
-            console.log('[PiP] Native Enter');
-            setIsPiP(false); // Desativa o custom se o nativo entrar
-        };
-        const handleLeaveNativePiP = () => console.log('[PiP] Native Leave');
-
-        video.addEventListener('enterpictureinpicture', handleEnterNativePiP);
-        video.addEventListener('leavepictureinpicture', handleLeaveNativePiP);
-        
-        return () => {
-            video.removeEventListener('enterpictureinpicture', handleEnterNativePiP);
-            video.removeEventListener('leavepictureinpicture', handleLeaveNativePiP);
-        };
-    }, []);
-
-
     const progressKey = currentStream ? `progress_${currentStream.id}` : null;
 
     const loadProgress = useCallback(async () => {
@@ -458,17 +462,17 @@ export default function VideoPlayer() {
     const playerContent = (
         <div 
             ref={containerRef}
-            className={`fixed z-[99999] flex items-center justify-center group/container pointer-events-auto
-                ${isPiP ? 'rounded-2xl overflow-hidden shadow-2xl' : 'inset-0 bg-black'}
-                ${isPiP && !isDragging ? 'transition-all duration-500 ease-out' : ''}
-                ${isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''}`}
+            className={`fixed transition-all duration-500 z-[99999] bg-black group/container overflow-hidden shadow-2xl ${
+                isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
+            } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${
+                isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
+            }`}
             style={isPiP ? {
+                width: '320px',
+                height: '180px',
                 transform: `translate(${pipPosition.x}px, ${pipPosition.y}px)`,
-                width: 320,
-                height: 180,
                 left: 0,
                 top: 0,
-                boxShadow: isDragging ? '0 35px 60px -15px rgba(0,0,0,0.6)' : '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
                 cursor: isDragging ? 'grabbing' : 'grab',
                 touchAction: 'none',
                 willChange: 'transform'
@@ -499,7 +503,7 @@ export default function VideoPlayer() {
                 webkit-playsinline="true"
             />
 
-            {isPiP && (
+            {isPiP && !isNativePiP && (
                 <div className="absolute inset-0 z-20 flex flex-col justify-between p-3 bg-gradient-to-t from-black/90 via-transparent to-black/40 pointer-events-none opacity-0 group-hover/container:opacity-100 transition-opacity">
                     <div className="flex justify-end pointer-events-auto">
                         <button onClick={(e) => { e.stopPropagation(); setCurrentStream(null); setIsPiP(false); }} className="p-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full backdrop-blur-md shadow-lg transition-all"><FiX size={16} /></button>
@@ -512,7 +516,7 @@ export default function VideoPlayer() {
                 </div>
             )}
 
-            {!isPiP && (
+            {!isPiP && !isNativePiP && (
                 <>
                     {resumeData && (
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center animate-fade-in">
@@ -574,11 +578,9 @@ export default function VideoPlayer() {
                         <button 
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (isPiP || document.pictureInPictureElement) {
-                                    // Se já estiver em PiP, apenas "sai" do modo tela cheia (o PiP continua)
-                                    // No nosso caso, o VideoPlayer já renderiza o mini-player se isPiP for true.
-                                    // Se for PiP nativo, precisamos garantir que isPiP esteja true para não desmontar.
-                                    if (document.pictureInPictureElement && !isPiP) setIsPiP(true);
+                                if (isPiP || isNativePiP) {
+                                    // Se já estiver em PiP (custom ou nativo), apenas esconde a UI
+                                    // isNativePiP já esconderá tudo no render
                                     setShowControls(false);
                                 } else {
                                     setCurrentStream(null);
