@@ -22,6 +22,7 @@ const sanitizeUser = (user) => ({
     role: user.role,
     avatar: user.avatar,
     isActive: user.isActive,
+    canDownload: user.canDownload,
     createdAt: user.createdAt
 });
 

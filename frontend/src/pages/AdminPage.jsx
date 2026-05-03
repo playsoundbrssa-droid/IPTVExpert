@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { useUserStore } from '../stores/useUserStore';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FiUsers, FiShield, FiTrash2, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { FiUsers, FiShield, FiTrash2, FiToggleLeft, FiToggleRight, FiDownload } from 'react-icons/fi';
 
 export default function AdminPage() {
     const { user } = useUserStore();
@@ -48,6 +48,16 @@ export default function AdminPage() {
             fetchUsers();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Erro ao alterar status.');
+        }
+    };
+
+    const handleToggleDownload = async (id) => {
+        try {
+            const { data } = await api.put(`/admin/users/${id}/toggle-download`);
+            toast.success(data.message);
+            fetchUsers();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Erro ao alterar permissão.');
         }
     };
 
@@ -111,6 +121,7 @@ export default function AdminPage() {
                                     <th className="px-4 py-3 font-medium">Role</th>
                                     <th className="px-4 py-3 font-medium">Tipo</th>
                                     <th className="px-4 py-3 font-medium">Status</th>
+                                    <th className="px-4 py-3 font-medium">Download</th>
                                     <th className="px-4 py-3 font-medium text-right">Ações</th>
                                 </tr>
                             </thead>
@@ -146,8 +157,20 @@ export default function AdminPage() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
+                                            <span className={`text-xs font-bold ${u.can_download ? 'text-primary' : 'text-gray-600'}`}>
+                                                {u.can_download ? 'LIBERADO' : 'BLOQUEADO'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
                                             {u.id !== user.id && (
                                                 <div className="flex items-center gap-2 justify-end">
+                                                    <button
+                                                        onClick={() => handleToggleDownload(u.id)}
+                                                        title={u.can_download ? 'Bloquear Download' : 'Liberar Download'}
+                                                        className={`p-2 rounded-lg transition-all ${u.can_download ? 'text-primary bg-primary/10' : 'text-gray-400 hover:text-primary hover:bg-primary/10'}`}
+                                                    >
+                                                        <FiDownload size={16} />
+                                                    </button>
                                                     <button
                                                         onClick={() => handleChangeRole(u.id, u.role)}
                                                         title="Alterar Role"

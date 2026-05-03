@@ -18,7 +18,7 @@ const logEvent = async (type, message, details = null) => {
 exports.listUsers = async (req, res) => {
     try {
         const users = await User.findAll({
-            attributes: ['id', 'name', 'email', 'role', 'avatar', 'isActive', 'googleId', 'createdAt', 'updatedAt'],
+            attributes: ['id', 'name', 'email', 'role', 'avatar', 'isActive', 'can_download', 'googleId', 'createdAt', 'updatedAt'],
             order: [['createdAt', 'DESC']]
         });
         res.json({ users });
@@ -74,6 +74,24 @@ exports.toggleActive = async (req, res) => {
         res.json({ message: `Usuário ${newStatus ? 'ativado' : 'desativado'}.`, user: { id: user.id, isActive: newStatus } });
     } catch (error) {
         console.error('[ADMIN] Erro ao alterar status:', error);
+        res.status(500).json({ message: 'Erro interno.' });
+    }
+};
+
+// PUT /api/admin/users/:id/toggle-download — Enable/disable download
+exports.toggleDownload = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findByPk(id);
+        if (!user) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+
+        const newStatus = !user.can_download;
+        await User.update({ can_download: newStatus }, { where: { id: user.id } });
+        res.json({ message: `Download ${newStatus ? 'liberado' : 'bloqueado'} para ${user.name}.`, user: { id: user.id, can_download: newStatus } });
+    } catch (error) {
+        console.error('[ADMIN] Erro ao alterar permissão de download:', error);
         res.status(500).json({ message: 'Erro interno.' });
     }
 };

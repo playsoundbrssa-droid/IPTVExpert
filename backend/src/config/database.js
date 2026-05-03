@@ -39,6 +39,7 @@ const initializeTables = async () => {
             avatar TEXT,
             role TEXT DEFAULT 'user',
             isActive BOOLEAN DEFAULT true,
+            can_download BOOLEAN DEFAULT false,
             createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
     `;
@@ -102,6 +103,13 @@ const initializeTables = async () => {
             await db.query(logsTable);
 
             // Migração: Adiciona colunas que podem estar faltando em tabelas antigas
+            const alterUsers = [
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS can_download BOOLEAN DEFAULT false'
+            ];
+            for (const sql of alterUsers) {
+                await db.query(sql).catch(err => console.log('[DB MIGRATION] Coluna já existe ou erro:', err.message));
+            }
+
             const alterPlaylists = [
                 'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS "channelsCount" INTEGER DEFAULT 0',
                 'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS "moviesCount" INTEGER DEFAULT 0',
@@ -117,13 +125,14 @@ const initializeTables = async () => {
                 db.run(sql, (err) => err ? reject(err) : resolve());
             });
 
-            await run(usersTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('BOOLEAN DEFAULT true', 'INTEGER DEFAULT 1').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
+            await run(usersTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('BOOLEAN DEFAULT true', 'INTEGER DEFAULT 1').replace('BOOLEAN DEFAULT false', 'INTEGER DEFAULT 0').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             await run(statsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             await run(playlistsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             await run(progressTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             await run(logsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             
             // SQLite migração básica
+            await run('ALTER TABLE users ADD COLUMN can_download INTEGER DEFAULT 0').catch(() => {});
             await run('ALTER TABLE user_playlists ADD COLUMN channelsCount INTEGER DEFAULT 0').catch(() => {});
             await run('ALTER TABLE user_playlists ADD COLUMN moviesCount INTEGER DEFAULT 0').catch(() => {});
             await run('ALTER TABLE user_playlists ADD COLUMN seriesCount INTEGER DEFAULT 0').catch(() => {});

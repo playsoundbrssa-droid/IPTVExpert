@@ -21,6 +21,7 @@ const User = {
         // Normaliza isactive -> isActive para compatibilidade Postgres
         const user = res.rows[0];
         if (user.isactive !== undefined) user.isActive = user.isactive;
+        if (user.can_download !== undefined) user.canDownload = !!user.can_download;
         return user;
     },
 
@@ -30,6 +31,7 @@ const User = {
         
         const user = res.rows[0];
         if (user.isactive !== undefined) user.isActive = user.isactive;
+        if (user.can_download !== undefined) user.canDownload = !!user.can_download;
         return user;
     },
 

@@ -7,6 +7,7 @@ import { getProxyImageUrl } from '../../services/api';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
 import { useNavigate } from 'react-router-dom';
 import { useEpgStore } from '../../stores/useEpgStore';
+import { useUserStore } from '../../stores/useUserStore';
 
 export default function MediaCard({ item, type, playlist = [] }) {
     const { addFavorite, removeFavorite, favorites } = usePlaylistStore();
@@ -14,6 +15,7 @@ export default function MediaCard({ item, type, playlist = [] }) {
     const { setSelectedMediaDetails } = usePlaylistStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
     const { nowPlaying } = useEpgStore();
+    const { user } = useUserStore();
     const navigate = useNavigate();
     
     const activePlaylist = getActivePlaylist();
@@ -177,11 +179,17 @@ export default function MediaCard({ item, type, playlist = [] }) {
                         </div>
                     </div>
                 )}
-                
-                {type === 'channel' && !currentProgram && (
-                    <p className="text-[10px] text-gray-500 font-medium mt-1">
-                        Programação indisponível
-                    </p>
+
+                {isVOD && user?.canDownload && (
+                    <div className="flex justify-end pt-2 mt-auto">
+                        <button
+                            onClick={handleDownload}
+                            className="p-1.5 bg-white/5 hover:bg-primary/20 text-white rounded-lg transition-all"
+                            title="Download"
+                        >
+                            <FiDownload size={14} />
+                        </button>
+                    </div>
                 )}
             </div>
         </div>

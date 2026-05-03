@@ -13,6 +13,7 @@ import {
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
+import { useUserStore } from '../../stores/useUserStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useEpgStore } from '../../stores/useEpgStore';
@@ -27,6 +28,7 @@ export default function VideoPlayer() {
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     const { nowPlaying } = useEpgStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
+    const { user } = useUserStore();
     const navigate = useNavigate();
     const resumedRef = useRef(null);
     
@@ -527,7 +529,7 @@ export default function VideoPlayer() {
                                     {currentStream.type === 'channel' && (
                                         <button onClick={() => setShowSchedule(true)} className="p-2 text-white/70 hover:bg-white/10 rounded-lg transition-all" title="Programação"><FiClock size={22} /></button>
                                     )}
-                                    {currentStream.type !== 'channel' && (
+                                    {currentStream.type !== 'channel' && user?.canDownload && (
                                         <button onClick={handleDownload} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Download"><FiDownload size={22} /></button>
                                     )}
                                     {airplayAvailable && <button onClick={handleAirPlay} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all" title="Transmitir"><FiAirplay size={22} /></button>}
