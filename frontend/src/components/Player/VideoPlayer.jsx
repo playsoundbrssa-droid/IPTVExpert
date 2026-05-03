@@ -571,7 +571,21 @@ export default function VideoPlayer() {
                     </div>
 
                     <div className={`absolute top-0 right-0 p-4 md:p-6 pt-[calc(env(safe-area-inset-top,0px)+1rem)] transition-opacity duration-300 z-40 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                        <button onClick={() => setCurrentStream(null)} className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 bg-black/60 hover:bg-red-600/40 text-white rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl">
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isPiP || document.pictureInPictureElement) {
+                                    // Se já estiver em PiP, apenas "sai" do modo tela cheia (o PiP continua)
+                                    // No nosso caso, o VideoPlayer já renderiza o mini-player se isPiP for true.
+                                    // Se for PiP nativo, precisamos garantir que isPiP esteja true para não desmontar.
+                                    if (document.pictureInPictureElement && !isPiP) setIsPiP(true);
+                                    setShowControls(false);
+                                } else {
+                                    setCurrentStream(null);
+                                }
+                            }} 
+                            className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 bg-black/60 hover:bg-red-600/40 text-white rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl"
+                        >
                             <FiChevronLeft size={16} /><span className="landscape:hidden md:landscape:inline">Sair</span>
                         </button>
                     </div>
