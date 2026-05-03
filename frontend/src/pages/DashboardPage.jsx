@@ -1,8 +1,9 @@
-import React, { useMemo, useRef, memo } from 'react';
+import React, { useMemo, useRef, memo, useState } from 'react';
 import { usePlaylistStore } from '../stores/usePlaylistStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { usePlaylistManagerStore } from '../stores/usePlaylistManagerStore';
 import MediaCard from '../components/Media/MediaCard';
-import { FiTv, FiFilm, FiLayers, FiChevronLeft, FiChevronRight, FiPlay } from 'react-icons/fi';
+import { FiTv, FiFilm, FiLayers, FiChevronLeft, FiChevronRight, FiPlay, FiRefreshCw } from 'react-icons/fi';
 
 const CarouselRow = memo(({ title, icon: Icon, items, type }) => {
     const scrollRef = useRef(null);
@@ -51,6 +52,14 @@ const CarouselRow = memo(({ title, icon: Icon, items, type }) => {
 
 export default function DashboardPage() {
     const { channelsList, moviesList, seriesList } = usePlaylistStore();
+    const { refreshActivePlaylist } = usePlaylistManagerStore();
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await refreshActivePlaylist();
+        setIsRefreshing(false);
+    };
 
     // Pegar amostras para o Dashboard
     const dashboardData = useMemo(() => {
@@ -107,6 +116,15 @@ export default function DashboardPage() {
                             className="px-8 py-4 bg-white text-black rounded-2xl font-black flex items-center gap-3 hover:scale-105 transition-all shadow-xl"
                         >
                             <FiPlay className="fill-current" /> Ver Canais
+                        </button>
+
+                        <button 
+                            onClick={handleRefresh}
+                            disabled={isRefreshing}
+                            className="px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/10 rounded-2xl font-black flex items-center gap-3 hover:bg-white/20 transition-all shadow-xl disabled:opacity-50"
+                        >
+                            <FiRefreshCw className={isRefreshing ? 'animate-spin' : ''} />
+                            {isRefreshing ? 'Atualizando...' : 'Atualizar Lista'}
                         </button>
                     </div>
                 </div>

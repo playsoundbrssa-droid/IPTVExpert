@@ -1,9 +1,20 @@
 import { NavLink } from 'react-router-dom';
-import { FiTv, FiFilm, FiVideo, FiHeart, FiSettings, FiPlus, FiShield, FiTrendingUp, FiHome, FiClock } from 'react-icons/fi';
+import { FiTv, FiFilm, FiVideo, FiHeart, FiSettings, FiPlus, FiShield, FiTrendingUp, FiHome, FiClock, FiRefreshCw } from 'react-icons/fi';
 import { useUserStore } from '../../stores/useUserStore';
+import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
+import { useState } from 'react';
 
 export default function Sidebar({ onImportClick }) {
     const { user } = useUserStore();
+    const { getActivePlaylist, refreshActivePlaylist } = usePlaylistManagerStore();
+    const activePlaylist = getActivePlaylist();
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await refreshActivePlaylist();
+        setIsRefreshing(false);
+    };
 
     const navItems = [
         { path: '/', icon: FiHome, label: 'Início' },
@@ -54,6 +65,16 @@ export default function Sidebar({ onImportClick }) {
             </nav>
 
             <div className="p-4 border-t border-white/5 space-y-2">
+                {activePlaylist && (
+                    <button
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-400 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300 disabled:opacity-50"
+                    >
+                        <FiRefreshCw className={`text-lg ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+                        {isRefreshing ? 'Atualizando...' : 'Atualizar Lista'}
+                    </button>
+                )}
                 <NavLink
                     to="/settings"
                     className={({ isActive }) =>
