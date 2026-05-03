@@ -147,26 +147,21 @@ export default function SettingsPage() {
         const active = getActivePlaylist();
         if (!active) return toast.error('Nenhuma playlist ativa.');
 
-        let url = epgUrlInput.trim();
+        let url = epgUrlInput.trim() || active.epgUrl;
         
-        // Se for Xtream e não tiver URL manual, tentamos inferir a URL de EPG se for o caso
-        // Mas geralmente o Xtream já sincroniza itens curtos.
-        // Se for M3U, a URL é obrigatória.
-        if (active.type === 'm3u' && !url && !active.epgUrl) {
+        if (active.type === 'm3u' && !url) {
             return toast.error('Por favor, informe uma URL de XMLTV (EPG).');
-        }
-
-        if (!url) url = active.epgUrl;
-        if (!url && active.type === 'xtream') {
-            // Xtream sync é automático via endpoint, mas aqui vamos simular um refresh global
-            toast.success('EPG Xtream já está sincronizado automaticamente.');
-            return;
         }
 
         setIsSyncingEpg(true);
         const tid = toast.loading('Sincronizando guia de programação...');
         try {
-            const res = await api.post('/epg/import', { url });
+            const res = await api.post('/epg/import', { 
+                url: url || active.config?.server,
+                type: active.type,
+                username: active.config?.username,
+                password: active.config?.password
+            });
             updatePlaylistStats(active.id, {
                 epgUrl: url,
                 epgCacheKey: res.data.cacheKey

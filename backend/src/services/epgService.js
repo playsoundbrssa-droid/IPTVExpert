@@ -83,6 +83,15 @@ exports.fetchAndParse = async (params) => {
     }
 };
 
+const parseDate = (d) => {
+    if (!d) return null;
+    try {
+        const clean = d.split(' ')[0];
+        const y = clean.substring(0, 4), m = clean.substring(4, 6), day = clean.substring(6, 8), h = clean.substring(8, 10), min = clean.substring(10, 12);
+        return new Date(`${y}-${m}-${day}T${h}:${min}:00`);
+    } catch (e) { return null; }
+};
+
 exports.getPrograms = async (cacheKey, channelId) => {
     try {
         const data = await cacheService.get(cacheKey);
@@ -93,5 +102,30 @@ exports.getPrograms = async (cacheKey, channelId) => {
     } catch (error) {
         console.error('Erro ao buscar programas EPG', error);
         return [];
+    }
+};
+
+exports.getNowPlaying = async (cacheKey) => {
+    try {
+        const data = await cacheService.get(cacheKey);
+        if (!data) return {};
+        
+        const now = new Date();
+        const result = {};
+        
+        Object.keys(data).forEach(channelId => {
+            const programs = data[channelId];
+            const current = programs.find(p => {
+                const start = parseDate(p.start);
+                const stop = parseDate(p.stop);
+                return start && stop && now >= start && now <= stop;
+            });
+            if (current) result[channelId] = { current };
+        });
+        
+        return result;
+    } catch (error) {
+        console.error('[EPG] Erro ao buscar Now Playing em bulk', error);
+        return {};
     }
 };
