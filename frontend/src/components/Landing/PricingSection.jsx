@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiCheck, FiStar } from 'react-icons/fi';
 
-const WHATSAPP_NUMBER = "5511999999999"; // Substitua pelo seu número (55 + DDD + Número)
+const WHATSAPP_NUMBER = "5571996178013"; // Substitua pelo seu número (55 + DDD + Número)
 
 const getWhatsAppLink = (planName) => {
     const message = `Olá! Gostaria de assinar o *${planName}* do IPTV Expert. Pode me ajudar?`;
@@ -17,7 +17,7 @@ export default function PricingSection({ onLoginClick }) {
         <div id="pricing" className="w-full pb-16 relative overflow-hidden">
             {/* Background elements */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-neon-blue/5 rounded-full blur-[100px] pointer-events-none" />
-            
+
             <div className="w-full max-w-5xl relative z-10 text-left mx-auto px-4 md:px-0">
                 <div className="text-center mb-8 md:mb-10 reveal">
                     <h2 className="text-3xl md:text-5xl font-black mb-4">
@@ -32,7 +32,7 @@ export default function PricingSection({ onLoginClick }) {
                     {/* Plano 1 Mês */}
                     <div className="glass-panel p-6 md:p-8 rounded-3xl neon-border-blue neon-glow-blue transition-all duration-500 reveal group relative">
                         <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl pointer-events-none" />
-                        
+
                         <div className="mb-6 relative z-10">
                             <h3 className="text-lg md:text-xl font-bold text-gray-400 group-hover:text-neon-blue transition-colors">Plano Mensal</h3>
                             <div className="flex items-baseline gap-1 mt-2">
@@ -64,7 +64,7 @@ export default function PricingSection({ onLoginClick }) {
                             </li>
                         </ul>
 
-                        <button 
+                        <button
                             onClick={() => handleSubscribe('Plano Mensal')}
                             className="w-full py-4 bg-gradient-to-r from-neon-blue to-primary text-white rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-neon-blue/40 relative z-10"
                         >
@@ -118,7 +118,7 @@ export default function PricingSection({ onLoginClick }) {
                             </li>
                         </ul>
 
-                        <button 
+                        <button
                             onClick={() => handleSubscribe('Plano Bimestral')}
                             className="w-full py-4 bg-gradient-to-r from-primary to-neon-purple text-white rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-neon-purple/40 relative z-10"
                         >
