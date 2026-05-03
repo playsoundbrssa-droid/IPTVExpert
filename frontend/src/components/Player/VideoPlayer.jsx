@@ -14,7 +14,7 @@ import { usePlayerStore } from '../../stores/usePlayerStore';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlaylistManagerStore } from '../../stores/usePlaylistManagerStore';
 import { useUserStore } from '../../stores/useUserStore';
-import api from '../../services/api';
+import api, { getProxyImageUrl } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useEpgStore } from '../../stores/useEpgStore';
 

@@ -71,7 +71,7 @@ const userPlaylistController = {
             res.json({ success: true });
         } catch (error) {
             console.error('[UserPlaylist] Erro ao salvar:', error);
-            res.status(500).json({ message: 'Erro ao salvar playlist.' });
+            res.status(500).json({ message: 'Erro ao salvar playlist.', details: error.message });
         }
     },
 
