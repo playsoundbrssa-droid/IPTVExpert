@@ -152,28 +152,39 @@ export default function VideoPlayer() {
     }, [currentStream, useProxy, getActivePlaylist, streamFormatFallback]);
 
     const playVideo = useCallback(async () => {
-        if (!videoRef.current) return;
+        if (!videoRef.current || isInitializingRef.current) return;
 
-        // Se já estiver tocando e o vídeo não estiver pausado, não fazemos nada
-        if (isPlaying && !videoRef.current.paused) return;
+        // Se já houver uma promessa de play em curso, aguardamos ela
+        if (playPromiseRef.current) {
+            try { await playPromiseRef.current; } catch (e) {}
+        }
 
         try {
-            // Garantir que tentamos COM áudio primeiro
             videoRef.current.muted = false;
-            playPromiseRef.current = videoRef.current.play();
-            await playPromiseRef.current;
+            const promise = videoRef.current.play();
+            playPromiseRef.current = promise;
+            await promise;
             setIsMuted(false);
+            playPromiseRef.current = null;
         } catch (e) {
+            playPromiseRef.current = null;
             console.log('Autoplay blocked, trying muted...');
             if (videoRef.current) {
                 videoRef.current.muted = true;
                 setIsMuted(true);
                 try {
-                    playPromiseRef.current = videoRef.current.play();
-                    await playPromiseRef.current;
+                    const promise = videoRef.current.play();
+                    playPromiseRef.current = promise;
+                    await promise;
+                    playPromiseRef.current = null;
                 } catch (err) {
-                    console.error('Muted autoplay also failed', err);
-                    if (isPlaying) setIsPlaying(false);
+                    playPromiseRef.current = null;
+                    console.error('Playback failed completely:', err);
+                    // No mobile, se falhar tudo, mantemos isPlaying como true 
+                    // para mostrar o overlay de "Toque para Iniciar"
+                    if (videoRef.current.paused && isPlaying) {
+                        // Não fazemos nada, o UI vai mostrar o botão de play
+                    }
                 }
             }
         }
@@ -480,25 +491,22 @@ export default function VideoPlayer() {
         const video = videoRef.current;
         if (!video || isInitializingRef.current) return;
 
-        const syncPlayback = async () => {
-            if (isPlaying) {
-                if (video.paused) {
-                    if (playPromiseRef.current) {
-                        try { await playPromiseRef.current; } catch (e) { }
+        const timer = setTimeout(() => {
+            const syncPlayback = async () => {
+                if (isPlaying) {
+                    if (video.paused && !playPromiseRef.current) {
+                        playVideo();
                     }
-                    playVideo();
-                }
-            } else {
-                if (!video.paused) {
-                    if (playPromiseRef.current) {
-                        try { await playPromiseRef.current; } catch (e) { }
+                } else {
+                    if (!video.paused) {
+                        video.pause();
                     }
-                    video.pause();
                 }
-            }
-        };
+            };
+            syncPlayback();
+        }, 200);
 
-        syncPlayback();
+        return () => clearTimeout(timer);
     }, [isPlaying, playVideo]);
 
     useEffect(() => {
@@ -606,7 +614,21 @@ export default function VideoPlayer() {
                 muted={isMuted}
             />
 
-            {isMuted && isPlaying && !isPiP && (
+            {isPlaying && videoRef.current?.paused && !isBuffering && !isInitializingRef.current && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-[65] backdrop-blur-sm">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); playVideo(); }}
+                        className="group relative flex flex-col items-center gap-6"
+                    >
+                        <div className="w-24 h-24 bg-primary text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(var(--primary-rgb),0.5)] group-hover:scale-110 transition-transform duration-500">
+                            <FiPlay size={40} className="ml-2" />
+                        </div>
+                        <span className="text-white font-black text-sm uppercase tracking-[0.3em] animate-pulse">Toque para Assistir</span>
+                    </button>
+                </div>
+            )}
+
+            {isMuted && isPlaying && !isPiP && videoRef.current && !videoRef.current.paused && (
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] animate-bounce">
                     <button
                         onClick={(e) => { e.stopPropagation(); setIsMuted(false); if (videoRef.current) videoRef.current.muted = false; }}
