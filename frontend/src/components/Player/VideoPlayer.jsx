@@ -24,6 +24,7 @@ export default function VideoPlayer() {
     const mpegPlayerRef = useRef(null);
     const containerRef = useRef(null);
     const playPromiseRef = useRef(null);
+    const isInitializingRef = useRef(false);
     
     const { currentStream, setCurrentStream, isPlaying, togglePlay, setIsPlaying, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
@@ -179,6 +180,7 @@ export default function VideoPlayer() {
         cleanUp();
         setError(null);
         setIsBuffering(true);
+        isInitializingRef.current = true;
 
         if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
             videoRef.current.src = streamUrl;
@@ -225,7 +227,7 @@ export default function VideoPlayer() {
                     enableWorker: true,
                     enableStallDetached: true,
                     fixAudioTimestampGap: true,
-                    stashInitialSize: 384, // Buffer otimizado para HD
+                    stashInitialSize: 128, // Ponto ideal para HD sem loop
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
                     liveBufferLatencyChasing: true,
@@ -234,6 +236,7 @@ export default function VideoPlayer() {
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
                 mpegPlayerRef.current = mpeg;
+                isInitializingRef.current = false;
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
@@ -248,6 +251,7 @@ export default function VideoPlayer() {
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
         } else if (videoRef.current.canPlayType('video/mp4') || videoRef.current.canPlayType('video/mp2t')) {
             videoRef.current.src = streamUrl;
+            isInitializingRef.current = false;
         }
     }, [currentStream, getStreamUrl, cleanUp, useProxy, getActivePlaylist, streamFormatFallback]);
 
@@ -426,7 +430,7 @@ export default function VideoPlayer() {
 
     useEffect(() => {
         const video = videoRef.current;
-        if (!video) return;
+        if (!video || isInitializingRef.current) return;
         
         const syncPlayback = async () => {
             if (isPlaying) {
