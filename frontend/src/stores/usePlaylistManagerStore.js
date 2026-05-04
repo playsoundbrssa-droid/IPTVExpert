@@ -112,9 +112,8 @@ export const usePlaylistManagerStore = create(
                             localPlaylists.forEach(local => {
                                 if (!cloudPlaylists.some(cloud => cloud.id === local.id)) {
                                     mergedPlaylists.push(local);
-                                    api.post('/user-playlists', local)
-                                        .then(() => console.log('[SYNC] Uploading local list to cloud:', local.name))
-                                        .catch(err => console.error('[SYNC] Falha ao enviar para a nuvem:', local.name, err.response?.data || err.message));
+                                    // Async upload to cloud
+                                    api.post('/user-playlists', local).catch(err => console.log('[SYNC] Uploading local list to cloud:', local.name));
                                 }
                             });
                             

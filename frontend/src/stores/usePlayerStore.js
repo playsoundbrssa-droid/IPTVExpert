@@ -14,7 +14,6 @@ export const usePlayerStore = create((set, get) => ({
     },
 
     togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
-    setIsPlaying: (isPlaying) => set({ isPlaying }),
 
     playNext: () => {
         const { currentStream, playlist } = get();
