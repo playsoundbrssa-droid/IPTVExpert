@@ -96,7 +96,12 @@ export default function VideoPlayer() {
         if (!currentStream || !videoRef.current) return;
         const streamUrl = getStreamUrl();
         const isHls = streamUrl.toLowerCase().includes('.m3u8') || streamUrl.includes('type=m3u8');
-        const isTs = streamUrl.toLowerCase().includes('.ts') || streamUrl.includes('output=ts');
+        let isTs = streamUrl.toLowerCase().includes('.ts') || streamUrl.includes('output=ts');
+        const activePlaylist = getActivePlaylist();
+        
+        if (!isHls && !isTs && activePlaylist?.type === 'xtream' && currentStream.type === 'channel') {
+            isTs = true; // Assumir TS para canais ao vivo Xtream sem extensão clara
+        }
         
         cleanUp();
         setError(null);
@@ -487,6 +492,20 @@ export default function VideoPlayer() {
     }, [isPlaying, setIsPlaying]);
 
     useEffect(() => {
+        if (isBuffering && !error) {
+            const timeout = setTimeout(() => {
+                if (!useProxy) {
+                    toast('Conexão instável, ativando modo proxy...', { icon: '🔄', id: 'proxy-timeout' });
+                    setUseProxy(true);
+                } else {
+                    setError('O canal demorou muito para responder ou está offline.');
+                }
+            }, 20000); // 20 segundos de timeout
+            return () => clearTimeout(timeout);
+        }
+    }, [isBuffering, error, useProxy, setUseProxy]);
+
+    useEffect(() => {
         initPlayer();
         setIsPiP(false);
         return cleanUp;
@@ -570,6 +589,13 @@ export default function VideoPlayer() {
                 className={`w-full h-full transition-all duration-300 ${isPiP ? 'object-cover' : 'object-contain'}`}
                 onWaiting={() => setIsBuffering(true)}
                 onPlaying={() => setIsBuffering(false)}
+                onError={() => {
+                    const videoError = videoRef.current?.error;
+                    if (videoError && videoError.code !== 1) { // 1 = MEDIA_ERR_ABORTED
+                        if (!useProxy) setUseProxy(true);
+                        else setError('Falha na conectividade da mídia.');
+                    }
+                }}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={() => setIsPlaying(false)}
                 onLoadedMetadata={() => {
