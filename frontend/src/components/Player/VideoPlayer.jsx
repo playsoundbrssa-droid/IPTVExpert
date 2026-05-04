@@ -129,13 +129,19 @@ export default function VideoPlayer() {
         }
 
         const isMixedContent = window.location.protocol === 'https:' && url.startsWith('http://');
-        const shouldProxy = (isMixedContent || useProxy) && !isDirectAttempt;
+        // Se for mixed content, O PROXY É OBRIGATÓRIO, senão o navegador bloqueia.
+        const shouldProxy = isMixedContent || (useProxy && !isDirectAttempt);
 
         if (shouldProxy && !url.includes('/api/proxy/stream')) {
             let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            
+            // Garantir que o apiBase use HTTPS se o site for HTTPS para evitar novo Mixed Content
+            if (window.location.protocol === 'https:' && apiBase.startsWith('http://')) {
+                apiBase = apiBase.replace('http://', 'https://');
+            }
+
             if (!apiBase.endsWith('/api')) apiBase += '/api';
             
-            // Adicionar token de autenticação se disponível
             const token = localStorage.getItem('token');
             const proxyUrl = `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
             return token ? `${proxyUrl}&token=${token}&_v=${streamFormatFallback}` : `${proxyUrl}&_v=${streamFormatFallback}`;
