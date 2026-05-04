@@ -8,9 +8,9 @@ import { useUserStore } from '../../stores/useUserStore';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
 import mpegjs from 'mpegts.js';
-import { 
-    FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
-    FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
+import {
+    FiX, FiPlay, FiPause, FiMaximize, FiVolume2,
+    FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight,
     FiHeart, FiMinimize2, FiSkipBack, FiSkipForward,
     FiSettings, FiDownload, FiAirplay, FiSquare, FiMonitor,
     FiRotateCcw, FiRotateCw, FiLogOut, FiClock
@@ -25,7 +25,7 @@ export default function VideoPlayer() {
     const containerRef = useRef(null);
     const playPromiseRef = useRef(null);
     const isInitializingRef = useRef(false);
-    
+
     const { currentStream, setCurrentStream, isPlaying, togglePlay, setIsPlaying, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     const { nowPlaying } = useEpgStore();
@@ -33,7 +33,7 @@ export default function VideoPlayer() {
     const { user } = useUserStore();
     const navigate = useNavigate();
     const resumedRef = useRef(null);
-    
+
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
     const [error, setError] = useState(null);
@@ -44,16 +44,16 @@ export default function VideoPlayer() {
     const [streamFormatFallback, setStreamFormatFallback] = useState(0);
     const [airplayAvailable, setAirplayAvailable] = useState(false);
     const [resumeData, setResumeData] = useState(null);
-    
+
     const [isPiP, setIsPiP] = useState(false); // Custom PiP
     const [isNativePiP, setIsNativePiP] = useState(false); // Browser PiP
     const [isDragging, setIsDragging] = useState(false);
     const [pipPosition, setPipPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 200 });
     const pipDragRef = useRef({ dragging: false, startX: 0, startY: 0, initX: 0, initY: 0 });
 
-    const isFavorite = useMemo(() => 
+    const isFavorite = useMemo(() =>
         currentStream ? favorites.some(f => f.id === currentStream.id) : false
-    , [favorites, currentStream]);
+        , [favorites, currentStream]);
 
     const cleanUp = useCallback(() => {
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -63,7 +63,7 @@ export default function VideoPlayer() {
                 videoRef.current.pause();
                 videoRef.current.removeAttribute('src');
                 videoRef.current.load();
-            } catch (e) {}
+            } catch (e) { }
         }
     }, []);
 
@@ -73,7 +73,7 @@ export default function VideoPlayer() {
         if (!currentStream) return '';
         let url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
-        
+
         const active = getActivePlaylist();
 
         // Tentar formatos diferentes de URL Xtream em caso de erro 404
@@ -82,7 +82,7 @@ export default function VideoPlayer() {
                 const urlObj = new URL(url);
                 const baseUrl = urlObj.origin;
                 const pathParts = urlObj.pathname.split('/').filter(p => p);
-                
+
                 let user, pass, idStr;
                 if (pathParts.length >= 4 && pathParts[0] === 'live') {
                     user = pathParts[1];
@@ -107,17 +107,17 @@ export default function VideoPlayer() {
                         `${baseUrl}/live/${user}/${pass}/${id}.ts?output=ts`, // 8
                         `${baseUrl}/${user}/${pass}/${id}.m3u8?output=m3u8` // 9
                     ];
-                    
+
                     if (streamFormatFallback > 0 && streamFormatFallback <= variations.length) {
                         url = variations[streamFormatFallback - 1];
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // Determinar se usamos proxy ou se é tentativa direta (Fallback 10+)
         const isDirectAttempt = streamFormatFallback >= 10;
-        
+
         // Conversão agressiva para M3U8 em dispositivos Apple antigos (MediaSource ausente)
         const noMseSupport = !window.MediaSource;
         if (noMseSupport && typeof url === 'string') {
@@ -134,14 +134,14 @@ export default function VideoPlayer() {
 
         if (shouldProxy && !url.includes('/api/proxy/stream')) {
             let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            
+
             // Garantir que o apiBase use HTTPS se o site for HTTPS para evitar novo Mixed Content
             if (window.location.protocol === 'https:' && apiBase.startsWith('http://')) {
                 apiBase = apiBase.replace('http://', 'https://');
             }
 
             if (!apiBase.endsWith('/api')) apiBase += '/api';
-            
+
             const token = localStorage.getItem('token');
             const proxyUrl = `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
             return token ? `${proxyUrl}&token=${token}&_v=${streamFormatFallback}` : `${proxyUrl}&_v=${streamFormatFallback}`;
@@ -151,7 +151,7 @@ export default function VideoPlayer() {
 
     const playVideo = useCallback(async () => {
         if (!videoRef.current) return;
-        
+
         // Se já estiver tocando e o vídeo não estiver pausado, não fazemos nada
         if (isPlaying && !videoRef.current.paused) return;
 
@@ -194,9 +194,9 @@ export default function VideoPlayer() {
             videoRef.current.src = streamUrl;
             playVideo();
         } else if (isHls && Hls.isSupported()) {
-            const hls = new Hls({ 
+            const hls = new Hls({
                 enableWorker: true,
-                liveSyncDurationCount: 2, 
+                liveSyncDurationCount: 2,
                 maxMaxBufferLength: 40,
                 manifestLoadingMaxRetry: 5,
                 fragLoadingMaxRetry: 5,
@@ -270,7 +270,7 @@ export default function VideoPlayer() {
 
         const onEnterNativePiP = () => {
             setIsNativePiP(true);
-            setIsPiP(false); 
+            setIsPiP(false);
         };
         const onLeaveNativePiP = () => setIsNativePiP(false);
 
@@ -308,7 +308,7 @@ export default function VideoPlayer() {
                 console.error('Native PiP failed:', error);
             }
         }
-        
+
         if (video.webkitSupportsPresentationMode && typeof video.webkitSetPresentationMode === 'function') {
             const mode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
             video.webkitSetPresentationMode(mode);
@@ -323,7 +323,7 @@ export default function VideoPlayer() {
         if (e.pointerType === 'touch' && e.cancelable) e.preventDefault();
         e.stopPropagation();
         setIsDragging(true);
-        
+
         pipDragRef.current = {
             dragging: true,
             startX: e.clientX,
@@ -340,7 +340,7 @@ export default function VideoPlayer() {
             if (!pipDragRef.current.dragging) return;
             const dx = e.clientX - pipDragRef.current.startX;
             const dy = e.clientY - pipDragRef.current.startY;
-            
+
             setPipPosition({
                 x: Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx)),
                 y: Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy))
@@ -360,13 +360,13 @@ export default function VideoPlayer() {
         };
     }, [isDragging]);
 
-    const progressKey = useMemo(() => 
+    const progressKey = useMemo(() =>
         currentStream ? `progress_${currentStream.id}` : null
-    , [currentStream]);
+        , [currentStream]);
 
     useEffect(() => {
         if (!currentStream || resumedRef.current === currentStream.id) return;
-        
+
         const checkResume = async () => {
             let savedPosition = 0;
             try {
@@ -375,7 +375,7 @@ export default function VideoPlayer() {
                     const response = await api.get(`/progress/${currentStream.id}/${active.id}`);
                     if (response.data?.progress) savedPosition = response.data.progress.last_position;
                 }
-            } catch (e) {}
+            } catch (e) { }
             if (!savedPosition) {
                 const local = parseFloat(localStorage.getItem(progressKey));
                 if (local && local > 0) savedPosition = local;
@@ -398,7 +398,7 @@ export default function VideoPlayer() {
         const savedPos = resumeData;
         setResumeData(null);
         resumedRef.current = currentStream?.id;
-        
+
         if (videoRef.current) {
             videoRef.current.currentTime = shouldResume && savedPos ? savedPos : 0;
             playVideo();
@@ -420,7 +420,7 @@ export default function VideoPlayer() {
                     duration: videoRef.current.duration
                 });
             }
-        } catch (error) {}
+        } catch (error) { }
     }, [currentStream, progressKey, getActivePlaylist]);
 
     useEffect(() => {
@@ -446,7 +446,7 @@ export default function VideoPlayer() {
     useEffect(() => {
         const video = videoRef.current;
         if (!video || isInitializingRef.current) return;
-        
+
         const syncPlayback = async () => {
             if (isPlaying) {
                 if (video.paused) {
@@ -519,7 +519,7 @@ export default function VideoPlayer() {
                 params: { cacheKey: active.epgCacheKey }
             });
             setFullEpg(data || []);
-        } catch (e) {}
+        } catch (e) { }
     }, [currentStream, getActivePlaylist]);
 
     useEffect(() => {
@@ -529,13 +529,11 @@ export default function VideoPlayer() {
     if (!currentStream) return null;
 
     const playerContent = (
-        <div 
+        <div
             ref={containerRef}
-            className={`fixed transition-all duration-500 z-[99999] bg-black group/container overflow-hidden shadow-2xl touch-none ${
-                isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
-            } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${
-                isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
-            }`}
+            className={`fixed transition-all duration-500 z-[99999] bg-black group/container overflow-hidden shadow-2xl touch-none ${isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
+                } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
+                }`}
             style={isPiP ? {
                 width: '320px',
                 height: '180px',
@@ -555,7 +553,7 @@ export default function VideoPlayer() {
                 else if (x > (rect.width * 2) / 3) seek(10);
             }}
         >
-            <video 
+            <video
                 ref={videoRef}
                 className={`w-full h-full transition-all duration-300 ${isPiP ? 'object-cover' : 'object-contain'}`}
                 onWaiting={() => setIsBuffering(true)}
@@ -577,7 +575,7 @@ export default function VideoPlayer() {
 
             {isMuted && isPlaying && !isPiP && (
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] animate-bounce">
-                    <button 
+                    <button
                         onClick={(e) => { e.stopPropagation(); setIsMuted(false); if (videoRef.current) videoRef.current.muted = false; }}
                         className="bg-primary text-black px-6 py-3 rounded-full font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-2xl"
                     >
@@ -649,7 +647,7 @@ export default function VideoPlayer() {
                     </div>
 
                     <div className="absolute top-0 right-0 p-4 md:p-6 pt-[calc(env(safe-area-inset-top,0px)+1rem)] transition-opacity duration-300 z-40">
-                        <button 
+                        <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (isPiP || isNativePiP) {
@@ -658,7 +656,7 @@ export default function VideoPlayer() {
                                 } else {
                                     setCurrentStream(null);
                                 }
-                            }} 
+                            }}
                             className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 bg-black/60 hover:bg-red-600/40 text-white rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl"
                         >
                             <FiChevronLeft size={16} /><span className="landscape:hidden md:landscape:inline">Sair</span>
@@ -672,7 +670,7 @@ export default function VideoPlayer() {
                                     <span>{formatTime(currentTime)}</span>
                                     <span>{formatTime(duration)}</span>
                                 </div>
-                                <div 
+                                <div
                                     className="h-1.5 md:h-2 bg-white/5 rounded-full cursor-pointer relative overflow-hidden"
                                     onClick={(e) => {
                                         const rect = e.currentTarget.getBoundingClientRect();
@@ -693,7 +691,7 @@ export default function VideoPlayer() {
                                     {isPlaying ? <FiPause size={32} /> : <FiPlay size={32} className="ml-1" />}
                                 </button>
                                 <button onClick={playNext} className="p-3 md:p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-2xl md:rounded-[1.5rem]"><FiSkipForward size={20} /></button>
-                                
+
                                 <div className="hidden md:flex items-center gap-3 ml-4">
                                     <button onClick={() => { videoRef.current.currentTime -= 10 }} className="p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-[1.5rem]"><FiRotateCcw size={20} /></button>
                                     <button onClick={() => { videoRef.current.currentTime += 10 }} className="p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-[1.5rem]"><FiRotateCw size={20} /></button>
