@@ -90,35 +90,29 @@ export default function VideoPlayer() {
                 }
 
                 if (user && pass && idStr) {
-                    const id = idStr.replace(/\.[^/.]+$/, "");
+                    const id = idStr.split('.')[0]; // Pega apenas o ID antes do .ts ou .m3u8
                     const variations = [
-                        null,
-                        `${baseUrl}/${user}/${pass}/${id}.ts`,
-                        `${baseUrl}/${user}/${pass}/${id}`,
-                        `${baseUrl}/live/${user}/${pass}/${id}.ts`,
-                        `${baseUrl}/live/${user}/${pass}/${id}`,
-                        `${baseUrl}/${user}/${pass}/${id}.m3u8`,
-                        `${baseUrl}/live/${user}/${pass}/${id}.m3u8`,
+                        `${baseUrl}/${user}/${pass}/${id}.ts`,        // 1
+                        `${baseUrl}/${user}/${pass}/${id}`,           // 2
+                        `${baseUrl}/live/${user}/${pass}/${id}.ts`,   // 3
+                        `${baseUrl}/live/${user}/${pass}/${id}`,      // 4
+                        `${baseUrl}/${user}/${pass}/${id}.m3u8`,      // 5
+                        `${baseUrl}/live/${user}/${pass}/${id}.m3u8`, // 6
                     ];
-                    if (variations[streamFormatFallback]) {
-                        url = variations[streamFormatFallback];
+                    
+                    if (streamFormatFallback > 0 && streamFormatFallback <= variations.length) {
+                        url = variations[streamFormatFallback - 1];
                     }
                 }
             } catch (e) { }
         }
 
-        // Conversão agressiva para M3U8 em dispositivos Apple antigos
-        const noMseSupport = !window.MediaSource;
-        if (noMseSupport && typeof url === 'string') {
-            if (active?.type === 'xtream' && currentStream.type === 'channel') {
-                url = url.replace(/\.ts$/, '') + '.m3u8';
-            } else if (url.match(/\/(live|movie|series)\/.*\/.*\/.*\.ts/)) {
-                url = url.replace(/\.ts$/, '.m3u8');
-            }
-        }
-        
+        // Determinar se usamos proxy ou se é tentativa direta (Fallback 7)
+        const isDirectAttempt = streamFormatFallback >= 7;
         const isMixedContent = window.location.protocol === 'https:' && url.startsWith('http://');
-        if ((isMixedContent || useProxy) && !url.includes('/api/proxy/stream')) {
+        const shouldProxy = (isMixedContent || useProxy) && !isDirectAttempt;
+
+        if (shouldProxy && !url.includes('/api/proxy/stream')) {
             let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             if (!apiBase.endsWith('/api')) apiBase += '/api';
             
@@ -178,9 +172,8 @@ export default function VideoPlayer() {
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                         if (!useProxy) {
                             setUseProxy(true);
-                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 6) {
+                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 7) {
                             setStreamFormatFallback(prev => prev + 1);
-                            setUseProxy(false);
                         } else {
                             setError("Erro ao carregar a stream HLS.");
                         }
@@ -217,9 +210,8 @@ export default function VideoPlayer() {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
                     if (!useProxy) {
                         setUseProxy(true);
-                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 6) {
+                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 7) {
                         setStreamFormatFallback(prev => prev + 1);
-                        setUseProxy(false);
                     } else {
                         setError("Erro na stream MPEG-TS.");
                     }

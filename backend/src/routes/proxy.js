@@ -265,22 +265,27 @@ router.get('/stream', async (req, res) => {
         }
 
     } catch (error) {
-        console.error(`[PROXY STREAM ERROR] URL: ${req.query.url}`);
+        const errorUrl = req.query.url;
+        console.error(`[PROXY STREAM ERROR] URL: ${errorUrl}`);
         
         if (error.response) {
-            console.error(`[PROXY STREAM ERROR] Remote Server responded with: ${error.response.status}`);
-            console.error(`[PROXY STREAM ERROR] Remote Headers:`, error.response.headers);
-            return res.status(error.response.status).send(`Proxy Error from Remote: ${error.response.statusText}`);
+            console.error(`[PROXY STREAM ERROR] Remote Server Status: ${error.response.status}`);
+            console.error(`[PROXY STREAM ERROR] Remote Headers:`, JSON.stringify(error.response.headers));
+            return res.status(error.response.status).json({ 
+                error: 'Remote server error', 
+                status: error.response.status,
+                url: errorUrl 
+            });
         }
 
         console.error(`[PROXY STREAM ERROR] MSG: ${error.message}`);
         
         if (error.code === 'ECONNABORTED') {
-            return res.status(504).send('Proxy Timeout - Servidor remoto demorou muito a responder');
+            return res.status(504).send('Proxy Timeout - Remote server took too long to respond');
         }
         
         if (error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN') {
-            return res.status(502).send('Proxy DNS Error - Não foi possível encontrar o servidor da lista');
+            return res.status(502).send('Proxy DNS Error - Could not resolve remote server');
         }
 
         res.status(500).send(`Proxy Stream Error: ${error.message}`);
