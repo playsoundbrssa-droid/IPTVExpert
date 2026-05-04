@@ -59,7 +59,7 @@ const initializeTables = async () => {
         CREATE TABLE IF NOT EXISTS user_playlists (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            client_id TEXT UNIQUE NOT NULL,
+            client_id TEXT NOT NULL,
             name TEXT NOT NULL,
             type TEXT NOT NULL,
             total INTEGER DEFAULT 0,
@@ -67,7 +67,8 @@ const initializeTables = async () => {
             moviesCount INTEGER DEFAULT 0,
             seriesCount INTEGER DEFAULT 0,
             config TEXT NOT NULL,
-            createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, client_id)
         );
     `;
 
@@ -113,10 +114,13 @@ const initializeTables = async () => {
             const alterPlaylists = [
                 'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS channelscount INTEGER DEFAULT 0',
                 'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS moviescount INTEGER DEFAULT 0',
-                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS seriescount INTEGER DEFAULT 0'
+                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS seriescount INTEGER DEFAULT 0',
+                // Corrigir Unique Constraint: de global client_id para (user_id, client_id)
+                'ALTER TABLE user_playlists DROP CONSTRAINT IF EXISTS user_playlists_client_id_key',
+                'ALTER TABLE user_playlists ADD CONSTRAINT user_playlists_user_client_unique UNIQUE(user_id, client_id)'
             ];
             for (const sql of alterPlaylists) {
-                await db.query(sql).catch(err => console.log('[DB MIGRATION] Coluna já existe ou erro:', err.message));
+                await db.query(sql).catch(err => console.log('[DB MIGRATION] Erro na migração (pode ser esperado se já executada):', err.message));
             }
 
             console.log('[DATABASE] Tabelas PostgreSQL prontas!');

@@ -37,30 +37,43 @@ const userPlaylistController = {
     // Salvar ou atualizar playlist
     savePlaylist: async (req, res) => {
         try {
-            const userId = req.userId; // Corrigido
+            const userId = req.userId;
             const { id, name, type, total, config, channelsCount, moviesCount, seriesCount } = req.body;
             
             if (!id || !name || !type || !config) {
                 return res.status(400).json({ message: 'Dados incompletos da playlist.' });
             }
 
-            // UPSERT-like behavior
-            const checkSql = formatQuery('SELECT id FROM user_playlists WHERE client_id = ? AND user_id = ?');
-            const checkRes = await db.query(checkSql, [id, userId]);
+            // Verificar se esta playlist (client_id) já existe no banco
+            // Buscamos sem filtrar por user_id primeiro para detectar conflitos globais
+            const checkSql = formatQuery('SELECT id, user_id FROM user_playlists WHERE client_id = ?');
+            const checkRes = await db.query(checkSql, [id]);
             
+            const existing = (checkRes.rows?.[0] || checkRes[0]);
             const configStr = JSON.stringify(config);
             const totalVal = total || 0;
             
-            if (checkRes.rows?.length > 0 || (checkRes.length > 0)) {
-                // Update
-                const updateSql = formatQuery(`
-                    UPDATE user_playlists 
-                    SET name = ?, type = ?, total = ?, config = ?, channelsCount = ?, moviesCount = ?, seriesCount = ?
-                    WHERE client_id = ? AND user_id = ?
-                `);
-                await db.query(updateSql, [name, type, totalVal, configStr, channelsCount || 0, moviesCount || 0, seriesCount || 0, id, userId]);
+            if (existing) {
+                // Se pertence ao usuário atual, atualiza
+                if (existing.user_id === userId || String(existing.user_id) === String(userId)) {
+                    const updateSql = formatQuery(`
+                        UPDATE user_playlists 
+                        SET name = ?, type = ?, total = ?, config = ?, channelsCount = ?, moviesCount = ?, seriesCount = ?
+                        WHERE client_id = ? AND user_id = ?
+                    `);
+                    await db.query(updateSql, [name, type, totalVal, configStr, channelsCount || 0, moviesCount || 0, seriesCount || 0, id, userId]);
+                } else {
+                    // Se pertence a OUTRO usuário, temos um conflito de constraint UNIQUE global
+                    // Em vez de dar erro 500, vamos avisar ou ignorar (já que o client_id é único no banco)
+                    // NOTA: O ideal seria a constraint ser UNIQUE(user_id, client_id), mas para não quebrar bancos existentes:
+                    console.warn(`[UserPlaylist] Conflito: client_id ${id} já pertence ao usuário ${existing.user_id}.`);
+                    return res.status(409).json({ 
+                        message: 'Esta playlist já está associada a outra conta.',
+                        code: 'CLIENT_ID_TAKEN'
+                    });
+                }
             } else {
-                // Insert
+                // Se não existe, insere novo
                 const insertSql = formatQuery(`
                     INSERT INTO user_playlists (user_id, client_id, name, type, total, config, channelsCount, moviesCount, seriesCount) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
