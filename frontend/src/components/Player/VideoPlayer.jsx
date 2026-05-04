@@ -104,26 +104,39 @@ export default function VideoPlayer() {
                     url = url.replace(/\.ts$/, '');
                     let parts2 = url.split('/');
                     if (url.includes('/live/')) {
-                        const id = parts2.pop();
+                        const idStr = parts2.pop();
                         const pass = parts2.pop();
                         const user = parts2.pop();
                         parts2.pop(); // remove 'live'
                         const base = parts2.join('/');
+                        const id = idStr.replace(/\.[^/.]+$/, "");
                         url = `${base}/${user}/${pass}/${id}.m3u8`;
                     } else {
-                        url += '.m3u8';
+                        const idStr = parts2.pop();
+                        const pass = parts2.pop();
+                        const user = parts2.pop();
+                        const base = parts2.join('/');
+                        const id = idStr.replace(/\.[^/.]+$/, "");
+                        url = `${base}/${user}/${pass}/${id}.m3u8`;
                     }
                 } else if (streamFormatFallback === 5) {
                     // Tenta forçar HLS com /live/
                     url = url.replace(/\.ts$/, '').replace(/\.m3u8$/, '');
+                    const parts3 = url.split('/');
                     if (!url.includes('/live/')) {
-                        const id = parts.pop();
-                        const pass = parts.pop();
-                        const user = parts.pop();
-                        const base = parts.join('/');
+                        const idStr = parts3.pop();
+                        const pass = parts3.pop();
+                        const user = parts3.pop();
+                        const base = parts3.join('/');
+                        const id = idStr.replace(/\.[^/.]+$/, "");
                         url = `${base}/live/${user}/${pass}/${id}.m3u8`;
                     } else {
-                        url += '.m3u8';
+                        const idStr = parts3.pop();
+                        const pass = parts3.pop();
+                        const user = parts3.pop();
+                        const base = parts3.join('/');
+                        const id = idStr.replace(/\.[^/.]+$/, "");
+                        url = `${base}/live/${user}/${pass}/${id}.m3u8`;
                     }
                 }
             }
