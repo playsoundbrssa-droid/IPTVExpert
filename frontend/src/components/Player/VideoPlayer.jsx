@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
 import mpegjs from 'mpegts.js';
-import { 
-    FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
-    FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
+import {
+    FiX, FiPlay, FiPause, FiMaximize, FiVolume2,
+    FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight,
     FiHeart, FiMinimize2, FiSkipBack, FiSkipForward,
     FiSettings, FiDownload, FiAirplay, FiSquare, FiMonitor,
     FiRotateCcw, FiRotateCw, FiLogOut, FiClock
@@ -24,7 +24,7 @@ export default function VideoPlayer() {
     const mpegPlayerRef = useRef(null);
     const containerRef = useRef(null);
     const lastUpdateRef = useRef(0);
-    
+
     const { currentStream, setCurrentStream, isPlaying, togglePlay, setIsPlaying, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     const { nowPlaying } = useEpgStore();
@@ -32,7 +32,7 @@ export default function VideoPlayer() {
     const { user } = useUserStore();
     const navigate = useNavigate();
     const resumedRef = useRef(null);
-    
+
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
     const [error, setError] = useState(null);
@@ -44,16 +44,16 @@ export default function VideoPlayer() {
     const [streamFormatFallback, setStreamFormatFallback] = useState(0);
     const [airplayAvailable, setAirplayAvailable] = useState(false);
     const [resumeData, setResumeData] = useState(null);
-    
+
     const [isPiP, setIsPiP] = useState(false); // Custom PiP
     const [isNativePiP, setIsNativePiP] = useState(false); // Browser PiP
     const [isDragging, setIsDragging] = useState(false);
     const [pipPosition, setPipPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 200 });
     const pipDragRef = useRef({ dragging: false, startX: 0, startY: 0, initX: 0, initY: 0 });
 
-    const isFavorite = useMemo(() => 
+    const isFavorite = useMemo(() =>
         currentStream ? favorites.some(f => f.id === currentStream.id) : false
-    , [favorites, currentStream]);
+        , [favorites, currentStream]);
 
     const cleanUp = useCallback(() => {
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -69,7 +69,7 @@ export default function VideoPlayer() {
         if (!currentStream) return '';
         let url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
-        
+
         // O proxy ou o mpegts vai lidar com a stream.
         const active = getActivePlaylist();
 
@@ -99,6 +99,32 @@ export default function VideoPlayer() {
                     } else if (!url.endsWith('.ts')) {
                         url += '.ts';
                     }
+                } else if (streamFormatFallback === 4) {
+                    // Tenta forçar HLS direto (m3u8)
+                    url = url.replace(/\.ts$/, '');
+                    let parts2 = url.split('/');
+                    if (url.includes('/live/')) {
+                        const id = parts2.pop();
+                        const pass = parts2.pop();
+                        const user = parts2.pop();
+                        parts2.pop(); // remove 'live'
+                        const base = parts2.join('/');
+                        url = `${base}/${user}/${pass}/${id}.m3u8`;
+                    } else {
+                        url += '.m3u8';
+                    }
+                } else if (streamFormatFallback === 5) {
+                    // Tenta forçar HLS com /live/
+                    url = url.replace(/\.ts$/, '').replace(/\.m3u8$/, '');
+                    if (!url.includes('/live/')) {
+                        const id = parts.pop();
+                        const pass = parts.pop();
+                        const user = parts.pop();
+                        const base = parts.join('/');
+                        url = `${base}/live/${user}/${pass}/${id}.m3u8`;
+                    } else {
+                        url += '.m3u8';
+                    }
                 }
             }
         }
@@ -117,7 +143,7 @@ export default function VideoPlayer() {
         if ((isMixedContent || useProxy) && !url.includes('/api/proxy/stream')) {
             let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             if (!apiBase.endsWith('/api')) apiBase += '/api';
-            
+
             // Adicionar token de autenticação se disponível
             const token = localStorage.getItem('token');
             const proxyUrl = `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
@@ -132,11 +158,11 @@ export default function VideoPlayer() {
         const isHls = streamUrl.toLowerCase().includes('.m3u8') || streamUrl.includes('type=m3u8');
         let isTs = streamUrl.toLowerCase().includes('.ts') || streamUrl.includes('output=ts');
         const activePlaylist = getActivePlaylist();
-        
+
         if (!isHls && !isTs && activePlaylist?.type === 'xtream' && currentStream.type === 'channel') {
             isTs = true; // Assumir TS para canais ao vivo Xtream sem extensão clara
         }
-        
+
         cleanUp();
         setError(null);
         setIsBuffering(true);
@@ -148,7 +174,7 @@ export default function VideoPlayer() {
                 setIsPlaying(false);
             });
         } else if (isHls && Hls.isSupported()) {
-            const hls = new Hls({ 
+            const hls = new Hls({
                 enableWorker: true,
                 liveSyncDurationCount: 3, // Melhor sincronização para ao vivo
                 maxBufferLength: 30, // Mantém 30s de buffer para evitar travamentos
@@ -173,7 +199,7 @@ export default function VideoPlayer() {
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                         if (!useProxy) {
                             setUseProxy(true);
-                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 3) {
+                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 5) {
                             setStreamFormatFallback(prev => prev + 1);
                             setUseProxy(false);
                         } else {
@@ -212,7 +238,7 @@ export default function VideoPlayer() {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
                     if (!useProxy) {
                         setUseProxy(true);
-                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 3) {
+                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 5) {
                         setStreamFormatFallback(prev => prev + 1);
                         setUseProxy(false);
                     } else {
@@ -322,7 +348,7 @@ export default function VideoPlayer() {
                 }
                 return;
             }
-            
+
             // Fallback para iOS/Safari (WebKit)
             if (video.webkitSupportsPresentationMode && typeof video.webkitSetPresentationMode === 'function') {
                 const mode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
@@ -344,10 +370,10 @@ export default function VideoPlayer() {
         if (e.pointerType === 'touch' && e.cancelable) e.preventDefault();
         e.stopPropagation();
         setIsDragging(true);
-        
+
         const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
         const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0);
-        
+
         pipDragRef.current = {
             dragging: true,
             startX: clientX,
@@ -371,17 +397,17 @@ export default function VideoPlayer() {
         const updatePosition = () => {
             const dx = clientX - pipDragRef.current.startX;
             const dy = clientY - pipDragRef.current.startY;
-            
+
             const newX = Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx));
             const newY = Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy));
-            
+
             // Atualização direta no DOM para máxima performance sem causar re-renders pesados
             if (containerRef.current) {
                 containerRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
             }
             pipDragRef.current.lastX = newX;
             pipDragRef.current.lastY = newY;
-            
+
             pipDragRef.current.rafId = null;
         };
 
@@ -394,7 +420,7 @@ export default function VideoPlayer() {
         pipDragRef.current.dragging = false;
         if (pipDragRef.current.rafId) cancelAnimationFrame(pipDragRef.current.rafId);
         setIsDragging(false);
-        
+
         // Sincroniza a posição final com o estado do React
         if (pipDragRef.current.lastX !== undefined) {
             setPipPosition({ x: pipDragRef.current.lastX, y: pipDragRef.current.lastY });
@@ -452,7 +478,7 @@ export default function VideoPlayer() {
                 });
                 if (response.data?.progress) savedPosition = response.data.progress.last_position;
             }
-        } catch (e) {}
+        } catch (e) { }
         if (!savedPosition) {
             const local = parseFloat(localStorage.getItem(progressKey));
             if (local && local > 0) savedPosition = local;
@@ -470,10 +496,10 @@ export default function VideoPlayer() {
         const savedPos = resumeData;
         setResumeData(null);
         resumedRef.current = currentStream?.id;
-        
+
         if (videoRef.current) {
             videoRef.current.currentTime = shouldResume && savedPos ? savedPos : 0;
-            videoRef.current.play().catch(() => {});
+            videoRef.current.play().catch(() => { });
             setIsPlaying(true);
         }
     };
@@ -493,7 +519,7 @@ export default function VideoPlayer() {
                     duration: videoRef.current.duration
                 });
             }
-        } catch (error) {}
+        } catch (error) { }
     }, [currentStream, progressKey, getActivePlaylist]);
 
     useEffect(() => {
@@ -510,7 +536,7 @@ export default function VideoPlayer() {
         if (!videoRef.current) return;
         // Otimização para iPads antigos: não re-renderiza o React se os controles estiverem ocultos
         if (!showControls) return;
-        
+
         const now = Date.now();
         // Atualiza a barra de progresso no máximo a cada 500ms para economizar CPU
         if (now - lastUpdateRef.current >= 500) {
@@ -544,7 +570,7 @@ export default function VideoPlayer() {
                 if (!useProxy) {
                     toast('Conexão instável, ativando modo proxy...', { icon: '🔄', id: 'proxy-timeout' });
                     setUseProxy(true);
-                } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 3) {
+                } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 5) {
                     setStreamFormatFallback(prev => prev + 1);
                     setUseProxy(false);
                 } else {
@@ -605,7 +631,7 @@ export default function VideoPlayer() {
                 params: { cacheKey: active.epgCacheKey }
             });
             setFullEpg(data || []);
-        } catch (e) {}
+        } catch (e) { }
     }, [currentStream, getActivePlaylist]);
 
     useEffect(() => {
@@ -615,15 +641,12 @@ export default function VideoPlayer() {
     if (!currentStream) return null;
 
     const playerContent = (
-        <div 
+        <div
             ref={containerRef}
-            className={`fixed z-[99999] bg-black group/container overflow-hidden shadow-2xl ${
-                !isDragging ? 'transition-all duration-500' : ''
-            } ${
-                isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
-            } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${
-                isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
-            }`}
+            className={`fixed z-[99999] bg-black group/container overflow-hidden shadow-2xl ${!isDragging ? 'transition-all duration-500' : ''
+                } ${isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
+                } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
+                }`}
             style={isPiP ? {
                 width: '320px',
                 height: '180px',
@@ -639,7 +662,7 @@ export default function VideoPlayer() {
             onTouchStart={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
         >
-            <video 
+            <video
                 ref={videoRef}
                 className={`w-full h-full transition-all duration-300 ${isPiP ? 'object-cover' : 'object-contain'}`}
                 onWaiting={() => setIsBuffering(true)}
@@ -649,7 +672,7 @@ export default function VideoPlayer() {
                     if (videoError && videoError.code !== 1) { // 1 = MEDIA_ERR_ABORTED
                         if (!useProxy) {
                             setUseProxy(true);
-                        } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 3) {
+                        } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 5) {
                             setStreamFormatFallback(prev => prev + 1);
                             setUseProxy(false);
                         } else {
@@ -679,13 +702,13 @@ export default function VideoPlayer() {
                         <button onClick={(e) => { e.stopPropagation(); setCurrentStream(null); setIsPiP(false); }} className="p-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full backdrop-blur-md shadow-lg transition-all"><FiX size={16} /></button>
                     </div>
                     <div className="flex items-center justify-between pointer-events-auto">
-                        <button onClick={(e) => { 
-                            e.stopPropagation(); 
+                        <button onClick={(e) => {
+                            e.stopPropagation();
                             if (videoRef.current) {
                                 if (isPlaying) videoRef.current.pause();
-                                else videoRef.current.play().catch(() => {});
+                                else videoRef.current.play().catch(() => { });
                             }
-                            togglePlay(); 
+                            togglePlay();
                         }} className="p-2 text-white hover:text-primary transition-colors">{isPlaying ? <FiPause size={20} /> : <FiPlay size={20} />}</button>
                         <span className="text-[10px] font-bold text-white truncate max-w-[140px] uppercase tracking-wider">{currentStream.name}</span>
                         <button onClick={(e) => { e.stopPropagation(); setIsPiP(false); }} className="p-2 text-white hover:text-primary transition-colors"><FiMaximize size={20} /></button>
@@ -752,7 +775,7 @@ export default function VideoPlayer() {
                     </div>
 
                     <div className={`absolute top-0 right-0 p-4 md:p-6 pt-[calc(env(safe-area-inset-top,0px)+1rem)] transition-opacity duration-300 z-40 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                        <button 
+                        <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (isPiP || isNativePiP) {
@@ -762,7 +785,7 @@ export default function VideoPlayer() {
                                 } else {
                                     setCurrentStream(null);
                                 }
-                            }} 
+                            }}
                             className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 bg-black/60 hover:bg-red-600/40 text-white rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl"
                         >
                             <FiChevronLeft size={16} /><span className="landscape:hidden md:landscape:inline">Sair</span>
@@ -773,13 +796,13 @@ export default function VideoPlayer() {
                         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 md:gap-4 lg:gap-12 transition-all z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                             <button onClick={(e) => { e.stopPropagation(); playPrev(); }} className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all border border-white/10"><FiSkipBack size={18} /></button>
                             <button onClick={(e) => { e.stopPropagation(); seek(-10); }} className="w-10 h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all border border-white/10"><FiRotateCcw size={18} /><span className="text-[8px] md:text-[10px] font-bold mt-0.5">10s</span></button>
-                            <button onClick={(e) => { 
-                                e.stopPropagation(); 
+                            <button onClick={(e) => {
+                                e.stopPropagation();
                                 if (videoRef.current) {
                                     if (isPlaying) videoRef.current.pause();
-                                    else videoRef.current.play().catch(() => {});
+                                    else videoRef.current.play().catch(() => { });
                                 }
-                                togglePlay(); 
+                                togglePlay();
                             }} className="w-14 h-14 md:w-20 md:h-20 lg:w-28 lg:h-28 bg-primary text-white rounded-full flex items-center justify-center shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all">{isPlaying ? <FiPause size={28} className="md:size-[48px]" /> : <FiPlay size={28} className="md:size-[48px] ml-1" />}</button>
                             <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="w-10 h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all border border-white/10"><FiRotateCw size={18} /><span className="text-[8px] md:text-[10px] font-bold mt-0.5">10s</span></button>
                             <button onClick={(e) => { e.stopPropagation(); playNext(); }} className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all border border-white/10"><FiSkipForward size={18} /></button>
