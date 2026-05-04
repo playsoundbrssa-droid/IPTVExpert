@@ -67,6 +67,8 @@ export default function VideoPlayer() {
         }
     }, []);
 
+    const isApple = useMemo(() => /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document, []);
+
     const getStreamUrl = useCallback(() => {
         if (!currentStream) return '';
         let url = currentStream.streamUrl || currentStream.url;
@@ -182,14 +184,13 @@ export default function VideoPlayer() {
         setIsBuffering(true);
         isInitializingRef.current = true;
 
-        if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+        if (isHls && (isApple || videoRef.current.canPlayType('application/vnd.apple.mpegurl'))) {
             videoRef.current.src = streamUrl;
-            // O play será disparado pelo useEffect de isPlaying
+            playVideo();
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({ 
                 enableWorker: true,
                 liveSyncDurationCount: 2, 
-                maxBufferLength: 20, 
                 maxMaxBufferLength: 40,
                 manifestLoadingMaxRetry: 5,
                 fragLoadingMaxRetry: 5,
@@ -524,7 +525,7 @@ export default function VideoPlayer() {
     const playerContent = (
         <div 
             ref={containerRef}
-            className={`fixed transition-all duration-500 z-[99999] bg-black group/container overflow-hidden shadow-2xl ${
+            className={`fixed transition-all duration-500 z-[99999] bg-black group/container overflow-hidden shadow-2xl touch-none ${
                 isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
             } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${
                 isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
@@ -536,8 +537,17 @@ export default function VideoPlayer() {
                 top: `${pipPosition.y}px`,
             } : {}}
             onPointerDown={handlePointerDown}
-            onTouchStart={e => e.stopPropagation()}
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => {
+                e.stopPropagation();
+                if (!isPiP) setShowControls(!showControls);
+            }}
+            onDoubleClick={(e) => {
+                if (isPiP) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                if (x < rect.width / 3) seek(-10);
+                else if (x > (rect.width * 2) / 3) seek(10);
+            }}
         >
             <video 
                 ref={videoRef}
@@ -554,9 +564,21 @@ export default function VideoPlayer() {
                     else setError("Erro ao reproduzir o vídeo. Tente outro formato ou canal.");
                 }}
                 playsInline
+                webkit-playsinline="true"
                 crossOrigin="anonymous"
                 muted={isMuted}
             />
+
+            {isMuted && isPlaying && !isPiP && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] animate-bounce">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setIsMuted(false); if (videoRef.current) videoRef.current.muted = false; }}
+                        className="bg-primary text-black px-6 py-3 rounded-full font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-2xl"
+                    >
+                        <FiVolumeX size={18} /> Ativar Som
+                    </button>
+                </div>
+            )}
 
             {isBuffering && !error && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-50">
