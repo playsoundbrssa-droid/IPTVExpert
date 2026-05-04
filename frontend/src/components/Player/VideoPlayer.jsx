@@ -156,12 +156,16 @@ export default function VideoPlayer() {
         if (isPlaying && !videoRef.current.paused) return;
 
         try {
+            // Garantir que tentamos COM áudio primeiro
+            videoRef.current.muted = false;
             playPromiseRef.current = videoRef.current.play();
             await playPromiseRef.current;
+            setIsMuted(false);
         } catch (e) {
             console.log('Autoplay blocked, trying muted...');
             if (videoRef.current) {
                 videoRef.current.muted = true;
+                setIsMuted(true);
                 try {
                     playPromiseRef.current = videoRef.current.play();
                     await playPromiseRef.current;
@@ -189,6 +193,13 @@ export default function VideoPlayer() {
         setError(null);
         setIsBuffering(true);
         isInitializingRef.current = true;
+        
+        // Resetar áudio para garantir início com som
+        if (videoRef.current) {
+            videoRef.current.muted = false;
+            videoRef.current.volume = 1;
+            setIsMuted(false);
+        }
 
         if (isHls && (isApple || videoRef.current.canPlayType('application/vnd.apple.mpegurl'))) {
             videoRef.current.src = streamUrl;
