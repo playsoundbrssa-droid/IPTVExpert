@@ -75,70 +75,42 @@ export default function VideoPlayer() {
 
         // Tentar formatos diferentes de URL Xtream em caso de erro 404
         if (active?.type === 'xtream' && currentStream.type === 'channel') {
-            const parts = url.split('/');
-            if (parts.length >= 5) {
-                if (streamFormatFallback === 1) {
-                    url = url.replace(/\.ts$/, ''); // Tenta sem .ts
-                } else if (streamFormatFallback === 2) {
-                    url = url.replace(/\.ts$/, '');
-                    if (!url.includes('/live/')) {
-                        const id = parts.pop();
-                        const pass = parts.pop();
-                        const user = parts.pop();
-                        const base = parts.join('/');
-                        url = `${base}/live/${user}/${pass}/${id}`; // Tenta com /live/ e sem .ts
-                    }
-                } else if (streamFormatFallback === 3) {
-                    if (!url.includes('/live/')) {
-                        const idStr = parts.pop();
-                        const pass = parts.pop();
-                        const user = parts.pop();
-                        const base = parts.join('/');
-                        const id = idStr.replace(/\.[^/.]+$/, "");
-                        url = `${base}/live/${user}/${pass}/${id}.ts`; // Tenta com /live/ e com .ts
-                    } else if (!url.endsWith('.ts')) {
-                        url += '.ts';
-                    }
-                } else if (streamFormatFallback === 4) {
-                    // Tenta forçar HLS direto (m3u8)
-                    url = url.replace(/\.ts$/, '');
-                    let parts2 = url.split('/');
-                    if (url.includes('/live/')) {
-                        const idStr = parts2.pop();
-                        const pass = parts2.pop();
-                        const user = parts2.pop();
-                        parts2.pop(); // remove 'live'
-                        const base = parts2.join('/');
-                        const id = idStr.replace(/\.[^/.]+$/, "");
-                        url = `${base}/${user}/${pass}/${id}.m3u8`;
-                    } else {
-                        const idStr = parts2.pop();
-                        const pass = parts2.pop();
-                        const user = parts2.pop();
-                        const base = parts2.join('/');
-                        const id = idStr.replace(/\.[^/.]+$/, "");
-                        url = `${base}/${user}/${pass}/${id}.m3u8`;
-                    }
-                } else if (streamFormatFallback === 5) {
-                    // Tenta forçar HLS com /live/
-                    url = url.replace(/\.ts$/, '').replace(/\.m3u8$/, '');
-                    const parts3 = url.split('/');
-                    if (!url.includes('/live/')) {
-                        const idStr = parts3.pop();
-                        const pass = parts3.pop();
-                        const user = parts3.pop();
-                        const base = parts3.join('/');
-                        const id = idStr.replace(/\.[^/.]+$/, "");
-                        url = `${base}/live/${user}/${pass}/${id}.m3u8`;
-                    } else {
-                        const idStr = parts3.pop();
-                        const pass = parts3.pop();
-                        const user = parts3.pop();
-                        const base = parts3.join('/');
-                        const id = idStr.replace(/\.[^/.]+$/, "");
-                        url = `${base}/live/${user}/${pass}/${id}.m3u8`;
+            try {
+                const urlObj = new URL(url);
+                const baseUrl = urlObj.origin;
+                const pathParts = urlObj.pathname.split('/').filter(p => p);
+                
+                // Padrões Xtream comuns: /live/user/pass/id.ts ou /user/pass/id.ts
+                let user, pass, idStr;
+                if (pathParts.length >= 4 && pathParts[0] === 'live') {
+                    user = pathParts[1];
+                    pass = pathParts[2];
+                    idStr = pathParts[3];
+                } else if (pathParts.length >= 3) {
+                    user = pathParts[0];
+                    pass = pathParts[1];
+                    idStr = pathParts[2];
+                }
+
+                if (user && pass && idStr) {
+                    const id = idStr.replace(/\.[^/.]+$/, ""); // Remove qualquer extensão (.ts, .m3u8, etc)
+
+                    const variations = [
+                        null, // 0: Original
+                        `${baseUrl}/${user}/${pass}/${id}.ts`,        // 1: Direct TS
+                        `${baseUrl}/${user}/${pass}/${id}`,           // 2: Direct No Ext
+                        `${baseUrl}/live/${user}/${pass}/${id}.ts`,   // 3: Live TS
+                        `${baseUrl}/live/${user}/${pass}/${id}`,      // 4: Live No Ext
+                        `${baseUrl}/${user}/${pass}/${id}.m3u8`,      // 5: Direct HLS
+                        `${baseUrl}/live/${user}/${pass}/${id}.m3u8`, // 6: Live HLS
+                    ];
+
+                    if (variations[streamFormatFallback]) {
+                        url = variations[streamFormatFallback];
                     }
                 }
+            } catch (e) {
+                console.warn('Erro ao processar URL para fallback:', e.message);
             }
         }
 
@@ -212,7 +184,7 @@ export default function VideoPlayer() {
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                         if (!useProxy) {
                             setUseProxy(true);
-                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 5) {
+                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 6) {
                             setStreamFormatFallback(prev => prev + 1);
                             setUseProxy(false);
                         } else {
@@ -251,7 +223,7 @@ export default function VideoPlayer() {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
                     if (!useProxy) {
                         setUseProxy(true);
-                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 5) {
+                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 6) {
                         setStreamFormatFallback(prev => prev + 1);
                         setUseProxy(false);
                     } else {
@@ -583,7 +555,7 @@ export default function VideoPlayer() {
                 if (!useProxy) {
                     toast('Conexão instável, ativando modo proxy...', { icon: '🔄', id: 'proxy-timeout' });
                     setUseProxy(true);
-                } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 5) {
+                } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 6) {
                     setStreamFormatFallback(prev => prev + 1);
                     setUseProxy(false);
                 } else {
@@ -685,7 +657,7 @@ export default function VideoPlayer() {
                     if (videoError && videoError.code !== 1) { // 1 = MEDIA_ERR_ABORTED
                         if (!useProxy) {
                             setUseProxy(true);
-                        } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 5) {
+                        } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 6) {
                             setStreamFormatFallback(prev => prev + 1);
                             setUseProxy(false);
                         } else {
