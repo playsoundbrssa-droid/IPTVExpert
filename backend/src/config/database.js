@@ -111,9 +111,9 @@ const initializeTables = async () => {
             }
 
             const alterPlaylists = [
-                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS "channelsCount" INTEGER DEFAULT 0',
-                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS "moviesCount" INTEGER DEFAULT 0',
-                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS "seriesCount" INTEGER DEFAULT 0'
+                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS channelscount INTEGER DEFAULT 0',
+                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS moviescount INTEGER DEFAULT 0',
+                'ALTER TABLE user_playlists ADD COLUMN IF NOT EXISTS seriescount INTEGER DEFAULT 0'
             ];
             for (const sql of alterPlaylists) {
                 await db.query(sql).catch(err => console.log('[DB MIGRATION] Coluna já existe ou erro:', err.message));
