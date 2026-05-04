@@ -90,14 +90,17 @@ export default function VideoPlayer() {
                 }
 
                 if (user && pass && idStr) {
-                    const id = idStr.split('.')[0]; // Pega apenas o ID antes do .ts ou .m3u8
+                    const id = idStr.split('.')[0];
                     const variations = [
-                        `${baseUrl}/${user}/${pass}/${id}.ts`,        // 1
-                        `${baseUrl}/${user}/${pass}/${id}`,           // 2
-                        `${baseUrl}/live/${user}/${pass}/${id}.ts`,   // 3
-                        `${baseUrl}/live/${user}/${pass}/${id}`,      // 4
-                        `${baseUrl}/${user}/${pass}/${id}.m3u8`,      // 5
-                        `${baseUrl}/live/${user}/${pass}/${id}.m3u8`, // 6
+                        `${baseUrl}/${user}/${pass}/${id}.ts`,              // 1
+                        `${baseUrl}/${user}/${pass}/${id}`,                 // 2
+                        `${baseUrl}/live/${user}/${pass}/${id}.ts`,         // 3
+                        `${baseUrl}/live/${user}/${pass}/${id}`,            // 4
+                        `${baseUrl}/${user}/${pass}/${id}.m3u8`,            // 5
+                        `${baseUrl}/live/${user}/${pass}/${id}.m3u8`,       // 6
+                        `${baseUrl}/${user}/${pass}/${id}.ts?output=ts`,    // 7
+                        `${baseUrl}/live/${user}/${pass}/${id}.ts?output=ts`, // 8
+                        `${baseUrl}/${user}/${pass}/${id}.m3u8?output=m3u8` // 9
                     ];
                     
                     if (streamFormatFallback > 0 && streamFormatFallback <= variations.length) {
@@ -107,6 +110,9 @@ export default function VideoPlayer() {
             } catch (e) { }
         }
 
+        // Determinar se usamos proxy ou se é tentativa direta (Fallback 10+)
+        const isDirectAttempt = streamFormatFallback >= 10;
+        
         // Conversão agressiva para M3U8 em dispositivos Apple antigos (MediaSource ausente)
         const noMseSupport = !window.MediaSource;
         if (noMseSupport && typeof url === 'string') {
@@ -182,7 +188,7 @@ export default function VideoPlayer() {
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                         if (!useProxy) {
                             setUseProxy(true);
-                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 7) {
+                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 10) {
                             setStreamFormatFallback(prev => prev + 1);
                         } else {
                             setError("Erro ao carregar a stream HLS.");
@@ -220,7 +226,7 @@ export default function VideoPlayer() {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
                     if (!useProxy) {
                         setUseProxy(true);
-                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 7) {
+                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 10) {
                         setStreamFormatFallback(prev => prev + 1);
                     } else {
                         setError("Erro na stream MPEG-TS.");
@@ -522,7 +528,7 @@ export default function VideoPlayer() {
                 console.warn(`[Player] Buffer timeout na variação ${streamFormatFallback}, tentando próxima...`);
                 if (!useProxy) {
                     setUseProxy(true);
-                } else if (streamFormatFallback < 7) {
+                } else if (streamFormatFallback < 10) {
                     setStreamFormatFallback(prev => prev + 1);
                 }
             }

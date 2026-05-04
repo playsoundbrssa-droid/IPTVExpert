@@ -179,11 +179,10 @@ router.get('/stream', async (req, res) => {
         }
 
         const commonHeaders = {
-            'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+            'User-Agent': 'Mozilla/5.0 (SmartHub; SMART-TV; Linux/SmartTV) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.0 TV Safari/538.1',
             'Accept': '*/*',
             'Connection': 'keep-alive',
             'Referer': origin + '/',
-            'Origin': origin
         };
 
         if (isM3u8) {
@@ -191,8 +190,14 @@ router.get('/stream', async (req, res) => {
             const response = await axios.get(finalTarget, {
                 ...proxyAgents,
                 headers: commonHeaders,
-                timeout: 15000
+                timeout: 20000,
+                validateStatus: null // Aceitar qualquer status para logar
             });
+
+            if (response.status >= 400) {
+                console.error(`[PROXY M3U8 ERROR] Remote returned ${response.status} for ${finalTarget}`);
+                return res.status(response.status).json({ error: 'Remote server error', status: response.status });
+            }
 
             let baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
 
@@ -222,7 +227,9 @@ router.get('/stream', async (req, res) => {
             const range = req.headers.range;
             const proxyHeaders = { ...commonHeaders };
             
-            if (range) {
+            // NÃO enviar Range para arquivos .ts, pois muitos servidores IPTV retornam 404
+            const isTs = finalTarget.includes('.ts') || finalTarget.includes('output=ts');
+            if (range && !isTs) {
                 proxyHeaders.Range = range;
             }
 
@@ -233,8 +240,13 @@ router.get('/stream', async (req, res) => {
                 ...proxyAgents,
                 headers: proxyHeaders,
                 timeout: 30000,
-                validateStatus: (status) => status < 400 || status === 416 // Aceitar 206 e 416
+                validateStatus: (status) => true // Aceitar tudo para processar erro manualmente
             });
+
+            if (response.status >= 400) {
+                console.error(`[PROXY STREAM ERROR] Remote returned ${response.status} for ${finalTarget}`);
+                return res.status(response.status).send(`Remote server error: ${response.status}`);
+            }
 
             // Repassar headers importantes do upstream
             if (response.status === 206) res.status(206);
