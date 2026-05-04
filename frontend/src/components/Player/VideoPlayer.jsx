@@ -41,6 +41,7 @@ export default function VideoPlayer() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
+    const [streamFormatFallback, setStreamFormatFallback] = useState(0);
     const [airplayAvailable, setAirplayAvailable] = useState(false);
     const [resumeData, setResumeData] = useState(null);
     
@@ -72,6 +73,36 @@ export default function VideoPlayer() {
         // O proxy ou o mpegts vai lidar com a stream.
         const active = getActivePlaylist();
 
+        // Tentar formatos diferentes de URL Xtream em caso de erro 404
+        if (active?.type === 'xtream' && currentStream.type === 'channel') {
+            const parts = url.split('/');
+            if (parts.length >= 5) {
+                if (streamFormatFallback === 1) {
+                    url = url.replace(/\.ts$/, ''); // Tenta sem .ts
+                } else if (streamFormatFallback === 2) {
+                    url = url.replace(/\.ts$/, '');
+                    if (!url.includes('/live/')) {
+                        const id = parts.pop();
+                        const pass = parts.pop();
+                        const user = parts.pop();
+                        const base = parts.join('/');
+                        url = `${base}/live/${user}/${pass}/${id}`; // Tenta com /live/ e sem .ts
+                    }
+                } else if (streamFormatFallback === 3) {
+                    if (!url.includes('/live/')) {
+                        const idStr = parts.pop();
+                        const pass = parts.pop();
+                        const user = parts.pop();
+                        const base = parts.join('/');
+                        const id = idStr.replace(/\.[^/.]+$/, "");
+                        url = `${base}/live/${user}/${pass}/${id}.ts`; // Tenta com /live/ e com .ts
+                    } else if (!url.endsWith('.ts')) {
+                        url += '.ts';
+                    }
+                }
+            }
+        }
+
         // Conversão agressiva para M3U8 em dispositivos Apple antigos (sem suporte a MediaSource)
         const noMseSupport = !window.MediaSource;
         if (noMseSupport && typeof url === 'string') {
@@ -93,7 +124,7 @@ export default function VideoPlayer() {
             return token ? `${proxyUrl}&token=${token}` : proxyUrl;
         }
         return url;
-    }, [currentStream, useProxy, getActivePlaylist]);
+    }, [currentStream, useProxy, getActivePlaylist, streamFormatFallback]);
 
     const initPlayer = useCallback(async () => {
         if (!currentStream || !videoRef.current) return;
@@ -139,8 +170,15 @@ export default function VideoPlayer() {
             });
             hls.on(Hls.Events.ERROR, (e, data) => {
                 if (data.fatal) {
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !useProxy) {
-                        setUseProxy(true);
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                        if (!useProxy) {
+                            setUseProxy(true);
+                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 3) {
+                            setStreamFormatFallback(prev => prev + 1);
+                            setUseProxy(false);
+                        } else {
+                            setError("Erro ao carregar a stream HLS.");
+                        }
                     } else {
                         setError("Erro ao carregar a stream HLS.");
                     }
@@ -172,8 +210,14 @@ export default function VideoPlayer() {
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
-                    if (!useProxy) setUseProxy(true);
-                    else setError("Erro na stream MPEG-TS.");
+                    if (!useProxy) {
+                        setUseProxy(true);
+                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 3) {
+                        setStreamFormatFallback(prev => prev + 1);
+                        setUseProxy(false);
+                    } else {
+                        setError("Erro na stream MPEG-TS.");
+                    }
                 });
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
         } else {
@@ -500,6 +544,9 @@ export default function VideoPlayer() {
                 if (!useProxy) {
                     toast('Conexão instável, ativando modo proxy...', { icon: '🔄', id: 'proxy-timeout' });
                     setUseProxy(true);
+                } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 3) {
+                    setStreamFormatFallback(prev => prev + 1);
+                    setUseProxy(false);
                 } else {
                     setError('O canal demorou muito para responder ou está offline.');
                 }
@@ -509,10 +556,15 @@ export default function VideoPlayer() {
     }, [isBuffering, error, useProxy, setUseProxy]);
 
     useEffect(() => {
+        setStreamFormatFallback(0);
+        setUseProxy(false);
+    }, [currentStream]);
+
+    useEffect(() => {
         initPlayer();
         setIsPiP(false);
         return cleanUp;
-    }, [currentStream, useProxy, initPlayer, cleanUp]);
+    }, [currentStream, useProxy, streamFormatFallback, initPlayer, cleanUp]);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -595,8 +647,14 @@ export default function VideoPlayer() {
                 onError={() => {
                     const videoError = videoRef.current?.error;
                     if (videoError && videoError.code !== 1) { // 1 = MEDIA_ERR_ABORTED
-                        if (!useProxy) setUseProxy(true);
-                        else setError('Falha na conectividade da mídia.');
+                        if (!useProxy) {
+                            setUseProxy(true);
+                        } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 3) {
+                            setStreamFormatFallback(prev => prev + 1);
+                            setUseProxy(false);
+                        } else {
+                            setError('Falha na conectividade da mídia.');
+                        }
                     }
                 }}
                 onTimeUpdate={handleTimeUpdate}
