@@ -44,41 +44,41 @@ const userPlaylistController = {
                 return res.status(400).json({ message: 'Dados incompletos da playlist.' });
             }
 
-            // Verificar se esta playlist (client_id) já existe no banco
-            // Buscamos sem filtrar por user_id primeiro para detectar conflitos globais
-            const checkSql = formatQuery('SELECT id, user_id FROM user_playlists WHERE client_id = ?');
-            const checkRes = await db.query(checkSql, [id]);
+            // Verificar se esta playlist (client_id) já existe PARA ESTE USUÁRIO
+            const checkSql = formatQuery('SELECT id FROM user_playlists WHERE client_id = ? AND user_id = ?');
+            const checkRes = await db.query(checkSql, [id, userId]);
             
             const existing = (checkRes.rows?.[0] || checkRes[0]);
             const configStr = JSON.stringify(config);
             const totalVal = total || 0;
             
             if (existing) {
-                // Se pertence ao usuário atual, atualiza
-                if (existing.user_id === userId || String(existing.user_id) === String(userId)) {
-                    const updateSql = formatQuery(`
-                        UPDATE user_playlists 
-                        SET name = ?, type = ?, total = ?, config = ?, channelsCount = ?, moviesCount = ?, seriesCount = ?
-                        WHERE client_id = ? AND user_id = ?
-                    `);
-                    await db.query(updateSql, [name, type, totalVal, configStr, channelsCount || 0, moviesCount || 0, seriesCount || 0, id, userId]);
-                } else {
-                    // Se pertence a OUTRO usuário, temos um conflito de constraint UNIQUE global
-                    // Em vez de dar erro 500, vamos avisar ou ignorar (já que o client_id é único no banco)
-                    // NOTA: O ideal seria a constraint ser UNIQUE(user_id, client_id), mas para não quebrar bancos existentes:
-                    console.warn(`[UserPlaylist] Conflito: client_id ${id} já pertence ao usuário ${existing.user_id}.`);
-                    return res.status(409).json({ 
-                        message: 'Esta playlist já está associada a outra conta.',
-                        code: 'CLIENT_ID_TAKEN'
-                    });
-                }
-            } else {
-                // Se não existe, insere novo
-                const insertSql = formatQuery(`
-                    INSERT INTO user_playlists (user_id, client_id, name, type, total, config, channelsCount, moviesCount, seriesCount) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                // Atualiza se já existir para este usuário
+                const updateSql = formatQuery(`
+                    UPDATE user_playlists 
+                    SET name = ?, type = ?, total = ?, config = ?, channelsCount = ?, moviesCount = ?, seriesCount = ?
+                    WHERE client_id = ? AND user_id = ?
                 `);
-                await db.query(insertSql, [userId, id, name, type, totalVal, configStr, channelsCount || 0, moviesCount || 0, seriesCount || 0]);
+                await db.query(updateSql, [name, type, totalVal, configStr, channelsCount || 0, moviesCount || 0, seriesCount || 0, id, userId]);
+            } else {
+                // Se não existe para este usuário, tenta inserir novo
+                try {
+                    const insertSql = formatQuery(`
+                        INSERT INTO user_playlists (user_id, client_id, name, type, total, config, channelsCount, moviesCount, seriesCount) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `);
+                    await db.query(insertSql, [userId, id, name, type, totalVal, configStr, channelsCount || 0, moviesCount || 0, seriesCount || 0]);
+                } catch (insertError) {
+                    // Se falhar por UNIQUE constraint global (legado no SQLite), tentamos avisar
+                    if (insertError.message.includes('UNIQUE constraint failed')) {
+                        console.error('[UserPlaylist] Erro de Constraint Global:', insertError.message);
+                        return res.status(409).json({ 
+                            message: 'Conflito de ID de playlist. Se você trocou de conta, tente remover a lista e adicionar novamente.',
+                            details: insertError.message
+                        });
+                    }
+                    throw insertError;
+                }
             }
             
             res.json({ success: true });

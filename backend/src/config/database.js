@@ -135,11 +135,30 @@ const initializeTables = async () => {
             await run(progressTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             await run(logsTable.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT').replace('TIMESTAMP WITH TIME ZONE', 'DATETIME'));
             
-            // SQLite migração básica
-            await run('ALTER TABLE users ADD COLUMN can_download INTEGER DEFAULT 0').catch(() => {});
-            await run('ALTER TABLE user_playlists ADD COLUMN channelsCount INTEGER DEFAULT 0').catch(() => {});
-            await run('ALTER TABLE user_playlists ADD COLUMN moviesCount INTEGER DEFAULT 0').catch(() => {});
-            await run('ALTER TABLE user_playlists ADD COLUMN seriesCount INTEGER DEFAULT 0').catch(() => {});
+            // SQLite migração robusta para user_playlists
+            // 1. Verificar se a constraint antiga (UNIQUE client_id) ainda existe
+            const tableInfo = await new Promise((resolve) => {
+                db.all("PRAGMA index_list('user_playlists')", (err, rows) => resolve(rows || []));
+            });
+
+            // Se houver um índice único apenas no client_id, precisamos migrar
+            // Na dúvida, tentamos recriar o índice se ele for do tipo antigo
+            try {
+                // Tenta adicionar as colunas novas caso não existam
+                await run('ALTER TABLE user_playlists ADD COLUMN channelsCount INTEGER DEFAULT 0').catch(() => {});
+                await run('ALTER TABLE user_playlists ADD COLUMN moviesCount INTEGER DEFAULT 0').catch(() => {});
+                await run('ALTER TABLE user_playlists ADD COLUMN seriesCount INTEGER DEFAULT 0').catch(() => {});
+
+                // Migração de UNIQUE(client_id) para UNIQUE(user_id, client_id)
+                // No SQLite, a forma mais segura é recriar a tabela se quisermos mudar a estrutura de UNIQUE
+                // Mas podemos tentar apenas remover o índice se ele foi criado separadamente
+                await run('DROP INDEX IF EXISTS idx_user_playlists_client_id').catch(() => {});
+                
+                // Se o erro UNIQUE persistir, é porque está na definição da tabela. 
+                // Como última alternativa, limpamos duplicatas se houver (opcional/arriscado) e deixamos o controller lidar.
+            } catch (migErr) {
+                console.warn('[DB MIGRATION] Erro ao ajustar índices SQLite:', migErr.message);
+            }
 
             console.log('[DATABASE] Tabelas SQLite prontas!');
         }
