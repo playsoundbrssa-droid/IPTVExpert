@@ -158,9 +158,9 @@ exports.importAsPlaylist = async (serverUrl, username, password) => {
                 const base = serverUrl.replace(/\/$/, '');
                 let streamUrl = '';
                 
-                // Live TV: Adicionamos .ts para forçar detecção correta no player
+                // Live TV: Não forçamos mais o .ts, pois alguns painéis retornam 404 se a extensão estiver presente.
                 if (type === 'live') {
-                    streamUrl = `${base}/${username}/${password}/${streamId}.ts`;
+                    streamUrl = `${base}/${username}/${password}/${streamId}`;
                 } 
                 // Movies: Caminho /movie/
                 else if (type === 'movie') {

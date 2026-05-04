@@ -69,12 +69,19 @@ export default function VideoPlayer() {
         let url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
         
-        // Conversão agressiva de TS para M3U8 em dispositivos Apple antigos (sem suporte a MediaSource)
-        // Isso resolve o problema de streams Xtream ficarem carregando infinitamente ou travando
+        // Alguns painéis Xtream retornam 404 se a URL tiver .ts no final.
+        // Como o player agora força `isTs = true` para canais Xtream, podemos usar a URL limpa com segurança.
         const active = getActivePlaylist();
+        if (active?.type === 'xtream' && currentStream.type === 'channel' && url.endsWith('.ts')) {
+            url = url.replace(/\.ts$/, '');
+        }
+
+        // Conversão agressiva para M3U8 em dispositivos Apple antigos (sem suporte a MediaSource)
         const noMseSupport = !window.MediaSource;
-        if (noMseSupport && typeof url === 'string' && url.includes('.ts')) {
-            if (active?.type === 'xtream' || url.match(/\/(live|movie|series)\/.*\/.*\/.*\.ts/)) {
+        if (noMseSupport && typeof url === 'string') {
+            if (active?.type === 'xtream' && currentStream.type === 'channel') {
+                url = url.replace(/\.ts$/, '') + '.m3u8';
+            } else if (url.match(/\/(live|movie|series)\/.*\/.*\/.*\.ts/)) {
                 url = url.replace(/\.ts$/, '.m3u8');
             }
         }
