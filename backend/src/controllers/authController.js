@@ -198,7 +198,7 @@ exports.getProfile = async (req, res) => {
     try {
         const user = await User.findByPk(req.userId);
         if (!user) {
-            return res.status(404).json({ message: 'Usuário não encontrado.' });
+            return res.status(401).json({ message: 'Sessão inválida ou usuário removido.' });
         }
         res.json({ user: sanitizeUser(user) });
     } catch (error) {

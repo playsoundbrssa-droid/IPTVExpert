@@ -12,50 +12,51 @@ export const useUserStore = create((set, get) => ({
 
     // Initialize: check if stored token is still valid
     init: async () => {
-        const token = localStorage.getItem('token');
+        set({ loading: true });
         
-        // 1. TENTA CAPTURAR O TOKEN DIRETAMENTE DA URL (Fallback de emergência)
-        if (window.location.hash && window.location.hash.includes('access_token')) {
-            console.log('[AUTH] Token detectado na URL! Processando hash manualmente...');
-        }
-
-        // 2. Tenta pegar a sessão atual imediatamente
-        console.log('[AUTH] Verificando sessão inicial do Supabase...');
-        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        // 1. Tenta pegar a sessão atual do Supabase
+        console.log('[AUTH] Verificando sessão do Supabase...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-            console.error('[AUTH] Erro ao buscar sessão do Supabase:', sessionError.message);
+            console.error('[AUTH] Erro no Supabase:', sessionError.message);
         }
 
-        if (initialSession && !get().isAuthenticated) {
-            console.log('[AUTH] Sessão inicial detectada. Sincronizando com backend...');
-            await get().socialSyncLogin(initialSession);
-        }
-
-        // 3. Ouvinte para mudanças de autenticação do Supabase (Redirect flow)
-        supabase.auth.onAuthStateChange(async (event, session) => {
+        // 2. Ouvinte para mudanças (Redirect/Login flow)
+        supabase.auth.onAuthStateChange(async (event, newSession) => {
             console.log(`[AUTH] Evento Supabase: ${event}`);
-            
-            if (event === 'SIGNED_IN' && session && !get().isAuthenticated) {
-                console.log('[AUTH] Login detectado via evento. Sincronizando...');
-                await get().socialSyncLogin(session);
+            if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && newSession) {
+                await get().socialSyncLogin(newSession);
+            } else if (event === 'SIGNED_OUT') {
+                get().logout();
             }
         });
 
-        // 2. Se já tivermos um token local, valida ele
-        if (token) {
+        // 3. Se temos uma sessão ativa, sincronizamos com o backend
+        if (session) {
+            await get().socialSyncLogin(session);
+            set({ loading: false });
+            return;
+        }
+
+        // 4. Fallback: Se não tem sessão mas tem token local, tenta validar
+        const localToken = localStorage.getItem('token');
+        if (localToken) {
             try {
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                api.defaults.headers.common['Authorization'] = `Bearer ${localToken}`;
                 const { data } = await api.get('/auth/me');
-                set({ user: data.user, token, isAuthenticated: true });
-                // Fetch cloud playlists async
+                set({ user: data.user, token: localToken, isAuthenticated: true });
                 usePlaylistManagerStore.getState().syncWithCloud();
-            } catch {
-                localStorage.removeItem('token');
-                delete api.defaults.headers.common['Authorization'];
-                set({ user: null, token: null, isAuthenticated: false });
+            } catch (err) {
+                console.error('[AUTH] Token local inválido ou usuário removido:', err.response?.status);
+                // Só limpa se ainda for o mesmo token (evita race conditions)
+                if (localStorage.getItem('token') === localToken) {
+                    get().logout();
+                }
             }
         }
+        
+        set({ loading: false });
     },
 
     // Login with email/password
