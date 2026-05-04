@@ -66,9 +66,19 @@ export default function VideoPlayer() {
 
     const getStreamUrl = useCallback(() => {
         if (!currentStream) return '';
-        const url = currentStream.streamUrl || currentStream.url;
+        let url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
         
+        // Conversão agressiva de TS para M3U8 em dispositivos Apple antigos (sem suporte a MediaSource)
+        // Isso resolve o problema de streams Xtream ficarem carregando infinitamente ou travando
+        const active = getActivePlaylist();
+        const noMseSupport = !window.MediaSource;
+        if (noMseSupport && typeof url === 'string' && url.includes('.ts')) {
+            if (active?.type === 'xtream' || url.match(/\/(live|movie|series)\/.*\/.*\/.*\.ts/)) {
+                url = url.replace(/\.ts$/, '.m3u8');
+            }
+        }
+
         const isMixedContent = window.location.protocol === 'https:' && url.startsWith('http://');
         if ((isMixedContent || useProxy) && !url.includes('/api/proxy/stream')) {
             let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -80,7 +90,7 @@ export default function VideoPlayer() {
             return token ? `${proxyUrl}&token=${token}` : proxyUrl;
         }
         return url;
-    }, [currentStream, useProxy]);
+    }, [currentStream, useProxy, getActivePlaylist]);
 
     const initPlayer = useCallback(async () => {
         if (!currentStream || !videoRef.current) return;
@@ -97,7 +107,10 @@ export default function VideoPlayer() {
             videoRef.current.play().catch(() => {
                 if (videoRef.current) {
                     videoRef.current.muted = true;
-                    videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                    videoRef.current.play().catch(e => {
+                        console.log('Autoplay blocked even with mute:', e.message);
+                        setIsPlaying(false);
+                    });
                 }
                 setIsMuted(true);
             });
@@ -119,7 +132,10 @@ export default function VideoPlayer() {
                     videoRef.current.play().catch(() => {
                         if (videoRef.current) {
                             videoRef.current.muted = true;
-                            videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                            videoRef.current.play().catch(e => {
+                                console.log('Autoplay blocked even with mute:', e.message);
+                                setIsPlaying(false);
+                            });
                         }
                         setIsMuted(true);
                     });
@@ -154,7 +170,10 @@ export default function VideoPlayer() {
                 mpeg.play().catch(() => {
                     if (videoRef.current) {
                         videoRef.current.muted = true;
-                        videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                        videoRef.current.play().catch(e => {
+                            console.log('Autoplay blocked even with mute:', e.message);
+                            setIsPlaying(false);
+                        });
                     }
                     setIsMuted(true);
                 });
@@ -171,7 +190,10 @@ export default function VideoPlayer() {
             videoRef.current.play().catch(() => {
                 if (videoRef.current) {
                     videoRef.current.muted = true;
-                    videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                    videoRef.current.play().catch(e => {
+                        console.log('Autoplay blocked even with mute:', e.message);
+                        setIsPlaying(false);
+                    });
                 }
                 setIsMuted(true);
             });
@@ -478,9 +500,14 @@ export default function VideoPlayer() {
 
     useEffect(() => {
         if (!videoRef.current) return;
-        if (isPlaying) videoRef.current.play().catch(() => {});
-        else videoRef.current.pause();
-    }, [isPlaying]);
+        if (isPlaying) {
+            videoRef.current.play().catch(() => {
+                setIsPlaying(false);
+            });
+        } else {
+            videoRef.current.pause();
+        }
+    }, [isPlaying, setIsPlaying]);
 
     useEffect(() => {
         initPlayer();
@@ -588,7 +615,14 @@ export default function VideoPlayer() {
                         <button onClick={(e) => { e.stopPropagation(); setCurrentStream(null); setIsPiP(false); }} className="p-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full backdrop-blur-md shadow-lg transition-all"><FiX size={16} /></button>
                     </div>
                     <div className="flex items-center justify-between pointer-events-auto">
-                        <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="p-2 text-white hover:text-primary transition-colors">{isPlaying ? <FiPause size={20} /> : <FiPlay size={20} />}</button>
+                        <button onClick={(e) => { 
+                            e.stopPropagation(); 
+                            if (videoRef.current) {
+                                if (isPlaying) videoRef.current.pause();
+                                else videoRef.current.play().catch(() => {});
+                            }
+                            togglePlay(); 
+                        }} className="p-2 text-white hover:text-primary transition-colors">{isPlaying ? <FiPause size={20} /> : <FiPlay size={20} />}</button>
                         <span className="text-[10px] font-bold text-white truncate max-w-[140px] uppercase tracking-wider">{currentStream.name}</span>
                         <button onClick={(e) => { e.stopPropagation(); setIsPiP(false); }} className="p-2 text-white hover:text-primary transition-colors"><FiMaximize size={20} /></button>
                     </div>
@@ -675,7 +709,14 @@ export default function VideoPlayer() {
                         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 md:gap-4 lg:gap-12 transition-all z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                             <button onClick={(e) => { e.stopPropagation(); playPrev(); }} className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all border border-white/10"><FiSkipBack size={18} /></button>
                             <button onClick={(e) => { e.stopPropagation(); seek(-10); }} className="w-10 h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all border border-white/10"><FiRotateCcw size={18} /><span className="text-[8px] md:text-[10px] font-bold mt-0.5">10s</span></button>
-                            <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-14 h-14 md:w-20 md:h-20 lg:w-28 lg:h-28 bg-primary text-white rounded-full flex items-center justify-center shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all">{isPlaying ? <FiPause size={28} className="md:size-[48px]" /> : <FiPlay size={28} className="md:size-[48px] ml-1" />}</button>
+                            <button onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (videoRef.current) {
+                                    if (isPlaying) videoRef.current.pause();
+                                    else videoRef.current.play().catch(() => {});
+                                }
+                                togglePlay(); 
+                            }} className="w-14 h-14 md:w-20 md:h-20 lg:w-28 lg:h-28 bg-primary text-white rounded-full flex items-center justify-center shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all">{isPlaying ? <FiPause size={28} className="md:size-[48px]" /> : <FiPlay size={28} className="md:size-[48px] ml-1" />}</button>
                             <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="w-10 h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 bg-white/5 backdrop-blur-md rounded-full flex flex-col items-center justify-center text-white hover:bg-white/10 transition-all border border-white/10"><FiRotateCw size={18} /><span className="text-[8px] md:text-[10px] font-bold mt-0.5">10s</span></button>
                             <button onClick={(e) => { e.stopPropagation(); playNext(); }} className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 bg-white/5 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all border border-white/10"><FiSkipForward size={18} /></button>
                         </div>
