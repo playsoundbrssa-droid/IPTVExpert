@@ -227,10 +227,12 @@ export default function VideoPlayer() {
                     enableWorker: true,
                     enableStallDetached: true,
                     fixAudioTimestampGap: true,
-                    stashInitialSize: 128, // Ponto ideal para HD sem loop
+                    stashInitialSize: 128,
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
                     liveBufferLatencyChasing: true,
+                    liveBufferLatencyMaxLatency: 10,
+                    liveBufferLatencyMinRemain: 1,
                     deferLoadAfterSourceOpen: false
                 });
                 mpeg.attachMediaElement(videoRef.current);
@@ -425,7 +427,13 @@ export default function VideoPlayer() {
     };
 
     const handleTimeUpdate = () => {
-        if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+        if (videoRef.current) {
+            setCurrentTime(videoRef.current.currentTime);
+            // Se o tempo está mudando, o vídeo NÃO está buffereando
+            if (isBuffering && videoRef.current.currentTime > 0) {
+                setIsBuffering(false);
+            }
+        }
     };
 
     useEffect(() => {
@@ -536,6 +544,7 @@ export default function VideoPlayer() {
                 className={`w-full h-full transition-all duration-300 ${isPiP ? 'object-cover' : 'object-contain'}`}
                 onWaiting={() => setIsBuffering(true)}
                 onPlaying={() => { setIsBuffering(false); setError(null); }}
+                onCanPlay={() => { setIsBuffering(false); }}
                 onTimeUpdate={handleTimeUpdate}
                 onDurationChange={(e) => setDuration(e.target.duration)}
                 onEnded={playNext}
