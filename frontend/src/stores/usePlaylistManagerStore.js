@@ -144,13 +144,17 @@ export const usePlaylistManagerStore = create(
 
                 try {
                     let data;
+                    let epgParams = null;
+
                     if (active.type === 'xtream') {
                         const { server, username, password } = active.config;
                         const res = await api.post('/xtream/import', { server, username, password });
                         data = res.data;
+                        epgParams = { type: 'xtream', url: server, username, password };
                     } else if (active.type === 'm3u') {
                         const res = await api.post('/playlist/import-m3u', { url: active.config.url });
                         data = res.data;
+                        if (data.epgUrl) epgParams = { type: 'm3u', url: data.epgUrl };
                     } else if (active.type === 'hls') {
                         toast.success('Link HLS é estático, não há o que atualizar.');
                         toast.dismiss(tid);
@@ -159,11 +163,24 @@ export const usePlaylistManagerStore = create(
 
                     if (data) {
                         setPlaylistData(data);
+                        
+                        // Atualizar EPG também se possível
+                        let epgStats = {};
+                        if (epgParams) {
+                            try {
+                                const epgRes = await api.post('/epg/import', epgParams);
+                                if (epgRes.data?.success) {
+                                    epgStats = { epgUrl: epgParams.url, epgCacheKey: epgRes.data.cacheKey };
+                                }
+                            } catch (e) { console.warn('[EPG Refresh] Falhou:', e.message); }
+                        }
+
                         get().updatePlaylistStats(active.id, {
                             total: data.total,
                             channelsCount: data.channels?.list?.length || 0,
                             moviesCount: data.movies?.list?.length || 0,
-                            seriesCount: data.series?.list?.length || 0
+                            seriesCount: data.series?.list?.length || 0,
+                            ...epgStats
                         });
                         toast.success(`✅ "${active.name}" atualizada!`);
                     }

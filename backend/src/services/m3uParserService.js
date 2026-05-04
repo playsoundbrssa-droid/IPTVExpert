@@ -275,13 +275,17 @@ exports.parseM3U = async (url) => {
             throw new Error('Nenhum canal ou mídia válido encontrado na lista. O formato pode ser incompatível.');
         }
 
+        // Tentar extrair EPG URL do cabeçalho M3U se disponível (usando regex simples no início do arquivo)
+        // Nota: no modo stream teríamos que ler a primeira linha, mas como já processamos, vamos assumir que o parser da lib pode ajudar no modo content
+        
         console.log(`[M3U PARSER STREAM] Sucesso: ${channels.length} canais, ${movies.length} filmes, ${series.length} séries.`);
 
         return {
             total: totalParsed,
             channels: { list: channels, groups: groupByType(channels) },
             movies: { list: movies, groups: groupByType(movies) },
-            series: { list: series, groups: groupByType(series) }
+            series: { list: series, groups: groupByType(series) },
+            epgUrl: null // No modo stream simplificado não pegamos o header ainda, mas poderíamos
         };
 
     } catch (error) {
@@ -363,13 +367,16 @@ exports.parseM3UContent = (playlist) => {
             throw new Error('Nenhum canal ou mídia válido encontrado na lista. O formato pode ser incompatível.');
         }
 
-        console.log(`[M3U PARSER] Sucesso: ${channels.length} canais, ${movies.length} filmes, ${series.length} séries.`);
+        const epgUrl = result.header?.attrs?.['x-tvg-url'] || result.header?.attrs?.['url-tvg'] || null;
+
+        console.log(`[M3U PARSER] Sucesso: ${channels.length} canais, ${movies.length} filmes, ${series.length} séries. EPG: ${epgUrl || 'Não encontrado'}`);
 
         return {
             total: totalParsed,
             channels: { list: channels, groups: groupByType(channels) },
             movies: { list: movies, groups: groupByType(movies) },
-            series: { list: series, groups: groupByType(series) }
+            series: { list: series, groups: groupByType(series) },
+            epgUrl
         };
     } catch (error) {
         console.error('[M3U PARSER ERROR]', error.stack || error.message);
