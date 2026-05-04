@@ -107,6 +107,16 @@ export default function VideoPlayer() {
             } catch (e) { }
         }
 
+        // Conversão agressiva para M3U8 em dispositivos Apple antigos (MediaSource ausente)
+        const noMseSupport = !window.MediaSource;
+        if (noMseSupport && typeof url === 'string') {
+            if (active?.type === 'xtream' && currentStream.type === 'channel') {
+                url = url.replace(/\.ts$/, '') + '.m3u8';
+            } else if (url.match(/\/(live|movie|series)\/.*\/.*\/.*\.ts/)) {
+                url = url.replace(/\.ts$/, '.m3u8');
+            }
+        }
+
         // Determinar se usamos proxy ou se é tentativa direta (Fallback 7)
         const isDirectAttempt = streamFormatFallback >= 7;
         const isMixedContent = window.location.protocol === 'https:' && url.startsWith('http://');
@@ -498,9 +508,27 @@ export default function VideoPlayer() {
     }, [isBuffering, error, useProxy, setUseProxy, getActivePlaylist, streamFormatFallback]);
 
     useEffect(() => {
+        if (!currentStream) return;
         setStreamFormatFallback(0);
         setUseProxy(false);
+        setError(null);
     }, [currentStream]);
+
+    // Watchdog: Se ficar buffereando por mais de 22s, tenta próxima variação
+    useEffect(() => {
+        if (!isBuffering || error || !currentStream) return;
+        const timer = setTimeout(() => {
+            if (isBuffering && !error) {
+                console.warn(`[Player] Buffer timeout na variação ${streamFormatFallback}, tentando próxima...`);
+                if (!useProxy) {
+                    setUseProxy(true);
+                } else if (streamFormatFallback < 7) {
+                    setStreamFormatFallback(prev => prev + 1);
+                }
+            }
+        }, 22000);
+        return () => clearTimeout(timer);
+    }, [isBuffering, error, streamFormatFallback, useProxy, currentStream]);
 
     useEffect(() => {
         initPlayer();
