@@ -143,7 +143,7 @@ export default function VideoPlayer() {
 
     const playVideo = useCallback(async () => {
         if (!videoRef.current) return;
-        
+
         // Se já estiver tocando e o vídeo não estiver pausado, não fazemos nada
         if (isPlaying && !videoRef.current.paused) return;
 
@@ -498,7 +498,7 @@ export default function VideoPlayer() {
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
-        
+
         const syncPlayback = async () => {
             if (isPlaying) {
                 if (video.paused) {
