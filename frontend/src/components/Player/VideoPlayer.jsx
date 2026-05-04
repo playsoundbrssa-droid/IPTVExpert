@@ -104,15 +104,9 @@ export default function VideoPlayer() {
 
         if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
             videoRef.current.src = streamUrl;
-            videoRef.current.play().catch(() => {
-                if (videoRef.current) {
-                    videoRef.current.muted = true;
-                    videoRef.current.play().catch(e => {
-                        console.log('Autoplay blocked even with mute:', e.message);
-                        setIsPlaying(false);
-                    });
-                }
-                setIsMuted(true);
+            videoRef.current.play().catch((e) => {
+                console.log('Autoplay with sound blocked:', e.message);
+                setIsPlaying(false);
             });
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({ 
@@ -129,15 +123,9 @@ export default function VideoPlayer() {
             hlsRef.current = hls;
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 if (videoRef.current) {
-                    videoRef.current.play().catch(() => {
-                        if (videoRef.current) {
-                            videoRef.current.muted = true;
-                            videoRef.current.play().catch(e => {
-                                console.log('Autoplay blocked even with mute:', e.message);
-                                setIsPlaying(false);
-                            });
-                        }
-                        setIsMuted(true);
+                    videoRef.current.play().catch((e) => {
+                        console.log('Autoplay with sound blocked:', e.message);
+                        setIsPlaying(false);
                     });
                 }
             });
@@ -167,15 +155,9 @@ export default function VideoPlayer() {
                 });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
-                mpeg.play().catch(() => {
-                    if (videoRef.current) {
-                        videoRef.current.muted = true;
-                        videoRef.current.play().catch(e => {
-                            console.log('Autoplay blocked even with mute:', e.message);
-                            setIsPlaying(false);
-                        });
-                    }
-                    setIsMuted(true);
+                mpeg.play().catch((e) => {
+                    console.log('Autoplay with sound blocked:', e.message);
+                    setIsPlaying(false);
                 });
                 mpegPlayerRef.current = mpeg;
 
@@ -187,15 +169,9 @@ export default function VideoPlayer() {
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
         } else {
             videoRef.current.src = streamUrl;
-            videoRef.current.play().catch(() => {
-                if (videoRef.current) {
-                    videoRef.current.muted = true;
-                    videoRef.current.play().catch(e => {
-                        console.log('Autoplay blocked even with mute:', e.message);
-                        setIsPlaying(false);
-                    });
-                }
-                setIsMuted(true);
+            videoRef.current.play().catch((e) => {
+                console.log('Autoplay with sound blocked:', e.message);
+                setIsPlaying(false);
             });
         }
     }, [currentStream, getStreamUrl, cleanUp, useProxy]);
