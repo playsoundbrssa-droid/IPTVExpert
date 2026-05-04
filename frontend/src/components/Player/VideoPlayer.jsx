@@ -24,7 +24,7 @@ export default function VideoPlayer() {
     const mpegPlayerRef = useRef(null);
     const containerRef = useRef(null);
     
-    const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev } = usePlayerStore();
+    const { currentStream, setCurrentStream, isPlaying, togglePlay, setIsPlaying, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     const { nowPlaying } = useEpgStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
@@ -40,6 +40,7 @@ export default function VideoPlayer() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
+    const [streamFormatFallback, setStreamFormatFallback] = useState(0);
     const [airplayAvailable, setAirplayAvailable] = useState(false);
     const [resumeData, setResumeData] = useState(null);
     
@@ -65,8 +66,56 @@ export default function VideoPlayer() {
 
     const getStreamUrl = useCallback(() => {
         if (!currentStream) return '';
-        const url = currentStream.streamUrl || currentStream.url;
+        let url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
+        
+        const active = getActivePlaylist();
+
+        // Tentar formatos diferentes de URL Xtream em caso de erro 404
+        if (active?.type === 'xtream' && currentStream.type === 'channel') {
+            try {
+                const urlObj = new URL(url);
+                const baseUrl = urlObj.origin;
+                const pathParts = urlObj.pathname.split('/').filter(p => p);
+                
+                let user, pass, idStr;
+                if (pathParts.length >= 4 && pathParts[0] === 'live') {
+                    user = pathParts[1];
+                    pass = pathParts[2];
+                    idStr = pathParts[3];
+                } else if (pathParts.length >= 3) {
+                    user = pathParts[0];
+                    pass = pathParts[1];
+                    idStr = pathParts[2];
+                }
+
+                if (user && pass && idStr) {
+                    const id = idStr.replace(/\.[^/.]+$/, "");
+                    const variations = [
+                        null,
+                        `${baseUrl}/${user}/${pass}/${id}.ts`,
+                        `${baseUrl}/${user}/${pass}/${id}`,
+                        `${baseUrl}/live/${user}/${pass}/${id}.ts`,
+                        `${baseUrl}/live/${user}/${pass}/${id}`,
+                        `${baseUrl}/${user}/${pass}/${id}.m3u8`,
+                        `${baseUrl}/live/${user}/${pass}/${id}.m3u8`,
+                    ];
+                    if (variations[streamFormatFallback]) {
+                        url = variations[streamFormatFallback];
+                    }
+                }
+            } catch (e) { }
+        }
+
+        // Conversão agressiva para M3U8 em dispositivos Apple antigos
+        const noMseSupport = !window.MediaSource;
+        if (noMseSupport && typeof url === 'string') {
+            if (active?.type === 'xtream' && currentStream.type === 'channel') {
+                url = url.replace(/\.ts$/, '') + '.m3u8';
+            } else if (url.match(/\/(live|movie|series)\/.*\/.*\/.*\.ts/)) {
+                url = url.replace(/\.ts$/, '.m3u8');
+            }
+        }
         
         const isMixedContent = window.location.protocol === 'https:' && url.startsWith('http://');
         if ((isMixedContent || useProxy) && !url.includes('/api/proxy/stream')) {
@@ -79,26 +128,29 @@ export default function VideoPlayer() {
             return token ? `${proxyUrl}&token=${token}` : proxyUrl;
         }
         return url;
-    }, [currentStream, useProxy]);
+    }, [currentStream, useProxy, getActivePlaylist, streamFormatFallback]);
 
     const initPlayer = useCallback(async () => {
         if (!currentStream || !videoRef.current) return;
+
         const streamUrl = getStreamUrl();
         const isHls = streamUrl.toLowerCase().includes('.m3u8') || streamUrl.includes('type=m3u8');
-        const isTs = streamUrl.toLowerCase().includes('.ts') || streamUrl.includes('output=ts');
-        
+        let isTs = streamUrl.toLowerCase().includes('.ts') || streamUrl.includes('output=ts');
+        const activePlaylist = getActivePlaylist();
+
+        if (!isHls && !isTs && activePlaylist?.type === 'xtream' && currentStream.type === 'channel') {
+            isTs = true;
+        }
+
         cleanUp();
         setError(null);
         setIsBuffering(true);
 
         if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
             videoRef.current.src = streamUrl;
-            videoRef.current.play().catch(() => {
-                if (videoRef.current) {
-                    videoRef.current.muted = true;
-                    videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
-                }
-                setIsMuted(true);
+            videoRef.current.play().catch((e) => {
+                console.log('Autoplay with sound blocked:', e.message);
+                setIsPlaying(false);
             });
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({ 
@@ -115,19 +167,23 @@ export default function VideoPlayer() {
             hlsRef.current = hls;
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 if (videoRef.current) {
-                    videoRef.current.play().catch(() => {
-                        if (videoRef.current) {
-                            videoRef.current.muted = true;
-                            videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
-                        }
-                        setIsMuted(true);
+                    videoRef.current.play().catch((e) => {
+                        console.log('Autoplay with sound blocked:', e.message);
+                        setIsPlaying(false);
                     });
                 }
             });
             hls.on(Hls.Events.ERROR, (e, data) => {
                 if (data.fatal) {
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !useProxy) {
-                        setUseProxy(true);
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                        if (!useProxy) {
+                            setUseProxy(true);
+                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 6) {
+                            setStreamFormatFallback(prev => prev + 1);
+                            setUseProxy(false);
+                        } else {
+                            setError("Erro ao carregar a stream HLS.");
+                        }
                     } else {
                         setError("Erro ao carregar a stream HLS.");
                     }
@@ -143,41 +199,40 @@ export default function VideoPlayer() {
                 }, {
                     enableWorker: true,
                     enableStallDetached: true,
-                    stashInitialSize: 384, // Aumentado para 384KB para criar uma gordura de buffer inicial
+                    fixAudioTimestampGap: true,
+                    stashInitialSize: 512,
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
-                    liveBufferLatencyChasing: true, // Persegue a latência ideal
-                    liveBufferLatencyMaxLatency: 15, // Pula se atrasar mais de 15s
-                    liveBufferLatencyMinRemain: 2 // Mantém pelo menos 2s no buffer
+                    liveBufferLatencyChasing: false
                 });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
-                mpeg.play().catch(() => {
-                    if (videoRef.current) {
-                        videoRef.current.muted = true;
-                        videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
-                    }
-                    setIsMuted(true);
+                mpeg.play().catch((e) => {
+                    console.log('Autoplay with sound blocked:', e.message);
+                    setIsPlaying(false);
                 });
                 mpegPlayerRef.current = mpeg;
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
-                    if (!useProxy) setUseProxy(true);
-                    else setError("Erro na stream MPEG-TS.");
+                    if (!useProxy) {
+                        setUseProxy(true);
+                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 6) {
+                        setStreamFormatFallback(prev => prev + 1);
+                        setUseProxy(false);
+                    } else {
+                        setError("Erro na stream MPEG-TS.");
+                    }
                 });
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
-        } else {
+        } else if (videoRef.current.canPlayType('video/mp4') || videoRef.current.canPlayType('video/mp2t')) {
             videoRef.current.src = streamUrl;
-            videoRef.current.play().catch(() => {
-                if (videoRef.current) {
-                    videoRef.current.muted = true;
-                    videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
-                }
-                setIsMuted(true);
+            videoRef.current.play().catch((e) => {
+                console.log('Autoplay with sound blocked:', e.message);
+                setIsPlaying(false);
             });
         }
-    }, [currentStream, getStreamUrl, cleanUp, useProxy]);
+    }, [currentStream, getStreamUrl, cleanUp, useProxy, getActivePlaylist, streamFormatFallback]);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -424,15 +479,42 @@ export default function VideoPlayer() {
 
     useEffect(() => {
         if (!videoRef.current) return;
-        if (isPlaying) videoRef.current.play().catch(() => {});
-        else videoRef.current.pause();
-    }, [isPlaying]);
+        if (isPlaying) {
+            videoRef.current.play().catch(() => {
+                setIsPlaying(false);
+            });
+        } else {
+            videoRef.current.pause();
+        }
+    }, [isPlaying, setIsPlaying]);
+
+    useEffect(() => {
+        if (isBuffering && !error) {
+            const timeout = setTimeout(() => {
+                if (!useProxy) {
+                    toast('Conexão instável, ativando modo proxy...', { icon: '🔄', id: 'proxy-timeout' });
+                    setUseProxy(true);
+                } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 6) {
+                    setStreamFormatFallback(prev => prev + 1);
+                    setUseProxy(false);
+                } else {
+                    setError('O canal demorou muito para responder ou está offline.');
+                }
+            }, 20000);
+            return () => clearTimeout(timeout);
+        }
+    }, [isBuffering, error, useProxy, setUseProxy, getActivePlaylist, streamFormatFallback]);
+
+    useEffect(() => {
+        setStreamFormatFallback(0);
+        setUseProxy(false);
+    }, [currentStream]);
 
     useEffect(() => {
         initPlayer();
         setIsPiP(false);
         return cleanUp;
-    }, [currentStream, useProxy, initPlayer, cleanUp]);
+    }, [currentStream, useProxy, streamFormatFallback, initPlayer, cleanUp]);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
