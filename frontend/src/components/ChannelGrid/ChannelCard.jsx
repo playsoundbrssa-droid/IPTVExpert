@@ -1,5 +1,6 @@
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import { getProxyImageUrl } from '../../services/api';
 
 export default function ChannelCard({ channel, onClick }) {
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
@@ -21,7 +22,7 @@ export default function ChannelCard({ channel, onClick }) {
         >
             <div className="relative aspect-video bg-black/40 flex items-center justify-center p-4">
                 {channel.logo ? (
-                    <img src={channel.logo} alt={channel.name} loading="lazy" className="max-w-full max-h-full object-contain drop-shadow-lg scale-95 group-hover:scale-105 transition-transform duration-300" />
+                    <img src={getProxyImageUrl(channel.logo)} alt={channel.name} loading="lazy" className="max-w-full max-h-full object-contain drop-shadow-lg scale-95 group-hover:scale-105 transition-transform duration-300" />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-600 font-bold uppercase tracking-widest text-xs">Sem Logo</div>
                 )}

@@ -15,7 +15,7 @@ import {
     FiSettings, FiDownload, FiAirplay, FiSquare, FiMonitor,
     FiRotateCcw, FiRotateCw, FiLogOut, FiClock
 } from 'react-icons/fi';
-import { api } from '../../services/api';
+import { api, getProxyImageUrl } from '../../services/api';
 import toast from 'react-hot-toast';
 
 export default function VideoPlayer() {
@@ -686,7 +686,7 @@ export default function VideoPlayer() {
                     <div className="absolute top-0 left-0 p-4 md:p-8 pt-[calc(env(safe-area-inset-top,0px)+1rem)] transition-transform duration-300">
                         <div className="flex items-center gap-4 md:gap-6">
                             <div className="w-12 h-12 md:w-16 md:h-16 bg-white/5 backdrop-blur-md rounded-2xl md:rounded-[1.5rem] border border-white/10 overflow-hidden shadow-2xl group-hover:scale-110 transition-transform">
-                                <img src={currentStream.logo} alt="" className="w-full h-full object-contain p-2" onError={(e) => e.target.src = '/placeholder.png'} />
+                                <img src={getProxyImageUrl(currentStream.logo)} alt="" className="w-full h-full object-contain p-2" onError={(e) => e.target.src = '/placeholder.png'} />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
