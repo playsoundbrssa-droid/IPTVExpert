@@ -158,9 +158,9 @@ exports.importAsPlaylist = async (serverUrl, username, password) => {
                 const base = serverUrl.replace(/\/$/, '');
                 let streamUrl = '';
                 
-                // Live TV: Não forçamos mais o .ts, pois alguns painéis retornam 404 se a extensão estiver presente.
+                // Live TV: Restaurado o .ts pois a maioria dos painéis XTREAM exige a extensão para Live streams, caso contrário retornam 404
                 if (type === 'live') {
-                    streamUrl = `${base}/${username}/${password}/${streamId}`;
+                    streamUrl = `${base}/${username}/${password}/${streamId}.ts`;
                 } 
                 // Movies: Caminho /movie/
                 else if (type === 'movie') {

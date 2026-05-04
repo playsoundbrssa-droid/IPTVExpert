@@ -69,12 +69,8 @@ export default function VideoPlayer() {
         let url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
         
-        // Alguns painéis Xtream retornam 404 se a URL tiver .ts no final.
-        // Como o player agora força `isTs = true` para canais Xtream, podemos usar a URL limpa com segurança.
+        // O proxy ou o mpegts vai lidar com a stream.
         const active = getActivePlaylist();
-        if (active?.type === 'xtream' && currentStream.type === 'channel' && url.endsWith('.ts')) {
-            url = url.replace(/\.ts$/, '');
-        }
 
         // Conversão agressiva para M3U8 em dispositivos Apple antigos (sem suporte a MediaSource)
         const noMseSupport = !window.MediaSource;
@@ -159,9 +155,9 @@ export default function VideoPlayer() {
                     cors: true
                 }, {
                     enableWorker: true,
-                    enableStallDetached: false, // Desativado para prevenir o log 'StartupStallJumper' e travamentos no início
-                    fixAudioTimestampGap: false,
-                    stashInitialSize: 384, // Aumentado para garantir dados suficientes para o decodificador iniciar
+                    enableStallDetached: true, // RE-ATIVADO: vital para pular frames corrompidos iniciais do IPTV
+                    fixAudioTimestampGap: true, // Importante para IPTV
+                    stashInitialSize: 512, // Aumentado para 512KB para garantir download de keyframes inteiros
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
                     liveBufferLatencyChasing: false
