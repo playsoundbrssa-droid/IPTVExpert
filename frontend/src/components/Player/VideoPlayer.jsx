@@ -252,7 +252,7 @@ export default function VideoPlayer() {
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
                     liveBufferLatencyChasing: true,
-                    liveBufferLatencyMaxLatency: 10,
+                    liveBufferLatencyMaxLatency: 5, // Mais agressivo para corrigir falhas de sincronia
                     liveBufferLatencyMinRemain: 1,
                     deferLoadAfterSourceOpen: false
                 });
@@ -456,10 +456,22 @@ export default function VideoPlayer() {
 
     const handleTimeUpdate = () => {
         if (videoRef.current) {
-            setCurrentTime(videoRef.current.currentTime);
+            const video = videoRef.current;
+            setCurrentTime(video.currentTime);
             // Se o tempo está mudando, o vídeo NÃO está buffereando
-            if (isBuffering && videoRef.current.currentTime > 0) {
+            if (isBuffering && video.currentTime > 0) {
                 setIsBuffering(false);
+            }
+
+            // Recuperação de dessincronização (AV Sync)
+            if (isPlaying && !isBuffering && video.buffered.length > 0) {
+                const lastBuffered = video.buffered.end(video.buffered.length - 1);
+                const gap = lastBuffered - video.currentTime;
+                // Se o gap for muito grande (> 10s), pula para o fim do buffer
+                if (gap > 10 && currentStream.type === 'channel') {
+                    console.warn('[Player] AV Sync gap too large, jumping to live edge...');
+                    video.currentTime = lastBuffered - 1;
+                }
             }
         }
     };
