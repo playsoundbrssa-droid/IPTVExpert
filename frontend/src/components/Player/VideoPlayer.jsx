@@ -23,6 +23,7 @@ export default function VideoPlayer() {
     const hlsRef = useRef(null);
     const mpegPlayerRef = useRef(null);
     const containerRef = useRef(null);
+    const lastUpdateRef = useRef(0);
     
     const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
@@ -455,8 +456,25 @@ export default function VideoPlayer() {
     };
 
     const handleTimeUpdate = () => {
-        if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+        if (!videoRef.current) return;
+        // Otimização para iPads antigos: não re-renderiza o React se os controles estiverem ocultos
+        if (!showControls) return;
+        
+        const now = Date.now();
+        // Atualiza a barra de progresso no máximo a cada 500ms para economizar CPU
+        if (now - lastUpdateRef.current >= 500) {
+            setCurrentTime(videoRef.current.currentTime);
+            lastUpdateRef.current = now;
+        }
     };
+
+    // Atualiza o tempo imediatamente quando os controles aparecem
+    useEffect(() => {
+        if (showControls && videoRef.current) {
+            setCurrentTime(videoRef.current.currentTime);
+            lastUpdateRef.current = Date.now();
+        }
+    }, [showControls]);
 
     useEffect(() => {
         if (!videoRef.current) return;
@@ -521,7 +539,9 @@ export default function VideoPlayer() {
     const playerContent = (
         <div 
             ref={containerRef}
-            className={`fixed transition-all duration-500 z-[99999] bg-black group/container overflow-hidden shadow-2xl ${
+            className={`fixed z-[99999] bg-black group/container overflow-hidden shadow-2xl ${
+                !isDragging ? 'transition-all duration-500' : ''
+            } ${
                 isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
             } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${
                 isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
@@ -621,7 +641,7 @@ export default function VideoPlayer() {
                                             <span className="text-xs lg:text-xl text-white font-black uppercase tracking-tight drop-shadow-lg truncate max-w-[200px]">{prog.title}</span>
                                         </div>
                                         <div className="w-full h-1 md:h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                                            <div className="h-full bg-white transition-all duration-1000" style={{ width: `${progress}%` }} />
+                                            <div className="h-full bg-white transition-[width] duration-1000 ease-linear" style={{ width: `${progress}%` }} />
                                         </div>
                                     </div>
                                 );
@@ -665,7 +685,7 @@ export default function VideoPlayer() {
                         <div className="max-w-7xl mx-auto flex flex-col gap-3 md:gap-6">
                             {duration > 0 && (
                                 <div className="group/seek relative w-full h-1.5 md:h-2 bg-white/10 rounded-full cursor-pointer overflow-hidden backdrop-blur-md border border-white/5" onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const x = e.clientX - rect.left; const pct = x / rect.width; if (videoRef.current) videoRef.current.currentTime = pct * duration; }}>
-                                    <div className="absolute top-0 left-0 h-full bg-primary transition-all duration-100" style={{ width: `${(currentTime / duration) * 100}%` }} />
+                                    <div className="absolute top-0 left-0 h-full bg-primary transition-[width] duration-500 ease-linear" style={{ width: `${(currentTime / duration) * 100}%` }} />
                                     <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover/seek:opacity-100 transition-opacity shadow-xl" style={{ left: `calc(${(currentTime / duration) * 100}% - 8px)` }} />
                                 </div>
                             )}

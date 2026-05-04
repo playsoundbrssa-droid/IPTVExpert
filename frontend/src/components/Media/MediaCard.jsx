@@ -143,10 +143,10 @@ export default function MediaCard({ item, type, playlist = [] }) {
                 <div className="absolute top-3 right-3">
                     <button 
                         onClick={toggleFavorite}
-                        className={`p-2.5 rounded-xl backdrop-blur-md border transition-all ${
+                        className={`p-2.5 rounded-xl border transition-colors ${
                             isFavorite 
                             ? 'bg-red-500 text-white border-red-400 shadow-lg shadow-red-500/20' 
-                            : 'bg-black/60 text-white border-white/10 hover:bg-white/10'
+                            : 'bg-black/80 text-white border-white/10 hover:bg-white/10'
                         }`}
                         title="Favoritar"
                     >
@@ -155,7 +155,7 @@ export default function MediaCard({ item, type, playlist = [] }) {
                 </div>
 
                 {/* Badge for Type/Group */}
-                <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] uppercase font-bold text-gray-400">
+                <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md bg-black/80 border border-white/10 text-[10px] uppercase font-bold text-gray-400">
                     {item.group}
                 </div>
 
@@ -181,7 +181,7 @@ export default function MediaCard({ item, type, playlist = [] }) {
                         {/* Progress Bar */}
                         <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
                             <div 
-                                className="h-full bg-primary transition-all duration-1000" 
+                                className="h-full bg-primary transition-[width] duration-1000 ease-linear" 
                                 style={{ width: `${programProgress}%` }}
                             />
                         </div>
