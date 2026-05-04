@@ -1,25 +1,25 @@
 const express = require('express');
-const axios   = require('axios');
-const http    = require('http');
-const https   = require('https');
-const dns     = require('dns');
-const auth    = require('../middleware/auth');
-const router  = express.Router();
+const axios = require('axios');
+const http = require('http');
+const https = require('https');
+const dns = require('dns');
+const auth = require('../middleware/auth');
+const router = express.Router();
 
 // ── SSRF Prevention ──────────────────────────────────────────────────────────
 const isSafeUrl = (urlStr) => {
     try {
         const url = new URL(urlStr);
         const hostname = url.hostname.toLowerCase();
-        
+
         // Block obvious local targets
         const blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
         if (blockedHosts.includes(hostname)) return false;
 
         // Block private IP ranges (basic check)
         // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-        if (hostname.startsWith('10.') || 
-            hostname.startsWith('192.168.') || 
+        if (hostname.startsWith('10.') ||
+            hostname.startsWith('192.168.') ||
             /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)) {
             return false;
         }
@@ -35,14 +35,14 @@ const isSafeUrl = (urlStr) => {
 
 // ── DoH Resolver ──────────────────────────────────────────────────────────────
 const resolveDoh = async (hostname) => {
-    const cleanHost = hostname.trim().split(':')[0]; 
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost; 
+    const cleanHost = hostname.trim().split(':')[0];
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) return cleanHost;
 
     // Don't resolve blocked hosts
     if (['localhost', '127.0.0.1'].includes(cleanHost)) return null;
 
     console.log(`[PROXY DNS] Resolvendo: ${cleanHost} via DoH...`);
-    
+
     const providers = [
         { url: `https://1.1.1.1/dns-query?name=${cleanHost}&type=A`, headers: { 'accept': 'application/dns-json' } },
         { url: `https://dns.google/resolve?name=${cleanHost}&type=A`, headers: { 'accept': 'application/json' } }
@@ -50,7 +50,7 @@ const resolveDoh = async (hostname) => {
 
     for (const provider of providers) {
         try {
-            const response = await axios.get(provider.url, { 
+            const response = await axios.get(provider.url, {
                 headers: provider.headers,
                 timeout: 3000,
                 httpAgent: new http.Agent(),
@@ -90,7 +90,7 @@ const customLookup = (hostname, options, callback) => {
                     callback(lErr, address, family);
                 });
             }
-            
+
             console.log(`[PROXY DNS] ✅ Sistema (resolve4): ${hostname} -> ${addrs[0]}`);
             if (options.all) {
                 return callback(null, [{ address: addrs[0], family: 4 }]);
@@ -104,7 +104,7 @@ const customLookup = (hostname, options, callback) => {
 };
 
 const proxyAgents = {
-    httpAgent:  new http.Agent ({ lookup: customLookup, keepAlive: true }),
+    httpAgent: new http.Agent({ lookup: customLookup, keepAlive: true }),
     httpsAgent: new https.Agent({ lookup: customLookup, keepAlive: true, rejectUnauthorized: false })
 };
 // ─────────────────────────────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ router.get('/stream', async (req, res) => {
         // IMPORTANTE: axios/http descarta tudo após o # (fragmento). 
         // Precisamos escapar manualmente para que o servidor remoto receba o token completo.
         let finalTarget = targetUrl.trim().replace(/#/g, '%23');
-        
+
         // Determinar se é manifest M3U8
         const isM3u8 = finalTarget.includes('.m3u8') || finalTarget.includes('type=m3u8');
 
@@ -193,7 +193,7 @@ router.get('/stream', async (req, res) => {
                 headers: { ...commonHeaders, 'Referer': origin + '/' },
                 timeout: 20000,
                 maxRedirects: 5,
-                validateStatus: null 
+                validateStatus: null
             });
 
             if (response.status >= 400) {
@@ -225,7 +225,7 @@ router.get('/stream', async (req, res) => {
             // Se for stream de vídeo real (.ts, .mp4, etc.)
             const range = req.headers.range;
             const proxyHeaders = { ...commonHeaders };
-            
+
             const isTs = finalTarget.includes('.ts') || finalTarget.includes('output=ts');
             if (range && !isTs) {
                 proxyHeaders.Range = range;
@@ -240,7 +240,7 @@ router.get('/stream', async (req, res) => {
                 headers: proxyHeaders,
                 timeout: 20000,
                 maxRedirects: 5,
-                validateStatus: (status) => true 
+                validateStatus: (status) => true
             });
 
             if (response.status >= 400) {
@@ -251,14 +251,14 @@ router.get('/stream', async (req, res) => {
 
             // Repassar headers importantes do upstream
             if (response.status === 206) res.status(206);
-            
+
             const importantHeaders = [
-                'content-type', 
-                'content-length', 
-                'content-range', 
+                'content-type',
+                'content-length',
+                'content-range',
                 'accept-ranges'
             ];
-            
+
             importantHeaders.forEach(h => {
                 if (response.headers[h]) res.setHeader(h, response.headers[h]);
             });
@@ -268,7 +268,7 @@ router.get('/stream', async (req, res) => {
             const lowUrl = targetUrl.toLowerCase();
             const isTsPath = lowUrl.includes('.ts') || lowUrl.includes('output=ts');
             const isMp4Path = lowUrl.includes('.mp4');
-            
+
             if ((isTsPath || isMp4Path) && (!currentContentType || currentContentType === 'application/octet-stream')) {
                 res.setHeader('Content-Type', isTsPath ? 'video/mp2t' : 'video/mp4');
             }
@@ -280,23 +280,23 @@ router.get('/stream', async (req, res) => {
     } catch (error) {
         const errorUrl = req.query.url;
         console.error(`[PROXY STREAM ERROR] URL: ${errorUrl}`);
-        
+
         if (error.response) {
             console.error(`[PROXY STREAM ERROR] Remote Server Status: ${error.response.status}`);
             console.error(`[PROXY STREAM ERROR] Remote Headers:`, JSON.stringify(error.response.headers));
-            return res.status(error.response.status).json({ 
-                error: 'Remote server error', 
+            return res.status(error.response.status).json({
+                error: 'Remote server error',
                 status: error.response.status,
-                url: errorUrl 
+                url: errorUrl
             });
         }
 
         console.error(`[PROXY STREAM ERROR] MSG: ${error.message}`);
-        
+
         if (error.code === 'ECONNABORTED') {
             return res.status(504).send('Proxy Timeout - Remote server took too long to respond');
         }
-        
+
         if (error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN') {
             return res.status(502).send('Proxy DNS Error - Could not resolve remote server');
         }
@@ -333,7 +333,7 @@ router.get('/image', async (req, res) => {
         response.data.pipe(res);
     } catch (error) {
         // Se falhar, redireciona para um placeholder ou retorna erro silencioso
-        res.status(200).send(''); 
+        res.status(200).send('');
     }
 });
 
@@ -352,7 +352,7 @@ router.get('/download', async (req, res) => {
 
         // Limpar nome do arquivo para evitar problemas de header
         filename = filename.replace(/[/\\?%*:|"<>]/g, '-');
-        
+
         const response = await axios({
             method: 'GET',
             url: targetUrl,
