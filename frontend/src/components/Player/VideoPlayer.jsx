@@ -123,8 +123,6 @@ export default function VideoPlayer() {
             }
         }
 
-        // Determinar se usamos proxy ou se é tentativa direta (Fallback 7)
-        const isDirectAttempt = streamFormatFallback >= 7;
         const isMixedContent = window.location.protocol === 'https:' && url.startsWith('http://');
         const shouldProxy = (isMixedContent || useProxy) && !isDirectAttempt;
 
