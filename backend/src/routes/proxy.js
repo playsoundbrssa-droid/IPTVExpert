@@ -191,7 +191,7 @@ router.get('/stream', async (req, res) => {
             const response = await axios.get(finalTarget, {
                 ...proxyAgents,
                 headers: { ...commonHeaders, 'Referer': origin + '/' },
-                timeout: 25000,
+                timeout: 20000,
                 maxRedirects: 5,
                 validateStatus: null 
             });
@@ -238,7 +238,7 @@ router.get('/stream', async (req, res) => {
                 responseType: 'stream',
                 ...proxyAgents,
                 headers: proxyHeaders,
-                timeout: 45000,
+                timeout: 20000,
                 maxRedirects: 5,
                 validateStatus: (status) => true 
             });
