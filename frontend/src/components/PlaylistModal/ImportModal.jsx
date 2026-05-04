@@ -44,53 +44,19 @@ export default function ImportModal({ isOpen, onClose }) {
         onClose();
     };
 
-    // ── EPG Automatizado ──────────────────────────────────────────────────────
-    const handleEpgImport = async (playlistType, playlistData, credentials = {}) => {
-        let epgParams = null;
-        
-        if (playlistType === 'xtream') {
-            epgParams = { 
-                type: 'xtream', 
-                url: credentials.server, 
-                username: credentials.username, 
-                password: credentials.password 
-            };
-        } else if (playlistData.epgUrl) {
-            epgParams = { type: 'm3u', url: playlistData.epgUrl };
-        }
-
-        if (epgParams) {
-            console.log('[EPG] Iniciando importação automática...');
-            try {
-                const { data } = await api.post('/epg/import', epgParams);
-                if (data.success && data.cacheKey) {
-                    return { epgUrl: epgParams.url, epgCacheKey: data.cacheKey };
-                }
-            } catch (e) {
-                console.warn('[EPG] Falha na importação automática:', e.message);
-            }
-        }
-        return {};
-    };
-
     // ── M3U via URL ───────────────────────────────────────────────────────────
     const handleImportM3u = async () => {
         if (!m3uUrl.trim()) { toast.error('Insira uma URL válida'); return; }
         setLoading(true);
         try {
             const { data } = await api.post('/playlist/import-m3u', { url: m3uUrl.trim() });
-            
-            // Tenta importar EPG
-            const epgData = await handleEpgImport('m3u', data);
-            
             setPlaylistData(data);
-            const finalName = playlistName.trim() || new URL(m3uUrl.trim().startsWith('http') ? m3uUrl.trim() : 'http://' + m3uUrl.trim()).hostname;
             
+            const finalName = playlistName.trim() || new URL(m3uUrl.trim().startsWith('http') ? m3uUrl.trim() : 'http://' + m3uUrl.trim()).hostname;
             savePlaylist(finalName, 'm3u', data.total, { url: m3uUrl.trim() }, {
                 channelsCount: data.channels?.list?.length || 0,
                 moviesCount: data.movies?.list?.length || 0,
-                seriesCount: data.series?.list?.length || 0,
-                ...epgData
+                seriesCount: data.series?.list?.length || 0
             });
             
             toast.success(`✅ ${data.total} mídias carregadas!`);
@@ -113,18 +79,13 @@ export default function ImportModal({ isOpen, onClose }) {
                 try {
                     const content = e.target.result;
                     const { data } = await api.post('/playlist/import-file', { content, fileName: selectedFile.name });
-                    
-                    // Tenta importar EPG
-                    const epgData = await handleEpgImport('file', data);
-                    
                     setPlaylistData(data);
-                    const finalName = playlistName.trim() || selectedFile.name.replace(/\.[^.]+$/, '');
                     
+                    const finalName = playlistName.trim() || selectedFile.name.replace(/\.[^.]+$/, '');
                     savePlaylist(finalName, 'file', data.total, { fileName: selectedFile.name }, {
                         channelsCount: data.channels?.list?.length || 0,
                         moviesCount: data.movies?.list?.length || 0,
-                        seriesCount: data.series?.list?.length || 0,
-                        ...epgData
+                        seriesCount: data.series?.list?.length || 0
                     });
                     
                     toast.success(`✅ ${data.total} mídias carregadas!`);
@@ -151,18 +112,13 @@ export default function ImportModal({ isOpen, onClose }) {
         setLoading(true);
         try {
             const { data } = await api.post('/xtream/import', { server, username, password });
-            
-            // Tenta importar EPG
-            const epgData = await handleEpgImport('xtream', data, { server, username, password });
-            
             setPlaylistData(data);
-            const finalName = playlistName.trim() || server.split('/')[2] || 'Conta Xtream';
             
+            const finalName = playlistName.trim() || server.split('/')[2] || 'Conta Xtream';
             savePlaylist(finalName, 'xtream', data.total, { server, username, password }, {
                 channelsCount: data.channels?.list?.length || 0,
                 moviesCount: data.movies?.list?.length || 0,
-                seriesCount: data.series?.list?.length || 0,
-                ...epgData
+                seriesCount: data.series?.list?.length || 0
             });
             
             toast.success(`✅ ${data.total} mídias Xtream sincronizadas!`);

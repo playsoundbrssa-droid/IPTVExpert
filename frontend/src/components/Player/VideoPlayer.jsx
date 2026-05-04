@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
 import mpegjs from 'mpegts.js';
-import {
-    FiX, FiPlay, FiPause, FiMaximize, FiVolume2,
-    FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight,
+import { 
+    FiX, FiPlay, FiPause, FiMaximize, FiVolume2, 
+    FiVolumeX, FiRefreshCw, FiChevronLeft, FiChevronRight, 
     FiHeart, FiMinimize2, FiSkipBack, FiSkipForward,
     FiSettings, FiDownload, FiAirplay, FiSquare, FiMonitor,
     FiRotateCcw, FiRotateCw, FiLogOut, FiClock
@@ -23,16 +23,15 @@ export default function VideoPlayer() {
     const hlsRef = useRef(null);
     const mpegPlayerRef = useRef(null);
     const containerRef = useRef(null);
-    const playPromiseRef = useRef(null);
-
-    const { currentStream, setCurrentStream, isPlaying, togglePlay, setIsPlaying, playNext, playPrev } = usePlayerStore();
+    
+    const { currentStream, setCurrentStream, isPlaying, togglePlay, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     const { nowPlaying } = useEpgStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
     const { user } = useUserStore();
     const navigate = useNavigate();
     const resumedRef = useRef(null);
-
+    
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
     const [error, setError] = useState(null);
@@ -41,176 +40,94 @@ export default function VideoPlayer() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
-    const [streamFormatFallback, setStreamFormatFallback] = useState(0);
     const [airplayAvailable, setAirplayAvailable] = useState(false);
     const [resumeData, setResumeData] = useState(null);
-
+    
     const [isPiP, setIsPiP] = useState(false); // Custom PiP
     const [isNativePiP, setIsNativePiP] = useState(false); // Browser PiP
     const [isDragging, setIsDragging] = useState(false);
     const [pipPosition, setPipPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 200 });
     const pipDragRef = useRef({ dragging: false, startX: 0, startY: 0, initX: 0, initY: 0 });
 
-    const isFavorite = useMemo(() =>
+    const isFavorite = useMemo(() => 
         currentStream ? favorites.some(f => f.id === currentStream.id) : false
-        , [favorites, currentStream]);
+    , [favorites, currentStream]);
 
     const cleanUp = useCallback(() => {
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
         if (mpegPlayerRef.current) { mpegPlayerRef.current.destroy(); mpegPlayerRef.current = null; }
         if (videoRef.current) {
-            try {
-                videoRef.current.pause();
-                videoRef.current.removeAttribute('src');
-                videoRef.current.load();
-            } catch (e) { }
+            videoRef.current.pause();
+            videoRef.current.removeAttribute('src');
+            videoRef.current.load();
         }
     }, []);
 
     const getStreamUrl = useCallback(() => {
         if (!currentStream) return '';
-        let url = currentStream.streamUrl || currentStream.url;
+        const url = currentStream.streamUrl || currentStream.url;
         if (!url) return '';
-
-        const active = getActivePlaylist();
-
-        // Tentar formatos diferentes de URL Xtream em caso de erro 404
-        if (active?.type === 'xtream' && currentStream.type === 'channel') {
-            try {
-                const urlObj = new URL(url);
-                const baseUrl = urlObj.origin;
-                const pathParts = urlObj.pathname.split('/').filter(p => p);
-
-                let user, pass, idStr;
-                if (pathParts.length >= 4 && pathParts[0] === 'live') {
-                    user = pathParts[1];
-                    pass = pathParts[2];
-                    idStr = pathParts[3];
-                } else if (pathParts.length >= 3) {
-                    user = pathParts[0];
-                    pass = pathParts[1];
-                    idStr = pathParts[2];
-                }
-
-                if (user && pass && idStr) {
-                    const id = idStr.split('.')[0];
-                    const variations = [
-                        `${baseUrl}/${user}/${pass}/${id}.ts`,              // 1
-                        `${baseUrl}/${user}/${pass}/${id}`,                 // 2
-                        `${baseUrl}/live/${user}/${pass}/${id}.ts`,         // 3
-                        `${baseUrl}/live/${user}/${pass}/${id}`,            // 4
-                        `${baseUrl}/${user}/${pass}/${id}.m3u8`,            // 5
-                        `${baseUrl}/live/${user}/${pass}/${id}.m3u8`,       // 6
-                        `${baseUrl}/${user}/${pass}/${id}.ts?output=ts`,    // 7
-                        `${baseUrl}/live/${user}/${pass}/${id}.ts?output=ts`, // 8
-                        `${baseUrl}/${user}/${pass}/${id}.m3u8?output=m3u8` // 9
-                    ];
-
-                    if (streamFormatFallback > 0 && streamFormatFallback <= variations.length) {
-                        url = variations[streamFormatFallback - 1];
-                    }
-                }
-            } catch (e) { }
-        }
-
-        // Determinar se usamos proxy ou se é tentativa direta (Fallback 10+)
-        const isDirectAttempt = streamFormatFallback >= 10;
-
-        // Conversão agressiva para M3U8 em dispositivos Apple antigos (MediaSource ausente)
-        const noMseSupport = !window.MediaSource;
-        if (noMseSupport && typeof url === 'string') {
-            if (active?.type === 'xtream' && currentStream.type === 'channel') {
-                url = url.replace(/\.ts$/, '') + '.m3u8';
-            } else if (url.match(/\/(live|movie|series)\/.*\/.*\/.*\.ts/)) {
-                url = url.replace(/\.ts$/, '.m3u8');
-            }
-        }
-
+        
         const isMixedContent = window.location.protocol === 'https:' && url.startsWith('http://');
-        const shouldProxy = (isMixedContent || useProxy) && !isDirectAttempt;
-
-        if (shouldProxy && !url.includes('/api/proxy/stream')) {
+        if ((isMixedContent || useProxy) && !url.includes('/api/proxy/stream')) {
             let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             if (!apiBase.endsWith('/api')) apiBase += '/api';
-
+            
             // Adicionar token de autenticação se disponível
             const token = localStorage.getItem('token');
             const proxyUrl = `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
             return token ? `${proxyUrl}&token=${token}` : proxyUrl;
         }
         return url;
-    }, [currentStream, useProxy, getActivePlaylist, streamFormatFallback]);
-
-    const playVideo = useCallback(async () => {
-        if (!videoRef.current) return;
-
-        // Se já estiver tocando e o vídeo não estiver pausado, não fazemos nada
-        if (isPlaying && !videoRef.current.paused) return;
-
-        try {
-            playPromiseRef.current = videoRef.current.play();
-            await playPromiseRef.current;
-        } catch (e) {
-            console.log('Autoplay blocked, trying muted...');
-            if (videoRef.current) {
-                videoRef.current.muted = true;
-                try {
-                    playPromiseRef.current = videoRef.current.play();
-                    await playPromiseRef.current;
-                } catch (err) {
-                    console.error('Muted autoplay also failed', err);
-                    // Só setamos false se realmente falhou tudo, 
-                    // mas evitamos fazer isso se já estiver em um loop
-                    if (isPlaying) setIsPlaying(false);
-                }
-            }
-        }
-    }, [isPlaying, setIsPlaying]);
+    }, [currentStream, useProxy]);
 
     const initPlayer = useCallback(async () => {
         if (!currentStream || !videoRef.current) return;
-
         const streamUrl = getStreamUrl();
         const isHls = streamUrl.toLowerCase().includes('.m3u8') || streamUrl.includes('type=m3u8');
-        let isTs = streamUrl.toLowerCase().includes('.ts') || streamUrl.includes('output=ts');
-        const activePlaylist = getActivePlaylist();
-
-        if (!isHls && !isTs && activePlaylist?.type === 'xtream' && currentStream.type === 'channel') {
-            isTs = true;
-        }
-
+        const isTs = streamUrl.toLowerCase().includes('.ts') || streamUrl.includes('output=ts');
+        
         cleanUp();
         setError(null);
         setIsBuffering(true);
 
         if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
             videoRef.current.src = streamUrl;
+            videoRef.current.play().catch(() => {
+                if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                }
+                setIsMuted(true);
+            });
         } else if (isHls && Hls.isSupported()) {
-            const hls = new Hls({
+            const hls = new Hls({ 
                 enableWorker: true,
-                liveSyncDurationCount: 2, // Inicia mais rápido
-                maxBufferLength: 20,
-                maxMaxBufferLength: 40,
-                manifestLoadingMaxRetry: 5,
-                fragLoadingMaxRetry: 5,
+                liveSyncDurationCount: 3, // Melhor sincronização para ao vivo
+                maxBufferLength: 30, // Mantém 30s de buffer para evitar travamentos
+                maxMaxBufferLength: 60,
+                manifestLoadingMaxRetry: 10,
+                fragLoadingMaxRetry: 10,
                 xhrSetup: (xhr) => { xhr.withCredentials = false; }
             });
             hls.loadSource(streamUrl);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                // O play será disparado pelo useEffect de isPlaying
+                if (videoRef.current) {
+                    videoRef.current.play().catch(() => {
+                        if (videoRef.current) {
+                            videoRef.current.muted = true;
+                            videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                        }
+                        setIsMuted(true);
+                    });
+                }
             });
             hls.on(Hls.Events.ERROR, (e, data) => {
                 if (data.fatal) {
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        if (!useProxy) {
-                            setUseProxy(true);
-                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 10) {
-                            setStreamFormatFallback(prev => prev + 1);
-                        } else {
-                            setError("Erro ao carregar a stream HLS.");
-                        }
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !useProxy) {
+                        setUseProxy(true);
                     } else {
                         setError("Erro ao carregar a stream HLS.");
                     }
@@ -226,32 +143,41 @@ export default function VideoPlayer() {
                 }, {
                     enableWorker: true,
                     enableStallDetached: true,
-                    fixAudioTimestampGap: true,
-                    stashInitialSize: 32, // Buffer mínimo para início imediato
+                    stashInitialSize: 384, // Aumentado para 384KB para criar uma gordura de buffer inicial
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
-                    liveBufferLatencyChasing: true,
-                    deferLoadAfterSourceOpen: false
+                    liveBufferLatencyChasing: true, // Persegue a latência ideal
+                    liveBufferLatencyMaxLatency: 15, // Pula se atrasar mais de 15s
+                    liveBufferLatencyMinRemain: 2 // Mantém pelo menos 2s no buffer
                 });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
+                mpeg.play().catch(() => {
+                    if (videoRef.current) {
+                        videoRef.current.muted = true;
+                        videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                    }
+                    setIsMuted(true);
+                });
                 mpegPlayerRef.current = mpeg;
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
-                    if (!useProxy) {
-                        setUseProxy(true);
-                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 10) {
-                        setStreamFormatFallback(prev => prev + 1);
-                    } else {
-                        setError("Erro na stream MPEG-TS.");
-                    }
+                    if (!useProxy) setUseProxy(true);
+                    else setError("Erro na stream MPEG-TS.");
                 });
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
-        } else if (videoRef.current.canPlayType('video/mp4') || videoRef.current.canPlayType('video/mp2t')) {
+        } else {
             videoRef.current.src = streamUrl;
+            videoRef.current.play().catch(() => {
+                if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    videoRef.current.play().catch(e => console.log('Autoplay blocked even with mute:', e.message));
+                }
+                setIsMuted(true);
+            });
         }
-    }, [currentStream, getStreamUrl, cleanUp, useProxy, getActivePlaylist, streamFormatFallback]);
+    }, [currentStream, getStreamUrl, cleanUp, useProxy]);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -328,7 +254,7 @@ export default function VideoPlayer() {
                 }
                 return;
             }
-
+            
             // Fallback para iOS/Safari (WebKit)
             if (video.webkitSupportsPresentationMode && typeof video.webkitSetPresentationMode === 'function') {
                 const mode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
@@ -350,7 +276,7 @@ export default function VideoPlayer() {
         if (e.pointerType === 'touch' && e.cancelable) e.preventDefault();
         e.stopPropagation();
         setIsDragging(true);
-
+        
         pipDragRef.current = {
             dragging: true,
             startX: e.clientX,
@@ -369,7 +295,7 @@ export default function VideoPlayer() {
         const updatePosition = () => {
             const dx = e.clientX - pipDragRef.current.startX;
             const dy = e.clientY - pipDragRef.current.startY;
-
+            
             setPipPosition({
                 x: Math.max(0, Math.min(window.innerWidth - 320, pipDragRef.current.initX + dx)),
                 y: Math.max(0, Math.min(window.innerHeight - 180, pipDragRef.current.initY + dy))
@@ -438,7 +364,7 @@ export default function VideoPlayer() {
                 });
                 if (response.data?.progress) savedPosition = response.data.progress.last_position;
             }
-        } catch (e) { }
+        } catch (e) {}
         if (!savedPosition) {
             const local = parseFloat(localStorage.getItem(progressKey));
             if (local && local > 0) savedPosition = local;
@@ -456,10 +382,11 @@ export default function VideoPlayer() {
         const savedPos = resumeData;
         setResumeData(null);
         resumedRef.current = currentStream?.id;
-
+        
         if (videoRef.current) {
             videoRef.current.currentTime = shouldResume && savedPos ? savedPos : 0;
-            playVideo();
+            videoRef.current.play().catch(() => {});
+            setIsPlaying(true);
         }
     };
 
@@ -478,7 +405,7 @@ export default function VideoPlayer() {
                     duration: videoRef.current.duration
                 });
             }
-        } catch (error) { }
+        } catch (error) {}
     }, [currentStream, progressKey, getActivePlaylist]);
 
     useEffect(() => {
@@ -496,75 +423,16 @@ export default function VideoPlayer() {
     };
 
     useEffect(() => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        const syncPlayback = async () => {
-            if (isPlaying) {
-                if (video.paused) {
-                    if (playPromiseRef.current) {
-                        try { await playPromiseRef.current; } catch (e) { }
-                    }
-                    playVideo();
-                }
-            } else {
-                if (!video.paused) {
-                    if (playPromiseRef.current) {
-                        try { await playPromiseRef.current; } catch (e) { }
-                    }
-                    video.pause();
-                }
-            }
-        };
-
-        syncPlayback();
-    }, [isPlaying, playVideo]);
-
-    useEffect(() => {
-        if (isBuffering && !error) {
-            const timeout = setTimeout(() => {
-                if (!useProxy) {
-                    toast('Conexão instável, ativando modo proxy...', { icon: '🔄', id: 'proxy-timeout' });
-                    setUseProxy(true);
-                } else if (getActivePlaylist()?.type === 'xtream' && streamFormatFallback < 6) {
-                    setStreamFormatFallback(prev => prev + 1);
-                    setUseProxy(false);
-                } else {
-                    setError('O canal demorou muito para responder ou está offline.');
-                }
-            }, 20000);
-            return () => clearTimeout(timeout);
-        }
-    }, [isBuffering, error, useProxy, setUseProxy, getActivePlaylist, streamFormatFallback]);
-
-    useEffect(() => {
-        if (!currentStream) return;
-        setStreamFormatFallback(0);
-        setUseProxy(false);
-        setError(null);
-    }, [currentStream]);
-
-    // Watchdog: Se ficar buffereando por mais de 22s, tenta próxima variação
-    useEffect(() => {
-        if (!isBuffering || error || !currentStream) return;
-        const timer = setTimeout(() => {
-            if (isBuffering && !error) {
-                console.warn(`[Player] Buffer timeout na variação ${streamFormatFallback}, tentando próxima...`);
-                if (!useProxy) {
-                    setUseProxy(true);
-                } else if (streamFormatFallback < 10) {
-                    setStreamFormatFallback(prev => prev + 1);
-                }
-            }
-        }, 22000);
-        return () => clearTimeout(timer);
-    }, [isBuffering, error, streamFormatFallback, useProxy, currentStream]);
+        if (!videoRef.current) return;
+        if (isPlaying) videoRef.current.play().catch(() => {});
+        else videoRef.current.pause();
+    }, [isPlaying]);
 
     useEffect(() => {
         initPlayer();
         setIsPiP(false);
         return cleanUp;
-    }, [currentStream, useProxy, streamFormatFallback, initPlayer, cleanUp]);
+    }, [currentStream, useProxy, initPlayer, cleanUp]);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -605,7 +473,7 @@ export default function VideoPlayer() {
                 params: { cacheKey: active.epgCacheKey }
             });
             setFullEpg(data || []);
-        } catch (e) { }
+        } catch (e) {}
     }, [currentStream, getActivePlaylist]);
 
     useEffect(() => {
@@ -615,11 +483,13 @@ export default function VideoPlayer() {
     if (!currentStream) return null;
 
     const playerContent = (
-        <div
+        <div 
             ref={containerRef}
-            className={`fixed transition-all duration-500 z-[99999] bg-black group/container overflow-hidden shadow-2xl ${isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
-                } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
-                }`}
+            className={`fixed transition-all duration-500 z-[99999] bg-black group/container overflow-hidden shadow-2xl ${
+                isPiP ? 'rounded-2xl border border-white/10' : 'inset-0'
+            } ${isNativePiP ? 'pointer-events-none opacity-0 !w-0 !h-0' : 'opacity-100'} ${
+                isDragging ? 'scale-[1.02] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] z-[100000] cursor-grabbing' : ''
+            }`}
             style={isPiP ? {
                 width: '320px',
                 height: '180px',
@@ -635,7 +505,7 @@ export default function VideoPlayer() {
             onTouchStart={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
         >
-            <video
+            <video 
                 ref={videoRef}
                 className={`w-full h-full transition-all duration-300 ${isPiP ? 'object-cover' : 'object-contain'}`}
                 onWaiting={() => setIsBuffering(true)}
@@ -728,7 +598,7 @@ export default function VideoPlayer() {
                     </div>
 
                     <div className={`absolute top-0 right-0 p-4 md:p-6 pt-[calc(env(safe-area-inset-top,0px)+1rem)] transition-opacity duration-300 z-40 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                        <button
+                        <button 
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (isPiP || isNativePiP) {
@@ -738,7 +608,7 @@ export default function VideoPlayer() {
                                 } else {
                                     setCurrentStream(null);
                                 }
-                            }}
+                            }} 
                             className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 bg-black/60 hover:bg-red-600/40 text-white rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 shadow-2xl"
                         >
                             <FiChevronLeft size={16} /><span className="landscape:hidden md:landscape:inline">Sair</span>
