@@ -23,6 +23,7 @@ export default function VideoPlayer() {
     const hlsRef = useRef(null);
     const mpegPlayerRef = useRef(null);
     const containerRef = useRef(null);
+    const playPromiseRef = useRef(null);
     
     const { currentStream, setCurrentStream, isPlaying, togglePlay, setIsPlaying, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
@@ -58,9 +59,11 @@ export default function VideoPlayer() {
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
         if (mpegPlayerRef.current) { mpegPlayerRef.current.destroy(); mpegPlayerRef.current = null; }
         if (videoRef.current) {
-            videoRef.current.pause();
-            videoRef.current.removeAttribute('src');
-            videoRef.current.load();
+            try {
+                videoRef.current.pause();
+                videoRef.current.removeAttribute('src');
+                videoRef.current.load();
+            } catch (e) {}
         }
     }, []);
 
@@ -138,6 +141,28 @@ export default function VideoPlayer() {
         return url;
     }, [currentStream, useProxy, getActivePlaylist, streamFormatFallback]);
 
+    const playVideo = useCallback(async () => {
+        if (!videoRef.current) return;
+        try {
+            playPromiseRef.current = videoRef.current.play();
+            await playPromiseRef.current;
+            setIsPlaying(true);
+        } catch (e) {
+            console.log('Autoplay blocked, trying muted...');
+            if (videoRef.current) {
+                videoRef.current.muted = true;
+                try {
+                    playPromiseRef.current = videoRef.current.play();
+                    await playPromiseRef.current;
+                    setIsPlaying(true);
+                } catch (err) {
+                    console.error('Muted autoplay also failed', err);
+                    setIsPlaying(false);
+                }
+            }
+        }
+    }, [setIsPlaying]);
+
     const initPlayer = useCallback(async () => {
         if (!currentStream || !videoRef.current) return;
 
@@ -156,10 +181,7 @@ export default function VideoPlayer() {
 
         if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
             videoRef.current.src = streamUrl;
-            videoRef.current.play().catch((e) => {
-                console.log('Autoplay with sound blocked:', e.message);
-                setIsPlaying(false);
-            });
+            playVideo();
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({ 
                 enableWorker: true,
@@ -174,12 +196,7 @@ export default function VideoPlayer() {
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                if (videoRef.current) {
-                    videoRef.current.play().catch((e) => {
-                        console.log('Autoplay with sound blocked:', e.message);
-                        setIsPlaying(false);
-                    });
-                }
+                playVideo();
             });
             hls.on(Hls.Events.ERROR, (e, data) => {
                 if (data.fatal) {
@@ -215,14 +232,7 @@ export default function VideoPlayer() {
                 });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
-                mpeg.play().catch((e) => {
-                    console.log('Autoplay blocked, trying muted...');
-                    if (videoRef.current) {
-                        videoRef.current.muted = true;
-                        videoRef.current.play().catch(err => console.error('Muted autoplay also failed', err));
-                    }
-                    setIsPlaying(false);
-                });
+                playVideo();
                 mpegPlayerRef.current = mpeg;
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
@@ -238,12 +248,9 @@ export default function VideoPlayer() {
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
         } else if (videoRef.current.canPlayType('video/mp4') || videoRef.current.canPlayType('video/mp2t')) {
             videoRef.current.src = streamUrl;
-            videoRef.current.play().catch((e) => {
-                console.log('Autoplay with sound blocked:', e.message);
-                setIsPlaying(false);
-            });
+            playVideo();
         }
-    }, [currentStream, getStreamUrl, cleanUp, useProxy, getActivePlaylist, streamFormatFallback]);
+    }, [currentStream, getStreamUrl, cleanUp, useProxy, getActivePlaylist, streamFormatFallback, playVideo]);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -451,8 +458,7 @@ export default function VideoPlayer() {
         
         if (videoRef.current) {
             videoRef.current.currentTime = shouldResume && savedPos ? savedPos : 0;
-            videoRef.current.play().catch(() => {});
-            setIsPlaying(true);
+            playVideo();
         }
     };
 
@@ -490,14 +496,25 @@ export default function VideoPlayer() {
 
     useEffect(() => {
         if (!videoRef.current) return;
-        if (isPlaying) {
-            videoRef.current.play().catch(() => {
-                setIsPlaying(false);
-            });
-        } else {
-            videoRef.current.pause();
-        }
-    }, [isPlaying, setIsPlaying]);
+        
+        const syncPlayback = async () => {
+            if (isPlaying) {
+                // Se já houver um play() em andamento, não interrompemos
+                if (playPromiseRef.current) {
+                    try { await playPromiseRef.current; } catch (e) {}
+                }
+                playVideo();
+            } else {
+                // Só pausamos se não houver um play() crítico em andamento (ou esperamos ele)
+                if (playPromiseRef.current) {
+                    try { await playPromiseRef.current; } catch (e) {}
+                }
+                videoRef.current.pause();
+            }
+        };
+
+        syncPlayback();
+    }, [isPlaying, playVideo]);
 
     useEffect(() => {
         if (isBuffering && !error) {
