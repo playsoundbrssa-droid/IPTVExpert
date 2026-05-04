@@ -143,10 +143,13 @@ export default function VideoPlayer() {
 
     const playVideo = useCallback(async () => {
         if (!videoRef.current) return;
+        
+        // Se já estiver tocando e o vídeo não estiver pausado, não fazemos nada
+        if (isPlaying && !videoRef.current.paused) return;
+
         try {
             playPromiseRef.current = videoRef.current.play();
             await playPromiseRef.current;
-            setIsPlaying(true);
         } catch (e) {
             console.log('Autoplay blocked, trying muted...');
             if (videoRef.current) {
@@ -154,14 +157,15 @@ export default function VideoPlayer() {
                 try {
                     playPromiseRef.current = videoRef.current.play();
                     await playPromiseRef.current;
-                    setIsPlaying(true);
                 } catch (err) {
                     console.error('Muted autoplay also failed', err);
-                    setIsPlaying(false);
+                    // Só setamos false se realmente falhou tudo, 
+                    // mas evitamos fazer isso se já estiver em um loop
+                    if (isPlaying) setIsPlaying(false);
                 }
             }
         }
-    }, [setIsPlaying]);
+    }, [isPlaying, setIsPlaying]);
 
     const initPlayer = useCallback(async () => {
         if (!currentStream || !videoRef.current) return;
@@ -181,7 +185,6 @@ export default function VideoPlayer() {
 
         if (isHls && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
             videoRef.current.src = streamUrl;
-            playVideo();
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({
                 enableWorker: true,
@@ -196,7 +199,7 @@ export default function VideoPlayer() {
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                playVideo();
+                // O play será disparado pelo useEffect de isPlaying
             });
             hls.on(Hls.Events.ERROR, (e, data) => {
                 if (data.fatal) {
@@ -232,7 +235,6 @@ export default function VideoPlayer() {
                 });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
-                playVideo();
                 mpegPlayerRef.current = mpeg;
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
@@ -248,9 +250,8 @@ export default function VideoPlayer() {
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
         } else if (videoRef.current.canPlayType('video/mp4') || videoRef.current.canPlayType('video/mp2t')) {
             videoRef.current.src = streamUrl;
-            playVideo();
         }
-    }, [currentStream, getStreamUrl, cleanUp, useProxy, getActivePlaylist, streamFormatFallback, playVideo]);
+    }, [currentStream, getStreamUrl, cleanUp, useProxy, getActivePlaylist, streamFormatFallback]);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -495,21 +496,24 @@ export default function VideoPlayer() {
     };
 
     useEffect(() => {
-        if (!videoRef.current) return;
-
+        const video = videoRef.current;
+        if (!video) return;
+        
         const syncPlayback = async () => {
             if (isPlaying) {
-                // Se já houver um play() em andamento, não interrompemos
-                if (playPromiseRef.current) {
-                    try { await playPromiseRef.current; } catch (e) { }
+                if (video.paused) {
+                    if (playPromiseRef.current) {
+                        try { await playPromiseRef.current; } catch (e) { }
+                    }
+                    playVideo();
                 }
-                playVideo();
             } else {
-                // Só pausamos se não houver um play() crítico em andamento (ou esperamos ele)
-                if (playPromiseRef.current) {
-                    try { await playPromiseRef.current; } catch (e) { }
+                if (!video.paused) {
+                    if (playPromiseRef.current) {
+                        try { await playPromiseRef.current; } catch (e) { }
+                    }
+                    video.pause();
                 }
-                videoRef.current.pause();
             }
         };
 
