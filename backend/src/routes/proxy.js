@@ -181,21 +181,23 @@ router.get('/stream', async (req, res) => {
         const commonHeaders = {
             'User-Agent': 'Mozilla/5.0 (SmartHub; SMART-TV; Linux/SmartTV) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.0 TV Safari/538.1',
             'Accept': '*/*',
-            'Connection': 'keep-alive',
-            'Referer': origin + '/',
+            'Accept-Encoding': 'identity',
+            'Connection': 'keep-alive'
         };
 
         if (isM3u8) {
             // Se for playlist, baixar como texto e reescrever os links internos
+            console.log(`[PROXY M3U8] Baixando manifest: ${finalTarget}`);
             const response = await axios.get(finalTarget, {
                 ...proxyAgents,
-                headers: commonHeaders,
-                timeout: 20000,
-                validateStatus: null // Aceitar qualquer status para logar
+                headers: { ...commonHeaders, 'Referer': origin + '/' },
+                timeout: 25000,
+                maxRedirects: 5,
+                validateStatus: null 
             });
 
             if (response.status >= 400) {
-                console.error(`[PROXY M3U8 ERROR] Remote returned ${response.status} for ${finalTarget}`);
+                console.error(`[PROXY M3U8 ERROR] Remoto retornou ${response.status} para ${finalTarget}`);
                 return res.status(response.status).json({ error: 'Remote server error', status: response.status });
             }
 
@@ -204,16 +206,13 @@ router.get('/stream', async (req, res) => {
             const lines = response.data.split('\n');
             const rewrittenLines = lines.map(line => {
                 const trimmed = line.trim();
-                // Ignorar linhas vazias ou comentários/tags do M3U
                 if (!trimmed || trimmed.startsWith('#')) return line;
 
-                // Converter URL relativa para absoluta
                 let absoluteUrl = trimmed;
                 if (!trimmed.startsWith('http')) {
                     absoluteUrl = new URL(trimmed, baseUrl).href;
                 }
 
-                // Retornar a linha passando pelo nosso proxy e propagando o token de auth
                 const currentProxyCall = `${req.protocol}://${req.get('host')}/api/proxy/stream?url=`;
                 const userToken = req.query.token || '';
                 return `${currentProxyCall}${encodeURIComponent(absoluteUrl)}${userToken ? `&token=${userToken}` : ''}`;
@@ -227,25 +226,27 @@ router.get('/stream', async (req, res) => {
             const range = req.headers.range;
             const proxyHeaders = { ...commonHeaders };
             
-            // NÃO enviar Range para arquivos .ts, pois muitos servidores IPTV retornam 404
             const isTs = finalTarget.includes('.ts') || finalTarget.includes('output=ts');
             if (range && !isTs) {
                 proxyHeaders.Range = range;
             }
 
+            console.log(`[PROXY STREAM] Abrindo fluxo: ${finalTarget}`);
             const response = await axios({
                 method: 'GET',
                 url: finalTarget,
                 responseType: 'stream',
                 ...proxyAgents,
                 headers: proxyHeaders,
-                timeout: 30000,
-                validateStatus: (status) => true // Aceitar tudo para processar erro manualmente
+                timeout: 45000,
+                maxRedirects: 5,
+                validateStatus: (status) => true 
             });
 
             if (response.status >= 400) {
-                console.error(`[PROXY STREAM ERROR] Remote returned ${response.status} for ${finalTarget}`);
-                return res.status(response.status).send(`Remote server error: ${response.status}`);
+                console.error(`[PROXY STREAM ERROR] Remoto retornou ${response.status} para ${finalTarget}`);
+                console.error(`[PROXY STREAM ERROR] Headers Remotos:`, JSON.stringify(response.headers));
+                return res.status(response.status).send(`Remote error: ${response.status}`);
             }
 
             // Repassar headers importantes do upstream
