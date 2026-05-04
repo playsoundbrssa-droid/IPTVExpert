@@ -195,7 +195,7 @@ export default function VideoPlayer() {
         setError(null);
         setIsBuffering(true);
         isInitializingRef.current = true;
-        
+
         // Resetar áudio para garantir início com som
         if (videoRef.current) {
             videoRef.current.muted = false;
