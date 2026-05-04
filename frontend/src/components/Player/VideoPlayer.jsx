@@ -105,7 +105,8 @@ export default function VideoPlayer() {
                         `${baseUrl}/live/${user}/${pass}/${id}.m3u8`,       // 6
                         `${baseUrl}/${user}/${pass}/${id}.ts?output=ts`,    // 7
                         `${baseUrl}/live/${user}/${pass}/${id}.ts?output=ts`, // 8
-                        `${baseUrl}/${user}/${pass}/${id}.m3u8?output=m3u8` // 9
+                        `${baseUrl}/${user}/${pass}/${id}.m3u8?output=m3u8`, // 9
+                        `${baseUrl}/live/${user}/${pass}/${id}.ts?output=mpegts` // 10
                     ];
 
                     if (streamFormatFallback > 0 && streamFormatFallback <= variations.length) {
@@ -144,7 +145,8 @@ export default function VideoPlayer() {
 
             const token = localStorage.getItem('token');
             const proxyUrl = `${apiBase}/proxy/stream?url=${encodeURIComponent(url)}`;
-            return token ? `${proxyUrl}&token=${token}&_v=${streamFormatFallback}` : `${proxyUrl}&_v=${streamFormatFallback}`;
+            const cacheBuster = `&_t=${Date.now()}&_v=${streamFormatFallback}`;
+            return token ? `${proxyUrl}&token=${token}${cacheBuster}` : `${proxyUrl}${cacheBuster}`;
         }
         return url;
     }, [currentStream, useProxy, getActivePlaylist, streamFormatFallback]);
@@ -221,7 +223,8 @@ export default function VideoPlayer() {
             });
             hls.on(Hls.Events.ERROR, (e, data) => {
                 if (data.fatal) {
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                    // Se for erro de rede ou 404, pula imediatamente
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR || data.response?.code === 404) {
                         if (!useProxy) {
                             setUseProxy(true);
                         } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 10) {
@@ -260,10 +263,17 @@ export default function VideoPlayer() {
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
-                    if (!useProxy) {
+                    // Se for 404 ou erro de rede, pula imediatamente
+                    if (info?.code === 404 || detail === mpegjs.ErrorDetails.NETWORK_EXCEPTION) {
+                        if (!useProxy) {
+                            setUseProxy(true);
+                        } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 10) {
+                            setStreamFormatFallback(prev => prev + 1);
+                        } else {
+                            setError("Erro na stream MPEG-TS.");
+                        }
+                    } else if (!useProxy) {
                         setUseProxy(true);
-                    } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 10) {
-                        setStreamFormatFallback(prev => prev + 1);
                     } else {
                         setError("Erro na stream MPEG-TS.");
                     }
