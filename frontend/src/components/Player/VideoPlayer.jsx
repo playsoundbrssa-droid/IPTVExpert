@@ -220,15 +220,17 @@ export default function VideoPlayer() {
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({
                 enableWorker: true,
-                liveSyncDurationCount: 2,
-                maxMaxBufferLength: 40,
-                manifestLoadingMaxRetry: 5,
-                fragLoadingMaxRetry: 5,
+                liveSyncDurationCount: 4, // Mais estabilidade
+                maxMaxBufferLength: 60,   // 60s de buffer
+                manifestLoadingMaxRetry: 10,
+                fragLoadingMaxRetry: 10,
+                lowLatencyMode: false,
                 xhrSetup: (xhr) => { xhr.withCredentials = false; }
             });
             hls.loadSource(streamUrl);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
+            isInitializingRef.current = false;
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 // Sincronizado via useEffect
             });
@@ -259,12 +261,12 @@ export default function VideoPlayer() {
                     enableWorker: true,
                     enableStallDetached: true,
                     fixAudioTimestampGap: true,
-                    stashInitialSize: 128,
+                    stashInitialSize: 1024, // 1MB de buffer inicial para máxima estabilidade
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
                     liveBufferLatencyChasing: true,
-                    liveBufferLatencyMaxLatency: 5, // Mais agressivo para corrigir falhas de sincronia
-                    liveBufferLatencyMinRemain: 1,
+                    liveBufferLatencyMaxLatency: 15, // Mais folga para evitar pausas constantes
+                    liveBufferLatencyMinRemain: 2,
                     deferLoadAfterSourceOpen: false
                 });
                 mpeg.attachMediaElement(videoRef.current);
