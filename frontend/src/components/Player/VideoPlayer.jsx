@@ -163,11 +163,11 @@ export default function VideoPlayer() {
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({ 
                 enableWorker: true,
-                liveSyncDurationCount: 3, // Melhor sincronização para ao vivo
-                maxBufferLength: 30, // Mantém 30s de buffer para evitar travamentos
-                maxMaxBufferLength: 60,
-                manifestLoadingMaxRetry: 10,
-                fragLoadingMaxRetry: 10,
+                liveSyncDurationCount: 2, // Inicia mais rápido
+                maxBufferLength: 20, 
+                maxMaxBufferLength: 40,
+                manifestLoadingMaxRetry: 5,
+                fragLoadingMaxRetry: 5,
                 xhrSetup: (xhr) => { xhr.withCredentials = false; }
             });
             hls.loadSource(streamUrl);
@@ -207,15 +207,20 @@ export default function VideoPlayer() {
                     enableWorker: true,
                     enableStallDetached: true,
                     fixAudioTimestampGap: true,
-                    stashInitialSize: 512,
+                    stashInitialSize: 32, // Buffer mínimo para início imediato
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
-                    liveBufferLatencyChasing: false
+                    liveBufferLatencyChasing: true,
+                    deferLoadAfterSourceOpen: false
                 });
                 mpeg.attachMediaElement(videoRef.current);
                 mpeg.load();
                 mpeg.play().catch((e) => {
-                    console.log('Autoplay with sound blocked:', e.message);
+                    console.log('Autoplay blocked, trying muted...');
+                    if (videoRef.current) {
+                        videoRef.current.muted = true;
+                        videoRef.current.play().catch(err => console.error('Muted autoplay also failed', err));
+                    }
                     setIsPlaying(false);
                 });
                 mpegPlayerRef.current = mpeg;
