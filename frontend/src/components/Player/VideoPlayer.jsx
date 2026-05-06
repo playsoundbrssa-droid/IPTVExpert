@@ -277,18 +277,22 @@ export default function VideoPlayer() {
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
                     // Se for 404 ou erro de rede, pula imediatamente
-                    if (info?.code === 404 || detail === mpegjs.ErrorDetails.NETWORK_EXCEPTION) {
+                    if (info?.code === 404 || detail === mpegjs.ErrorDetails.NETWORK_EXCEPTION || detail === mpegjs.ErrorDetails.NETWORK_TIMEOUT) {
                         if (!useProxy) {
                             setUseProxy(true);
                         } else if (activePlaylist?.type === 'xtream' && streamFormatFallback < 10) {
                             setStreamFormatFallback(prev => prev + 1);
                         } else {
-                            setError("Erro na stream MPEG-TS.");
+                            setError("O sinal deste canal está instável no momento.");
+                            // Tentar re-inicializar em 5 segundos se falhar tudo
+                            setTimeout(() => { if (!videoRef.current?.paused) initPlayer(); }, 5000);
                         }
                     } else if (!useProxy) {
                         setUseProxy(true);
                     } else {
-                        setError("Erro na stream MPEG-TS.");
+                        // Erro genérico, tenta recarregar o sinal
+                        console.warn('[Player] Erro genérico, tentando reconectar...');
+                        setTimeout(initPlayer, 2000);
                     }
                 });
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
@@ -493,6 +497,14 @@ export default function VideoPlayer() {
         const video = videoRef.current;
         if (!video || isInitializingRef.current) return;
 
+        // Watchdog para detectar se o vídeo travou enquanto deveria estar tocando
+        const watchdog = setInterval(() => {
+            if (isPlaying && video.paused && !isBuffering && !isInitializingRef.current && !playPromiseRef.current) {
+                console.log('[Watchdog] Detectado vídeo parado indevidamente, tentando retomar...');
+                playVideo();
+            }
+        }, 3000);
+
         const timer = setTimeout(() => {
             const syncPlayback = async () => {
                 if (isPlaying) {
@@ -508,8 +520,11 @@ export default function VideoPlayer() {
             syncPlayback();
         }, 200);
 
-        return () => clearTimeout(timer);
-    }, [isPlaying, playVideo]);
+        return () => {
+            clearTimeout(timer);
+            clearInterval(watchdog);
+        };
+    }, [isPlaying, playVideo, isBuffering]);
 
     useEffect(() => {
         initPlayer();
