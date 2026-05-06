@@ -243,8 +243,11 @@ export default function VideoPlayer() {
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
             isInitializingRef.current = false;
+            
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                // Sincronizado via useEffect
+                if (isVOD && savedTime > 0) {
+                    videoRef.current.currentTime = savedTime;
+                }
             });
             hls.on(Hls.Events.ERROR, (e, data) => {
                 if (data.fatal) {
@@ -285,6 +288,10 @@ export default function VideoPlayer() {
                 mpeg.load();
                 mpegPlayerRef.current = mpeg;
                 isInitializingRef.current = false;
+
+                if (isVOD && savedTime > 0) {
+                    videoRef.current.currentTime = savedTime;
+                }
 
                 mpeg.on(mpegjs.Events.ERROR, (type, detail, info) => {
                     console.error('[MPEG-TS ERROR]', type, detail, info);
@@ -439,10 +446,10 @@ export default function VideoPlayer() {
             }
         };
 
-        if (currentStream.type === 'movie' || currentStream.type === 'series') {
+        if (isVOD) {
             checkResume();
         }
-    }, [currentStream, progressKey, getActivePlaylist]);
+    }, [currentStream, progressKey, getActivePlaylist, isVOD]);
 
     const handleResume = (shouldResume) => {
         const savedPos = resumeData;
