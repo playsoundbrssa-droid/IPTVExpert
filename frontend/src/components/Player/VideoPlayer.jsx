@@ -36,7 +36,9 @@ export default function VideoPlayer() {
 
     const isVOD = useMemo(() => {
         if (!currentStream) return false;
-        return currentStream.type === 'movie' || currentStream.type === 'series' || currentStream.type === 'vod';
+        const type = currentStream.type?.toLowerCase();
+        const streamType = currentStream.stream_type?.toLowerCase();
+        return type === 'movie' || type === 'series' || type === 'vod' || type === 'episode' || streamType === 'movie' || streamType === 'series';
     }, [currentStream]);
 
     const [showControls, setShowControls] = useState(true);
@@ -467,7 +469,7 @@ export default function VideoPlayer() {
     };
 
     const saveProgress = useCallback(async () => {
-        if (!videoRef.current || !currentStream || (currentStream.type !== 'movie' && currentStream.type !== 'series')) return;
+        if (!videoRef.current || !currentStream || !isVOD) return;
         const pos = videoRef.current.currentTime;
         if (!pos || pos < 5) return;
         if (progressKey) localStorage.setItem(progressKey, String(pos));
