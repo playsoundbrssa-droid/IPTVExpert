@@ -34,6 +34,11 @@ export default function VideoPlayer() {
     const navigate = useNavigate();
     const resumedRef = useRef(null);
 
+    const isVOD = useMemo(() => {
+        if (!currentStream) return false;
+        return currentStream.type === 'movie' || currentStream.type === 'series' || currentStream.type === 'vod';
+    }, [currentStream]);
+
     const [showControls, setShowControls] = useState(true);
     const [isBuffering, setIsBuffering] = useState(true);
     const [error, setError] = useState(null);
@@ -203,7 +208,6 @@ export default function VideoPlayer() {
         }
 
         // Salvar tempo atual se for VOD para retomar após erro
-        const isVOD = currentStream.type === 'movie' || currentStream.type === 'series' || currentStream.type === 'vod';
         const savedTime = videoRef.current?.currentTime || 0;
 
         cleanUp();
