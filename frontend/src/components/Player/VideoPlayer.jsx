@@ -202,6 +202,10 @@ export default function VideoPlayer() {
             isTs = true;
         }
 
+        // Salvar tempo atual se for VOD para retomar após erro
+        const isVOD = currentStream.type === 'movie' || currentStream.type === 'series' || currentStream.type === 'vod';
+        const savedTime = videoRef.current?.currentTime || 0;
+
         cleanUp();
         setError(null);
         setIsBuffering(true);
@@ -212,6 +216,14 @@ export default function VideoPlayer() {
             videoRef.current.muted = false;
             videoRef.current.volume = 1;
             setIsMuted(false);
+            // Se for VOD e tivermos um tempo salvo, vamos tentar aplicar após o load
+            if (isVOD && savedTime > 0) {
+                const onLoaded = () => {
+                    videoRef.current.currentTime = savedTime;
+                    videoRef.current.removeEventListener('loadedmetadata', onLoaded);
+                };
+                videoRef.current.addEventListener('loadedmetadata', onLoaded);
+            }
         }
 
         if (isHls && (isApple || videoRef.current.canPlayType('application/vnd.apple.mpegurl'))) {
@@ -707,7 +719,11 @@ export default function VideoPlayer() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="px-2 py-0.5 bg-primary text-black text-[8px] md:text-[10px] font-black rounded-full uppercase tracking-widest">Ao Vivo</span>
+                                    <span className={`px-2 py-0.5 font-black text-[8px] md:text-[10px] rounded-full uppercase tracking-widest ${
+                                        currentStream.type === 'channel' ? 'bg-primary text-black' : 'bg-white/20 text-white'
+                                    }`}>
+                                        {currentStream.type === 'channel' ? 'Ao Vivo' : currentStream.type === 'series' ? 'Série' : 'Filme'}
+                                    </span>
                                     {currentStream.category && <span className="text-[8px] md:text-[10px] text-white/40 font-black uppercase tracking-widest"> • {currentStream.category}</span>}
                                 </div>
                                 <h2 className="text-lg md:text-2xl font-black text-white uppercase tracking-tight truncate max-w-[200px] md:max-w-md">{currentStream.name}</h2>
@@ -736,7 +752,7 @@ export default function VideoPlayer() {
                     </div>
 
                     <div className="absolute bottom-0 left-0 right-0 p-4 md:p-10 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
-                        {(currentStream.type === 'movie' || currentStream.type === 'series') && (
+                        {(currentStream.type !== 'channel') && (
                             <div className="mb-6 md:mb-8 group/progress">
                                 <div className="flex justify-between text-[10px] md:text-xs font-black text-white/40 mb-3 uppercase tracking-widest">
                                     <span>{formatTime(currentTime)}</span>
