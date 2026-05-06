@@ -179,10 +179,11 @@ router.get('/stream', async (req, res) => {
         }
 
         const commonHeaders = {
-            'User-Agent': 'Mozilla/5.0 (SmartHub; SMART-TV; Linux/SmartTV) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.0 TV Safari/538.1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': '*/*',
             'Accept-Encoding': 'identity',
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
+            'X-Forwarded-For': '1.1.1.1' // Algumas CDNs exigem IP fake para bypass de geoblock
         };
 
         if (isM3u8) {
@@ -238,14 +239,16 @@ router.get('/stream', async (req, res) => {
                 responseType: 'stream',
                 ...proxyAgents,
                 headers: proxyHeaders,
-                timeout: 20000,
-                maxRedirects: 5,
+                timeout: 30000, // Aumentado para 30s para VODs pesados
+                maxRedirects: 10, // Mais saltos de redirecionamento
                 validateStatus: (status) => true
             });
 
             if (response.status >= 400) {
                 console.error(`[PROXY STREAM ERROR] Remoto retornou ${response.status} para ${finalTarget}`);
-                console.error(`[PROXY STREAM ERROR] Headers Remotos:`, JSON.stringify(response.headers));
+                if (response.status === 404) {
+                    console.warn(`[PROXY 404] O conteúdo pode ter sido removido do servidor IPTV ou o link expirou.`);
+                }
                 return res.status(response.status).send(`Remote error: ${response.status}`);
             }
 
