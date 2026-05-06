@@ -429,15 +429,23 @@ export default function VideoPlayer() {
     useEffect(() => {
         if (!currentStream || resumedRef.current === currentStream.id) return;
 
-        const checkResume = async () => {
-            let savedPosition = 0;
-            try {
-                const active = getActivePlaylist();
-                if (active) {
-                    const response = await api.get(`/progress/${currentStream.id}/${active.id}`);
-                    if (response.data?.progress) savedPosition = response.data.progress.last_position;
+            const checkResume = async () => {
+                let savedPosition = 0;
+                try {
+                    const active = getActivePlaylist();
+                    if (active) {
+                        // Usar params na query para o GET
+                        const response = await api.get('/progress', {
+                            params: {
+                                mediaId: currentStream.id,
+                                playlistId: active.id
+                            }
+                        });
+                        if (response.data?.progress) savedPosition = response.data.progress.last_position;
+                    }
+                } catch (e) { 
+                    console.error('[Player] Erro ao buscar progresso no servidor:', e);
                 }
-            } catch (e) { }
             if (!savedPosition) {
                 const local = parseFloat(localStorage.getItem(progressKey));
                 if (local && local > 0) savedPosition = local;
@@ -451,7 +459,8 @@ export default function VideoPlayer() {
             }
         };
 
-        if (isVOD) {
+        if (isVOD && currentStream?.id) {
+            console.log('[Player] Verificando resumo para:', currentStream.name, 'ID:', currentStream.id);
             checkResume();
         } else {
             setResumeData(null);
