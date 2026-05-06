@@ -37,8 +37,7 @@ export default function VideoPlayer() {
     const isVOD = useMemo(() => {
         if (!currentStream) return false;
         const type = currentStream.type?.toLowerCase();
-        const streamType = currentStream.stream_type?.toLowerCase();
-        return type === 'movie' || type === 'series' || type === 'vod' || type === 'episode' || streamType === 'movie' || streamType === 'series';
+        return type === 'movie' || type === 'series' || type === 'vod' || type === 'episode' || type === 'movie_vod';
     }, [currentStream]);
 
     const [showControls, setShowControls] = useState(true);
@@ -454,8 +453,10 @@ export default function VideoPlayer() {
 
         if (isVOD) {
             checkResume();
+        } else {
+            setResumeData(null);
         }
-    }, [currentStream, progressKey, getActivePlaylist, isVOD]);
+    }, [currentStream?.id, progressKey, getActivePlaylist, isVOD]);
 
     const handleResume = (shouldResume) => {
         const savedPos = resumeData;
@@ -469,7 +470,7 @@ export default function VideoPlayer() {
     };
 
     const saveProgress = useCallback(async () => {
-        if (!videoRef.current || !currentStream || !isVOD) return;
+        if (!videoRef.current || !currentStream || (currentStream.type !== 'movie' && currentStream.type !== 'series')) return;
         const pos = videoRef.current.currentTime;
         if (!pos || pos < 5) return;
         if (progressKey) localStorage.setItem(progressKey, String(pos));
