@@ -24,11 +24,25 @@ export default function LiveTvPage() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Fetch EPG bulk data
+    // Fetch EPG bulk data — tries cache first, then Xtream direct
     useEffect(() => {
         const active = getActivePlaylist();
-        if (active?.epgCacheKey) {
+        if (!active) return;
+
+        if (active.epgCacheKey) {
+            // Já temos cache, usar diretamente
             fetchNowPlaying(active.epgCacheKey);
+        } else if (active.type === 'xtream' && active.config?.server) {
+            // Sem cache — buscar EPG direto do Xtream em background
+            const { fetchXtreamNowPlaying } = useEpgStore.getState();
+            fetchXtreamNowPlaying(active.config.server, active.config.username, active.config.password)
+                .then(cacheKey => {
+                    if (cacheKey) {
+                        // Salvar o cacheKey para não precisar buscar de novo
+                        const { updatePlaylistStats } = usePlaylistManagerStore.getState();
+                        updatePlaylistStats(active.id, { epgCacheKey: cacheKey });
+                    }
+                });
         }
     }, [getActivePlaylist, fetchNowPlaying]);
 
