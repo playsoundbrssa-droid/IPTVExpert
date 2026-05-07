@@ -43,7 +43,7 @@ const pairController = {
                 // Gerar tokens de acesso para o novo dispositivo
                 const token = jwt.sign(
                     { userId: data.userId, role: 'user' },
-                    process.env.JWT_SECRET || 'secret',
+                    process.env.JWT_SECRET || 'secret_fallback_iptvexpert',
                     { expiresIn: '7d' }
                 );
 
