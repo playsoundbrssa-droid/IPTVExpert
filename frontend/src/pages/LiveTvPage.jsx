@@ -24,27 +24,27 @@ export default function LiveTvPage() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Fetch EPG bulk data — tries cache first, then Xtream direct
+    // Fetch EPG data for channels
     useEffect(() => {
         const active = getActivePlaylist();
         if (!active) return;
 
         if (active.epgCacheKey) {
-            // Já temos cache, usar diretamente
             fetchNowPlaying(active.epgCacheKey);
         } else if (active.type === 'xtream' && active.config?.server) {
-            // Sem cache — buscar EPG direto do Xtream em background
-            const { fetchXtreamNowPlaying } = useEpgStore.getState();
-            fetchXtreamNowPlaying(active.config.server, active.config.username, active.config.password)
-                .then(cacheKey => {
-                    if (cacheKey) {
-                        // Salvar o cacheKey para não precisar buscar de novo
-                        const { updatePlaylistStats } = usePlaylistManagerStore.getState();
-                        updatePlaylistStats(active.id, { epgCacheKey: cacheKey });
-                    }
-                });
+            // Extrair stream IDs dos canais visíveis para buscar EPG
+            const streamIds = channelsList.slice(0, 30).map(c => {
+                if (c.tvgId) return c.tvgId;
+                const parts = c.id?.split('_');
+                return parts && parts.length >= 3 ? parts[parts.length - 1] : null;
+            }).filter(Boolean);
+            
+            if (streamIds.length > 0) {
+                const { fetchXtreamNowPlaying } = useEpgStore.getState();
+                fetchXtreamNowPlaying(active.config.server, active.config.username, active.config.password, streamIds);
+            }
         }
-    }, [getActivePlaylist, fetchNowPlaying]);
+    }, [getActivePlaylist, fetchNowPlaying, channelsList]);
 
     const filteredChannels = useMemo(() => {
         let list = (selectedLiveGroup ? channelsGroups[selectedLiveGroup] : channelsList) || [];
