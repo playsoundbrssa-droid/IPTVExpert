@@ -82,6 +82,8 @@ export default function MediaDetailModal() {
                                     const base = server.replace(/\/$/, '');
                                     normalized.push({
                                         id: `xtream_ep_${ep.id}`,
+                                        stream_id: ep.id,
+                                        type: 'episode',
                                         name: ep.title || ep.name || `Episódio ${ep.episode_num}`,
                                         logo: ep.info?.movie_image || selectedMediaDetails.logo,
                                         streamUrl: `${base}/series/${username}/${password}/${ep.id}.${ep.container_extension || 'mp4'}`,
@@ -97,6 +99,8 @@ export default function MediaDetailModal() {
                             const base = server.replace(/\/$/, '');
                             normalized.push({
                                 id: `xtream_ep_${ep.id}`,
+                                stream_id: ep.id,
+                                type: 'episode',
                                 name: ep.title || ep.name || `Episódio ${ep.episode_num}`,
                                 logo: ep.info?.movie_image || selectedMediaDetails.logo,
                                 streamUrl: `${base}/series/${username}/${password}/${ep.id}.${ep.container_extension || 'mp4'}`,
