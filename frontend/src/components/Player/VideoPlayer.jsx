@@ -37,7 +37,8 @@ export default function VideoPlayer() {
     const isVOD = useMemo(() => {
         if (!currentStream) return false;
         const type = currentStream.type?.toLowerCase();
-        return type === 'movie' || type === 'series' || type === 'vod' || type === 'episode' || type === 'movie_vod';
+        // Incluir todas as variações de séries e episódios
+        return type === 'movie' || type === 'series' || type === 'vod' || type === 'episode' || type === 'movie_vod' || type === 'series_vod';
     }, [currentStream]);
 
     const [showControls, setShowControls] = useState(true);
@@ -460,12 +461,18 @@ export default function VideoPlayer() {
         };
 
         if (isVOD && currentStream?.id) {
-            console.log('[Player] Verificando resumo para:', currentStream.name, 'ID:', currentStream.id);
             checkResume();
         } else {
             setResumeData(null);
         }
     }, [currentStream?.id, progressKey, getActivePlaylist, isVOD]);
+
+    // Resetar o estado de 'já resumido' quando o stream muda de verdade
+    useEffect(() => {
+        if (currentStream?.id) {
+            resumedRef.current = null;
+        }
+    }, [currentStream?.id]);
 
     const handleResume = (shouldResume) => {
         const savedPos = resumeData;
