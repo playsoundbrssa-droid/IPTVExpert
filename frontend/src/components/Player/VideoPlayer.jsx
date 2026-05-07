@@ -692,20 +692,6 @@ export default function VideoPlayer() {
                 muted={isMuted}
             />
 
-            {isPlaying && videoRef.current?.paused && !isBuffering && !isInitializingRef.current && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-[65] backdrop-blur-sm">
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); playVideo(); }}
-                        className="group relative flex flex-col items-center gap-6"
-                    >
-                        <div className="w-24 h-24 bg-primary text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(var(--primary-rgb),0.5)] group-hover:scale-110 transition-transform duration-500">
-                            <FiPlay size={40} className="ml-2" />
-                        </div>
-                        <span className="text-white font-black text-sm uppercase tracking-[0.3em] animate-pulse">Toque para Assistir</span>
-                    </button>
-                </div>
-            )}
-
             {isMuted && isPlaying && !isPiP && videoRef.current && !videoRef.current.paused && (
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] animate-bounce">
                     <button
