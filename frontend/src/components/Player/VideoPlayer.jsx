@@ -486,7 +486,7 @@ export default function VideoPlayer() {
     };
 
     const saveProgress = useCallback(async () => {
-        if (!videoRef.current || !currentStream || (currentStream.type !== 'movie' && currentStream.type !== 'series')) return;
+        if (!videoRef.current || !currentStream || !isVOD) return;
         const pos = videoRef.current.currentTime;
         if (!pos || pos < 5) return;
         if (progressKey) localStorage.setItem(progressKey, String(pos));
@@ -501,13 +501,13 @@ export default function VideoPlayer() {
                 });
             }
         } catch (error) { }
-    }, [currentStream, progressKey, getActivePlaylist]);
+    }, [currentStream, progressKey, getActivePlaylist, isVOD]);
 
     useEffect(() => {
-        if (currentStream?.type !== 'movie' && currentStream?.type !== 'series') return;
-        const interval = setInterval(saveProgress, 15000);
+        if (!isVOD) return;
+        const interval = setInterval(saveProgress, 10000);
         return () => { clearInterval(interval); saveProgress(); };
-    }, [currentStream, saveProgress]);
+    }, [isVOD, saveProgress]);
 
     const seek = (seconds) => {
         if (videoRef.current) videoRef.current.currentTime += seconds;
@@ -660,8 +660,27 @@ export default function VideoPlayer() {
                 onPlaying={() => { setIsBuffering(false); setError(null); }}
                 onCanPlay={() => { setIsBuffering(false); }}
                 onTimeUpdate={handleTimeUpdate}
-                onDurationChange={(e) => setDuration(e.target.duration)}
-                onEnded={playNext}
+                onLoadedMetadata={(e) => {
+                    setDuration(e.target.duration);
+                    setIsBuffering(false);
+                }}
+                onPause={() => {
+                    setIsPlaying(false);
+                    if (isVOD) saveProgress();
+                }}
+                onEnded={() => {
+                    setIsPlaying(false);
+                    if (isVOD) {
+                        // Limpar progresso ao terminar
+                        api.post('/progress', {
+                            mediaId: currentStream.id,
+                            playlistId: getActivePlaylist()?.id,
+                            currentTime: 0,
+                            duration: duration
+                        }).catch(() => {});
+                    }
+                    playNext();
+                }}
                 onError={() => {
                     if (!useProxy) setUseProxy(true);
                     else if (streamFormatFallback < 10) setStreamFormatFallback(prev => prev + 1);
