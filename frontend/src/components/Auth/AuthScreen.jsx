@@ -9,7 +9,7 @@ import api from '../../services/api';
 export default function AuthScreen({ isModal = false }) {
     const [mode, setMode] = useState('login'); // 'login', 'register', or 'qrcode'
     const [form, setForm] = useState({ name: '', email: '', password: '' });
-    const { login, register, googleLogin, loading, setToken } = useUserStore();
+    const { login, register, googleLogin, loading, loginViaToken } = useUserStore();
     
     const [qrCode, setQrCode] = useState(null);
     const [qrLoading, setQrLoading] = useState(false);
@@ -35,7 +35,7 @@ export default function AuthScreen({ isModal = false }) {
                 const response = await api.get(`/pair/check/${code}`);
                 if (response.data.status === 'authorized' && response.data.token) {
                     clearInterval(pollInterval.current);
-                    setToken(response.data.token);
+                    await loginViaToken(response.data.token);
                     toast.success('Login via QR Code realizado!');
                 }
             } catch (error) {

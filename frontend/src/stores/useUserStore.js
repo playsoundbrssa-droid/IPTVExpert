@@ -147,6 +147,24 @@ export const useUserStore = create((set, get) => ({
         usePlaylistStore.getState().clearPlaylist();
     },
 
+    // Login via QR Code Token
+    loginViaToken: async (token) => {
+        set({ loading: true });
+        try {
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            const { data } = await api.get('/auth/me');
+            localStorage.setItem('token', token);
+            set({ user: data.user, token, isAuthenticated: true, loading: false });
+            usePlaylistManagerStore.getState().syncWithCloud();
+            return { success: true };
+        } catch (error) {
+            set({ loading: false });
+            localStorage.removeItem('token');
+            delete api.defaults.headers.common['Authorization'];
+            return { success: false, message: 'Token de pareamento inválido ou expirado.' };
+        }
+    },
+
     // Check if user is admin
     isAdmin: () => get().user?.role === 'admin'
 }));
