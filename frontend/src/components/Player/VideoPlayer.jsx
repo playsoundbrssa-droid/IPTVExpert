@@ -610,8 +610,21 @@ export default function VideoPlayer() {
     const [showSchedule, setShowSchedule] = useState(false);
     const [fullEpg, setFullEpg] = useState([]);
 
+    // Memória rápida para evitar recarregar o mesmo canal
+    const epgCache = useRef({});
+
     const loadFullEpg = useCallback(async () => {
-        if (!currentStream) return;
+        if (!currentStream || (currentStream.type !== 'channel' && currentStream.type !== 'live')) return;
+        
+        const channelId = currentStream.id;
+        const now = Date.now();
+
+        // Se já temos no cache e foi buscado há menos de 5 minutos, não busca de novo
+        if (epgCache.current[channelId] && (now - epgCache.current[channelId].timestamp < 300000)) {
+            setFullEpg(epgCache.current[channelId].data);
+            return;
+        }
+
         try {
             const active = getActivePlaylist();
             if (!active) return;
@@ -619,8 +632,8 @@ export default function VideoPlayer() {
             let data = [];
             
             // Lógica para Xtream
-            if (active.type === 'xtream' && (currentStream.type === 'channel' || currentStream.type === 'live')) {
-                const streamId = currentStream.id.split('_').pop(); // xtream_live_123 -> 123
+            if (active.type === 'xtream') {
+                const streamId = channelId.split('_').pop();
                 const { server, username, password } = active.config;
                 
                 const response = await api.get('/xtream/short-epg', {
@@ -629,7 +642,6 @@ export default function VideoPlayer() {
                 
                 if (response.data && response.data.epg_listings) {
                     data = response.data.epg_listings.map(item => {
-                        // Função interna para decodificar base64 com suporte a UTF-8
                         const decode = (str) => {
                             try { return decodeURIComponent(escape(atob(str))); } catch (e) { return str; }
                         };
@@ -650,16 +662,21 @@ export default function VideoPlayer() {
                 data = response.data || [];
             }
             
+            // Salva no cache antes de atualizar o estado
+            epgCache.current[channelId] = { data, timestamp: now };
             setFullEpg(data);
         } catch (e) { 
-            console.error('[EPG] Falha ao carregar programação:', e);
             setFullEpg([]);
         }
     }, [currentStream, getActivePlaylist]);
 
+    // Carregamento antecipado (Background Loading)
     useEffect(() => {
-        if (showSchedule) loadFullEpg();
-    }, [showSchedule, loadFullEpg]);
+        if (currentStream?.id) {
+            setFullEpg([]); // Limpa a anterior para não mostrar dado errado
+            loadFullEpg(); // Começa a carregar assim que o canal muda
+        }
+    }, [currentStream?.id, loadFullEpg]);
 
     if (!currentStream) return null;
 
