@@ -1,13 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUserStore } from '../../stores/useUserStore';
 import toast from 'react-hot-toast';
-import { FiTv, FiMail, FiLock, FiUser } from 'react-icons/fi';
+import { FiTv, FiMail, FiLock, FiUser, FiMaximize, FiSmartphone, FiRefreshCw } from 'react-icons/fi';
 import { supabase } from '../../services/supabase';
+import { QRCodeSVG } from 'qrcode.react';
+import api from '../../services/api';
 
 export default function AuthScreen({ isModal = false }) {
-    const [mode, setMode] = useState('login'); // 'login' or 'register'
+    const [mode, setMode] = useState('login'); // 'login', 'register', or 'qrcode'
     const [form, setForm] = useState({ name: '', email: '', password: '' });
-    const { login, register, googleLogin, loading } = useUserStore();
+    const { login, register, googleLogin, loading, setToken } = useUserStore();
+    
+    const [qrCode, setQrCode] = useState(null);
+    const [qrLoading, setQrLoading] = useState(false);
+    const pollInterval = useRef(null);
+
+    const generateQrCode = async () => {
+        setQrLoading(true);
+        try {
+            const response = await api.get('/pair/generate');
+            setQrCode(response.data.code);
+            startPolling(response.data.code);
+        } catch (error) {
+            toast.error('Erro ao gerar QR Code');
+        } finally {
+            setQrLoading(false);
+        }
+    };
+
+    const startPolling = (code) => {
+        if (pollInterval.current) clearInterval(pollInterval.current);
+        pollInterval.current = setInterval(async () => {
+            try {
+                const response = await api.get(`/pair/check/${code}`);
+                if (response.data.status === 'authorized' && response.data.token) {
+                    clearInterval(pollInterval.current);
+                    setToken(response.data.token);
+                    toast.success('Login via QR Code realizado!');
+                }
+            } catch (error) {
+                if (error.response?.status === 404) {
+                    clearInterval(pollInterval.current);
+                    setQrCode(null);
+                    toast.error('O código expirou. Gere um novo.');
+                }
+            }
+        }, 2000);
+    };
+
+    useEffect(() => {
+        if (mode === 'qrcode') {
+            generateQrCode();
+        } else {
+            if (pollInterval.current) clearInterval(pollInterval.current);
+        }
+        return () => { if (pollInterval.current) clearInterval(pollInterval.current); };
+    }, [mode]);
 
     const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -74,81 +122,124 @@ export default function AuthScreen({ isModal = false }) {
                 </div>
 
                 {/* Mode tabs */}
-                <div className="flex gap-2 p-1 bg-black/30 rounded-xl mb-4 md:mb-6">
+                <div className="flex gap-1 p-1 bg-black/30 rounded-xl mb-4 md:mb-6 overflow-x-auto no-scrollbar">
                     <button
                         onClick={() => setMode('login')}
-                        className={`flex-1 py-1.5 md:py-2 text-xs md:text-sm font-semibold rounded-lg transition-all ${mode === 'login' ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:text-white'
+                        className={`flex-1 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase tracking-widest rounded-lg transition-all min-w-[70px] ${mode === 'login' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-white'
                             }`}
                     >
                         Entrar
                     </button>
                     <button
                         onClick={() => setMode('register')}
-                        className={`flex-1 py-1.5 md:py-2 text-xs md:text-sm font-semibold rounded-lg transition-all ${mode === 'register' ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:text-white'
+                        className={`flex-1 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase tracking-widest rounded-lg transition-all min-w-[70px] ${mode === 'register' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-white'
                             }`}
                     >
-                        Criar Conta
+                        Criar
+                    </button>
+                    <button
+                        onClick={() => setMode('qrcode')}
+                        className={`flex-1 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase tracking-widest rounded-lg transition-all min-w-[80px] ${mode === 'qrcode' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-white'
+                            }`}
+                    >
+                        QR Code
                     </button>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
-                    {mode === 'register' && (
+                {mode === 'qrcode' ? (
+                    <div className="flex flex-col items-center justify-center py-4 space-y-6">
+                        {qrLoading ? (
+                            <div className="w-48 h-48 bg-white/5 rounded-3xl flex flex-col items-center justify-center border border-white/10">
+                                <FiRefreshCw className="w-10 h-10 text-primary animate-spin mb-3" />
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Gerando...</span>
+                            </div>
+                        ) : qrCode ? (
+                            <div className="space-y-6 flex flex-col items-center w-full">
+                                <div className="p-4 bg-white rounded-[2rem] shadow-2xl shadow-primary/10 relative group">
+                                    <QRCodeSVG 
+                                        value={`${window.location.origin}/auth/link?code=${qrCode}`}
+                                        size={180}
+                                        level="H"
+                                        includeMargin={true}
+                                    />
+                                    <div className="absolute inset-0 border-4 border-primary/20 rounded-[2rem] pointer-events-none group-hover:border-primary/40 transition-colors"></div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-white tracking-[0.3em] mb-2">{qrCode}</div>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed max-w-[200px] mx-auto">
+                                        Escaneie o código ou use o link de autorização no seu celular
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={generateQrCode}
+                                    className="flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-widest hover:scale-105 transition-all"
+                                >
+                                    <FiRefreshCw /> Atualizar Código
+                                </button>
+                            </div>
+                        ) : (
+                            <button onClick={generateQrCode} className="btn-primary w-full py-4 rounded-2xl font-black uppercase tracking-widest">Gerar Novo Código</button>
+                        )}
+                    </div>
+                ) : (
+                    <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+                        {mode === 'register' && (
+                            <div className="relative">
+                                <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={form.name}
+                                    onChange={handleChange}
+                                    placeholder="Seu nome"
+                                    className="glass-input pl-10 w-full py-2.5 md:py-3"
+                                />
+                            </div>
+                        )}
                         <div className="relative">
-                            <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                            <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                             <input
-                                type="text"
-                                name="name"
-                                value={form.name}
+                                id="auth-email"
+                                type="email"
+                                name="email"
+                                value={form.email}
                                 onChange={handleChange}
-                                placeholder="Seu nome"
+                                placeholder="Email"
                                 className="glass-input pl-10 w-full py-2.5 md:py-3"
+                                required
                             />
                         </div>
-                    )}
-                    <div className="relative">
-                        <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                        <input
-                            id="auth-email"
-                            type="email"
-                            name="email"
-                            value={form.email}
-                            onChange={handleChange}
-                            placeholder="Email"
-                            className="glass-input pl-10 w-full py-2.5 md:py-3"
-                            required
-                        />
-                    </div>
-                    <div className="relative">
-                        <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                        <input
-                            id="auth-password"
-                            type="password"
-                            name="password"
-                            value={form.password}
-                            onChange={handleChange}
-                            placeholder="Senha"
-                            className="glass-input pl-10 w-full py-2.5 md:py-3"
-                            required
-                            minLength={6}
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="btn-primary w-full py-3 md:py-3.5 text-sm md:text-base font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-                    >
-                        {loading ? (
-                            <>
-                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Processando...
-                            </>
-                        ) : mode === 'login' ? 'Entrar' : 'Criar Conta'}
-                    </button>
-                </form>
+                        <div className="relative">
+                            <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                            <input
+                                id="auth-password"
+                                type="password"
+                                name="password"
+                                value={form.password}
+                                onChange={handleChange}
+                                placeholder="Senha"
+                                className="glass-input pl-10 w-full py-2.5 md:py-3"
+                                required
+                                minLength={6}
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn-primary w-full py-3 md:py-3.5 text-sm md:text-base font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                        >
+                            {loading ? (
+                                <>
+                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Processando...
+                                </>
+                            ) : mode === 'login' ? 'Entrar' : 'Criar Conta'}
+                        </button>
+                    </form>
+                )}
 
                 {/* Divider */}
                 <div className="flex items-center gap-4 my-4 md:my-6">

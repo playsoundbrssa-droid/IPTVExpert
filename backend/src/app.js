@@ -37,6 +37,7 @@ const proxyRoutes = require('./routes/proxy');
 const statsRoutes = require('./routes/stats');
 const xtreamRoutes = require('./routes/xtream');
 const mediaRoutes = require('./routes/media');
+const pairRoutes = require('./routes/pair');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -99,6 +100,7 @@ app.use('/api/xtream', xtreamRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/epg', require('./routes/epg'));
 app.use('/api/progress', require('./routes/progress'));
+app.use('/api/pair', pairRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', port: PORT }));

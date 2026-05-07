@@ -12,6 +12,7 @@ import DashboardPage from './pages/DashboardPage';
 import AuthScreen from './components/Auth/AuthScreen';
 import { useUserStore } from './stores/useUserStore';
 import { usePlaylistStore } from './stores/usePlaylistStore';
+import LinkDevicePage from './pages/LinkDevicePage';
 import { useEffect, useState } from 'react';
 import VideoPlayer from './components/Player/VideoPlayer';
 import { usePlayerStore } from './stores/usePlayerStore';
@@ -83,6 +84,7 @@ function App() {
                         {user?.role === 'admin' && (
                             <Route path="/admin" element={<AdminPage />} />
                         )}
+                        <Route path="/auth/link" element={<LinkDevicePage />} />
                     </Routes>
                 </main>
                 

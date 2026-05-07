@@ -11,16 +11,17 @@
   "dependencies": {
     "@ducanh2912/react-hls-player": "^3.3.5",
     "@headlessui/react": "^1.1.17",
+    "@supabase/supabase-js": "^2.42.5",
     "axios": "^1.15.0",
     "hls.js": "^1.6.16",
     "mpegts.js": "^1.8.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^4.12.0",
     "react-router-dom": "^6.30.3",
     "socket.io-client": "^4.8.3",
-    "@supabase/supabase-js": "^2.42.5",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
