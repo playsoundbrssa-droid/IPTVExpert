@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { FiMonitor, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { FiMonitor, FiCheckCircle, FiAlertCircle, FiLock } from 'react-icons/fi';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useUserStore } from '../stores/useUserStore';
 
 export default function LinkDevicePage() {
+    const { isAuthenticated } = useUserStore();
     const [searchParams] = useSearchParams();
     const code = searchParams.get('code');
     const [loading, setLoading] = useState(false);
@@ -25,6 +27,26 @@ export default function LinkDevicePage() {
             setLoading(false);
         }
     };
+
+    if (!isAuthenticated) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 max-w-sm mx-auto">
+                <div className="w-20 h-20 bg-yellow-500/10 text-yellow-500 rounded-3xl flex items-center justify-center mb-8 border border-yellow-500/20">
+                    <FiLock size={40} />
+                </div>
+                <h1 className="text-2xl font-black text-white uppercase mb-4 tracking-tight">Login Necessário</h1>
+                <p className="text-gray-400 mb-10 leading-relaxed font-medium">
+                    Você precisa estar logado no seu celular para autorizar outros dispositivos.
+                </p>
+                <button 
+                    onClick={() => navigate('/login?returnTo=' + encodeURIComponent(window.location.pathname + window.location.search))}
+                    className="w-full py-5 bg-primary text-black font-black uppercase tracking-widest rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary/20"
+                >
+                    Fazer Login Agora
+                </button>
+            </div>
+        );
+    }
 
     if (!code) {
         return (

@@ -62,6 +62,7 @@ function App() {
             {!isAuthenticated ? (
                 <Routes>
                     <Route path="/login" element={<AuthScreen />} />
+                    <Route path="/auth/link" element={<LinkDevicePage />} />
                     <Route path="*" element={<LandingPage />} />
                 </Routes>
             ) : (
