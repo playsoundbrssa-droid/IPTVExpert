@@ -105,7 +105,8 @@ const initializeTables = async () => {
 
             // Migração: Adiciona colunas que podem estar faltando em tabelas antigas
             const alterUsers = [
-                'ALTER TABLE users ADD COLUMN IF NOT EXISTS can_download BOOLEAN DEFAULT false'
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS can_download BOOLEAN DEFAULT false',
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_playlist_id TEXT'
             ];
             for (const sql of alterUsers) {
                 await db.query(sql).catch(err => console.log('[DB MIGRATION] Coluna já existe ou erro:', err.message));
@@ -148,6 +149,7 @@ const initializeTables = async () => {
                 await run('ALTER TABLE user_playlists ADD COLUMN channelsCount INTEGER DEFAULT 0').catch(() => {});
                 await run('ALTER TABLE user_playlists ADD COLUMN moviesCount INTEGER DEFAULT 0').catch(() => {});
                 await run('ALTER TABLE user_playlists ADD COLUMN seriesCount INTEGER DEFAULT 0').catch(() => {});
+                await run('ALTER TABLE users ADD COLUMN last_active_playlist_id TEXT').catch(() => {});
 
                 // Migração de UNIQUE(client_id) para UNIQUE(user_id, client_id)
                 // No SQLite, a forma mais segura é recriar a tabela se quisermos mudar a estrutura de UNIQUE

@@ -97,7 +97,7 @@ export const usePlaylistManagerStore = create(
             },
 
             // Load playlists from cloud and merge with local
-            syncWithCloud: async () => {
+            syncWithCloud: async (preferredId = null) => {
                 try {
                     const { data } = await api.get('/user-playlists');
                     if (data && data.playlists) {
@@ -117,15 +117,24 @@ export const usePlaylistManagerStore = create(
                                 }
                             });
                             
-                            let newActiveId = state.activePlaylistId;
+                            let newActiveId = preferredId || state.activePlaylistId;
                             if (mergedPlaylists.length > 0 && !mergedPlaylists.some(p => p.id === newActiveId)) {
                                 newActiveId = mergedPlaylists[0].id;
                             }
                             
-                            return {
+                            const finalState = {
                                 playlists: mergedPlaylists,
                                 activePlaylistId: newActiveId
                             };
+                            
+                            set(finalState);
+
+                            // Trigger refresh if we have an active playlist to load data
+                            if (newActiveId) {
+                                get().refreshActivePlaylist();
+                            }
+
+                            return finalState;
                         });
                         console.log('[SYNC] Playlists sincronizadas.');
                     }

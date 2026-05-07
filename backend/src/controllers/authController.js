@@ -23,6 +23,7 @@ const sanitizeUser = (user) => ({
     avatar: user.avatar,
     isActive: user.isActive,
     canDownload: user.canDownload,
+    lastActivePlaylistId: user.lastActivePlaylistId,
     createdAt: user.createdAt
 });
 

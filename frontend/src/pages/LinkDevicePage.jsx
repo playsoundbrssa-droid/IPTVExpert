@@ -4,9 +4,11 @@ import { FiMonitor, FiCheckCircle, FiAlertCircle, FiLock } from 'react-icons/fi'
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useUserStore } from '../stores/useUserStore';
+import { usePlaylistManagerStore } from '../stores/usePlaylistManagerStore';
 
 export default function LinkDevicePage() {
     const { isAuthenticated } = useUserStore();
+    const { activePlaylistId } = usePlaylistManagerStore();
     const [searchParams] = useSearchParams();
     const code = searchParams.get('code');
     const [loading, setLoading] = useState(false);
@@ -17,6 +19,11 @@ export default function LinkDevicePage() {
         if (!code) return;
         setLoading(true);
         try {
+            // Sincronizar a lista ativa antes de autorizar o login
+            if (activePlaylistId) {
+                await api.post('/user-playlists/active', { playlistId: activePlaylistId }).catch(() => {});
+            }
+
             await api.post('/pair/authorize', { code });
             setSuccess(true);
             toast.success('Dispositivo autorizado com sucesso!');

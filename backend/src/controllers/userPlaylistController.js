@@ -102,6 +102,22 @@ const userPlaylistController = {
             console.error('[UserPlaylist] Erro ao deletar:', error);
             res.status(500).json({ message: 'Erro ao remover playlist.' });
         }
+    },
+
+    // Definir playlist ativa para o usuário
+    setActivePlaylist: async (req, res) => {
+        try {
+            const userId = req.userId;
+            const { playlistId } = req.body;
+            
+            const sql = formatQuery('UPDATE users SET last_active_playlist_id = ? WHERE id = ?');
+            await db.query(sql, [playlistId, userId]);
+            
+            res.json({ success: true });
+        } catch (error) {
+            console.error('[UserPlaylist] Erro ao definir ativa:', error);
+            res.status(500).json({ message: 'Erro ao salvar lista ativa.' });
+        }
     }
 };
 

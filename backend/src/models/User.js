@@ -18,10 +18,11 @@ const User = {
         const res = await db.query(formatQuery(sql), values);
         if (!res.rows[0]) return null;
         
-        // Normaliza isactive -> isActive para compatibilidade Postgres
+        // Normaliza campos para compatibilidade Postgres/SQLite
         const user = res.rows[0];
         if (user.isactive !== undefined) user.isActive = user.isactive;
         if (user.can_download !== undefined) user.canDownload = !!user.can_download;
+        user.lastActivePlaylistId = user.last_active_playlist_id || user.lastactiveplaylistid;
         return user;
     },
 
@@ -32,6 +33,7 @@ const User = {
         const user = res.rows[0];
         if (user.isactive !== undefined) user.isActive = user.isactive;
         if (user.can_download !== undefined) user.canDownload = !!user.can_download;
+        user.lastActivePlaylistId = user.last_active_playlist_id || user.lastactiveplaylistid;
         return user;
     },
 
