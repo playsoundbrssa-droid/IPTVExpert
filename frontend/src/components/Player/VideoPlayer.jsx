@@ -238,8 +238,9 @@ export default function VideoPlayer() {
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({
                 enableWorker: true,
-                liveSyncDurationCount: 4, // Mais estabilidade
-                maxMaxBufferLength: 60,   // 60s de buffer
+                liveSyncDurationCount: 4,
+                backBufferLength: 30, // Limpa buffer assistido
+                maxMaxBufferLength: 60,
                 manifestLoadingMaxRetry: 10,
                 fragLoadingMaxRetry: 10,
                 lowLatencyMode: false,
@@ -480,7 +481,21 @@ export default function VideoPlayer() {
         resumedRef.current = currentStream?.id;
 
         if (videoRef.current) {
-            videoRef.current.currentTime = shouldResume && savedPos ? savedPos : 0;
+            const targetTime = shouldResume && savedPos ? savedPos : 0;
+            
+            // Função para tentar aplicar o tempo de forma persistente
+            const applyTime = () => {
+                if (!videoRef.current) return;
+                try {
+                    videoRef.current.currentTime = targetTime;
+                    console.log(`[Player] Retomando em: ${targetTime}s`);
+                } catch (e) {
+                    // Se falhar (ex: metadata não pronto), tenta novamente em 200ms
+                    setTimeout(applyTime, 200);
+                }
+            };
+
+            applyTime();
             playVideo();
         }
     };
