@@ -163,7 +163,7 @@ export default function VideoPlayer() {
 
         // Se já houver uma promessa de play em curso, aguardamos ela
         if (playPromiseRef.current) {
-            try { await playPromiseRef.current; } catch (e) {}
+            try { await playPromiseRef.current; } catch (e) { }
         }
 
         try {
@@ -249,7 +249,7 @@ export default function VideoPlayer() {
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
             isInitializingRef.current = false;
-            
+
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 if (isVOD && savedTime > 0) {
                     videoRef.current.currentTime = savedTime;
@@ -430,23 +430,23 @@ export default function VideoPlayer() {
     useEffect(() => {
         if (!currentStream || resumedRef.current === currentStream.id) return;
 
-            const checkResume = async () => {
-                let savedPosition = 0;
-                try {
-                    const active = getActivePlaylist();
-                    if (active) {
-                        // Usar params na query para o GET
-                        const response = await api.get('/progress', {
-                            params: {
-                                mediaId: currentStream.id,
-                                playlistId: active.id
-                            }
-                        });
-                        if (response.data?.progress) savedPosition = response.data.progress.last_position;
-                    }
-                } catch (e) { 
-                    console.error('[Player] Erro ao buscar progresso no servidor:', e);
+        const checkResume = async () => {
+            let savedPosition = 0;
+            try {
+                const active = getActivePlaylist();
+                if (active) {
+                    // Usar params na query para o GET
+                    const response = await api.get('/progress', {
+                        params: {
+                            mediaId: currentStream.id,
+                            playlistId: active.id
+                        }
+                    });
+                    if (response.data?.progress) savedPosition = response.data.progress.last_position;
                 }
+            } catch (e) {
+                console.error('[Player] Erro ao buscar progresso no servidor:', e);
+            }
             if (!savedPosition) {
                 const local = parseFloat(localStorage.getItem(progressKey));
                 if (local && local > 0) savedPosition = local;
@@ -615,7 +615,7 @@ export default function VideoPlayer() {
 
     const loadFullEpg = useCallback(async () => {
         if (!currentStream || (currentStream.type !== 'channel' && currentStream.type !== 'live')) return;
-        
+
         const channelId = currentStream.id;
         const now = Date.now();
 
@@ -630,16 +630,16 @@ export default function VideoPlayer() {
             if (!active) return;
 
             let data = [];
-            
+
             // Lógica para Xtream
             if (active.type === 'xtream') {
                 const streamId = channelId.split('_').pop();
                 const { server, username, password } = active.config;
-                
+
                 const response = await api.get('/xtream/short-epg', {
                     params: { server, username, password, stream_id: streamId }
                 });
-                
+
                 if (response.data && response.data.epg_listings) {
                     data = response.data.epg_listings.map(item => {
                         const decode = (str) => {
@@ -653,7 +653,7 @@ export default function VideoPlayer() {
                         };
                     });
                 }
-            } 
+            }
             // Lógica para M3U / XMLTV
             else if (currentStream.epgId && active.epgCacheKey) {
                 const response = await api.get(`/epg/${currentStream.epgId}`, {
@@ -661,11 +661,11 @@ export default function VideoPlayer() {
                 });
                 data = response.data || [];
             }
-            
+
             // Salva no cache antes de atualizar o estado
             epgCache.current[channelId] = { data, timestamp: now };
             setFullEpg(data);
-        } catch (e) { 
+        } catch (e) {
             setFullEpg([]);
         }
     }, [currentStream, getActivePlaylist]);
@@ -729,7 +729,7 @@ export default function VideoPlayer() {
                             playlistId: getActivePlaylist()?.id,
                             currentTime: 0,
                             duration: duration
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
                     playNext();
                 }}
@@ -806,9 +806,8 @@ export default function VideoPlayer() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className={`px-2 py-0.5 font-black text-[8px] md:text-[10px] rounded-full uppercase tracking-widest ${
-                                        currentStream.type === 'channel' ? 'bg-primary text-black' : 'bg-white/20 text-white'
-                                    }`}>
+                                    <span className={`px-2 py-0.5 font-black text-[8px] md:text-[10px] rounded-full uppercase tracking-widest ${currentStream.type === 'channel' ? 'bg-primary text-black' : 'bg-white/20 text-white'
+                                        }`}>
                                         {currentStream.type === 'channel' ? 'Ao Vivo' : currentStream.type === 'series' ? 'Série' : 'Filme'}
                                     </span>
                                     {currentStream.category && <span className="text-[8px] md:text-[10px] text-white/40 font-black uppercase tracking-widest"> • {currentStream.category}</span>}
