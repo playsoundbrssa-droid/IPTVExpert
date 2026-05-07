@@ -611,15 +611,50 @@ export default function VideoPlayer() {
     const [fullEpg, setFullEpg] = useState([]);
 
     const loadFullEpg = useCallback(async () => {
-        if (!currentStream || !currentStream.epgId) return;
-        const active = getActivePlaylist();
-        if (!active || !active.epgCacheKey) return;
+        if (!currentStream) return;
         try {
-            const { data } = await api.get(`/epg/program/${currentStream.epgId}`, {
-                params: { cacheKey: active.epgCacheKey }
-            });
-            setFullEpg(data || []);
-        } catch (e) { }
+            const active = getActivePlaylist();
+            if (!active) return;
+
+            let data = [];
+            
+            // Lógica para Xtream
+            if (active.type === 'xtream' && (currentStream.type === 'channel' || currentStream.type === 'live')) {
+                const streamId = currentStream.id.split('_').pop(); // xtream_live_123 -> 123
+                const { server, username, password } = active.config;
+                
+                const response = await api.get('/xtream/short-epg', {
+                    params: { server, username, password, stream_id: streamId }
+                });
+                
+                if (response.data && response.data.epg_listings) {
+                    data = response.data.epg_listings.map(item => {
+                        // Função interna para decodificar base64 com suporte a UTF-8
+                        const decode = (str) => {
+                            try { return decodeURIComponent(escape(atob(str))); } catch (e) { return str; }
+                        };
+                        return {
+                            title: decode(item.title),
+                            description: item.description ? decode(item.description) : '',
+                            start: item.start,
+                            end: item.end
+                        };
+                    });
+                }
+            } 
+            // Lógica para M3U / XMLTV
+            else if (currentStream.epgId && active.epgCacheKey) {
+                const response = await api.get(`/epg/${currentStream.epgId}`, {
+                    params: { cacheKey: active.epgCacheKey }
+                });
+                data = response.data || [];
+            }
+            
+            setFullEpg(data);
+        } catch (e) { 
+            console.error('[EPG] Falha ao carregar programação:', e);
+            setFullEpg([]);
+        }
     }, [currentStream, getActivePlaylist]);
 
     useEffect(() => {
