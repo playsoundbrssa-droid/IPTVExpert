@@ -634,16 +634,27 @@ export default function VideoPlayer() {
             // Lógica para Xtream
             if (active.type === 'xtream') {
                 const streamId = channelId.split('_').pop();
-                const { server, username, password } = active.config;
+                const server = active.config?.server || active.url;
+                const username = active.config?.username || active.username;
+                const password = active.config?.password || active.password;
+
+                if (!server || !username || !password) return;
 
                 const response = await api.get('/xtream/short-epg', {
                     params: { server, username, password, stream_id: streamId }
                 });
-
+                
                 if (response.data && response.data.epg_listings) {
                     data = response.data.epg_listings.map(item => {
                         const decode = (str) => {
-                            try { return decodeURIComponent(escape(atob(str))); } catch (e) { return str; }
+                            if (!str) return '';
+                            try { 
+                                // Tenta decodificar se parecer base64, senão retorna o original
+                                if (/^[A-Za-z0-9+/=]+$/.test(str) && str.length > 4) {
+                                    return decodeURIComponent(escape(atob(str))); 
+                                }
+                                return str;
+                            } catch (e) { return str; }
                         };
                         return {
                             title: decode(item.title),
@@ -652,6 +663,8 @@ export default function VideoPlayer() {
                             end: item.end
                         };
                     });
+                } else {
+                    console.warn('[EPG] Resposta do servidor não contém epg_listings:', response.data);
                 }
             }
             // Lógica para M3U / XMLTV
