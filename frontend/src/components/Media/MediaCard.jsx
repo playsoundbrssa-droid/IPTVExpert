@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEpgStore } from '../../stores/useEpgStore';
 import { useUserStore } from '../../stores/useUserStore';
 
-export default function MediaCard({ item, type, playlist = [] }) {
+const MediaCard = React.memo(({ item, type, playlist = [] }) => {
     const { addFavorite, removeFavorite, favorites } = usePlaylistStore();
     const { setCurrentStream } = usePlayerStore();
     const { setSelectedMediaDetails } = usePlaylistStore();
@@ -202,4 +202,6 @@ export default function MediaCard({ item, type, playlist = [] }) {
             </div>
         </div>
     );
-}
+});
+
+export default MediaCard;

@@ -14,7 +14,7 @@ export default function LiveTvPage() {
     const { fetchNowPlaying } = useEpgStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [visibleCount, setVisibleCount] = useState(60);
+    const [visibleCount, setVisibleCount] = useState(40);
     const [isSyncing, setIsSyncing] = useState(false);
     const loadMoreRef = useRef(null);
 
@@ -53,7 +53,7 @@ export default function LiveTvPage() {
     useEffect(() => {
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting && visibleCount < filteredChannels.length) {
-                setVisibleCount(prev => prev + 60);
+                setVisibleCount(prev => prev + 40);
             }
         }, { threshold: 0.1 });
 
@@ -132,7 +132,7 @@ export default function LiveTvPage() {
                         value={searchTerm}
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
-                            setVisibleCount(60);
+                            setVisibleCount(40);
                         }}
                         className="glass-input pl-12 w-full py-3"
                     />
@@ -146,7 +146,7 @@ export default function LiveTvPage() {
                 onSelectGroup={(g) => {
                     setSelectedLiveGroup(g);
                     setSearchTerm('');
-                    setVisibleCount(60);
+                    setVisibleCount(40);
                 }}
             />
 

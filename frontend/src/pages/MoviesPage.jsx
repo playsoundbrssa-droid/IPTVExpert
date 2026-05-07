@@ -8,7 +8,7 @@ export default function MoviesPage() {
     const { moviesList, moviesGroups, selectedMovieGroup, setSelectedMovieGroup } = usePlaylistStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [visibleCount, setVisibleCount] = useState(60);
+    const [visibleCount, setVisibleCount] = useState(40);
     const loadMoreRef = useRef(null);
 
     // Prevenção de etiquetas erradas (Séries | em Filmes) vindo do provedor
@@ -54,7 +54,7 @@ export default function MoviesPage() {
     useEffect(() => {
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting && visibleCount < filteredMovies.length) {
-                setVisibleCount(prev => prev + 60);
+                setVisibleCount(prev => prev + 40);
             }
         }, { threshold: 0.1 });
 
@@ -93,7 +93,7 @@ export default function MoviesPage() {
                         value={searchTerm}
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
-                            setVisibleCount(60);
+                            setVisibleCount(40);
                         }}
                         className="glass-input pl-12 w-full py-3"
                     />
@@ -111,7 +111,7 @@ export default function MoviesPage() {
 
                     setSelectedMovieGroup(originalGroup);
                     setSearchTerm('');
-                    setVisibleCount(60);
+                    setVisibleCount(40);
                 }} 
             />
 

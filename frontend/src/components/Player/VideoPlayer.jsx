@@ -75,6 +75,7 @@ export default function VideoPlayer() {
     }, []);
 
     const isApple = useMemo(() => /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document, []);
+    const isTV = useMemo(() => /SmartTV|Tizen|WebOS|NetCast|LG|Samsung|Hisense|Vidaa|SonyTV|BRAVIA|PlayStation|Xbox|Roku|Viera|AppleTV|Android TV|Leanback/i.test(navigator.userAgent), []);
 
     const getStreamUrl = useCallback(() => {
         if (!currentStream) return '';
@@ -237,12 +238,14 @@ export default function VideoPlayer() {
             playVideo();
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({
+                maxBufferLength: isTV ? 15 : 30, // Buffer menor em TVs para economizar RAM
+                maxMaxBufferLength: isTV ? 30 : 60,
+                startLevel: -1,
                 enableWorker: true,
-                liveSyncDurationCount: 4,
-                backBufferLength: 30, // Limpa buffer assistido
-                maxMaxBufferLength: 60,
-                manifestLoadingMaxRetry: 10,
-                fragLoadingMaxRetry: 10,
+                backBufferLength: isTV ? 10 : 30,
+                liveSyncDurationCount: isTV ? 5 : 4, // Mais estabilidade em TVs
+                manifestLoadingMaxRetry: 15,
+                fragLoadingMaxRetry: 15,
                 lowLatencyMode: false,
                 xhrSetup: (xhr) => { xhr.withCredentials = false; }
             });
@@ -283,11 +286,11 @@ export default function VideoPlayer() {
                     enableWorker: true,
                     enableStallDetached: true,
                     fixAudioTimestampGap: true,
-                    stashInitialSize: 1024, // 1MB de buffer inicial para máxima estabilidade
+                    stashInitialSize: isTV ? 512 : 1024, // Menos buffer inicial em TVs para evitar lag
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
                     liveBufferLatencyChasing: true,
-                    liveBufferLatencyMaxLatency: 15, // Mais folga para evitar pausas constantes
+                    liveBufferLatencyMaxLatency: isTV ? 20 : 15, // Mais folga em TVs
                     liveBufferLatencyMinRemain: 2,
                     deferLoadAfterSourceOpen: false
                 });

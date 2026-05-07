@@ -284,9 +284,45 @@ button, a { touch-action: manipulation; }
     animation: skeleton-loading 1.5s infinite linear;
 }
 
-/* GPU Acceleration for smooth animations */
 .gpu-smooth {
     transform: translateZ(0);
     backface-visibility: hidden;
     perspective: 1000px;
+}
+
+/* ─── SMART TV & MOBILE OPTIMIZATIONS ─── */
+@media (max-width: 1024px), (pointer: coarse) {
+    /* Desativa efeitos de desfoque caros para ganhar fluidez em TVs/Celulares */
+    .glass-panel, .glass-input, .backdrop-blur-xl, .backdrop-blur-md, [class*="backdrop-blur"] {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background-color: rgba(15, 15, 18, 0.98) !important;
+    }
+    
+    /* Aumenta áreas de toque para facilitar a navegação */
+    button, a, .clickable {
+        min-height: 44px;
+        min-width: 44px;
+        touch-action: manipulation;
+    }
+}
+
+/* Força aceleração por hardware em listas longas */
+.media-grid, .sidebar-scroll, .content-scroll {
+    transform: translateZ(0);
+    will-change: transform;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Proteção contra Overscan em TVs (evita que o conteúdo encoste na borda) */
+.tv-safe-padding {
+    padding: env(safe-area-inset-top, 20px) env(safe-area-inset-right, 40px) env(safe-area-inset-bottom, 20px) env(safe-area-inset-left, 40px);
+}
+
+/* Desativa animações pesadas em Smart TVs para evitar lag */
+@media (max-width: 1280px) {
+    .neon-bg-container::before {
+        animation: none; /* Desativa movimento do fundo neon */
+        opacity: 0.5;
+    }
 }
