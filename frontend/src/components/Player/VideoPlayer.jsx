@@ -245,7 +245,7 @@ export default function VideoPlayer() {
                 startLevel: -1,
                 enableWorker: true,
                 backBufferLength: isTV ? 10 : 30,
-                liveSyncDurationCount: isTV ? 5 : 4, // Mais estabilidade em TVs
+                liveSyncDurationCount: isTV ? 5 : 6, // Maior folga em mobile (6 fragmentos) para evitar travamentos no início
                 manifestLoadingMaxRetry: 15,
                 fragLoadingMaxRetry: 15,
                 lowLatencyMode: false,
@@ -291,8 +291,8 @@ export default function VideoPlayer() {
                     stashInitialSize: isTV ? 512 : 1024, // Menos buffer inicial em TVs para evitar lag
                     autoCleanupSourceBuffer: true,
                     lazyLoad: false,
-                    liveBufferLatencyChasing: true,
-                    liveBufferLatencyMaxLatency: isTV ? 20 : 15, // Mais folga em TVs
+                    liveBufferLatencyChasing: isTV, // Desativa no mobile para evitar saltos (freezes) constantes por causa de ping alto
+                    liveBufferLatencyMaxLatency: isTV ? 20 : 30, // Mais folga em mobile
                     liveBufferLatencyMinRemain: 2,
                     deferLoadAfterSourceOpen: false
                 });
@@ -900,10 +900,12 @@ export default function VideoPlayer() {
                                 </button>
                                 <button onClick={playNext} className="p-3 md:p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-2xl md:rounded-[1.5rem]"><FiSkipForward size={20} /></button>
 
-                                <div className="hidden md:flex items-center gap-3 ml-4">
-                                    <button onClick={() => { videoRef.current.currentTime -= 10 }} className="p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-[1.5rem]"><FiRotateCcw size={20} /></button>
-                                    <button onClick={() => { videoRef.current.currentTime += 10 }} className="p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-[1.5rem]"><FiRotateCw size={20} /></button>
-                                </div>
+                                {isVOD && (
+                                    <div className="flex items-center gap-2 md:gap-3 ml-2 md:ml-4">
+                                        <button onClick={() => { videoRef.current.currentTime -= 10 }} className="p-3 md:p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-2xl md:rounded-[1.5rem]"><FiRotateCcw size={18} className="md:w-5 md:h-5" /></button>
+                                        <button onClick={() => { videoRef.current.currentTime += 10 }} className="p-3 md:p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-2xl md:rounded-[1.5rem]"><FiRotateCw size={18} className="md:w-5 md:h-5" /></button>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-center">
