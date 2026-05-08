@@ -188,10 +188,12 @@ export default function VideoPlayer() {
                 } catch (err) {
                     playPromiseRef.current = null;
                     console.error('Playback failed completely:', err);
-                    // No mobile, se falhar tudo, mantemos isPlaying como true 
-                    // para mostrar o overlay de "Toque para Iniciar"
+                    // Se falhar tudo (ex: bloqueio total de autoplay no iOS/Safari),
+                    // mudamos o estado para false para que o usuário veja o botão de Play e possa iniciar.
                     if (videoRef.current.paused && isPlaying) {
-                        // Não fazemos nada, o UI vai mostrar o botão de play
+                        setIsPlaying(false);
+                        // Remover ou diminuir a opacidade do buffer se estiver travado
+                        setIsBuffering(false);
                     }
                 }
             }
@@ -544,10 +546,11 @@ export default function VideoPlayer() {
             if (isPlaying && !isBuffering && video.buffered.length > 0) {
                 const lastBuffered = video.buffered.end(video.buffered.length - 1);
                 const gap = lastBuffered - video.currentTime;
-                // Se o gap for muito grande (> 10s), pula para o fim do buffer
-                if (gap > 10 && currentStream.type === 'channel') {
-                    console.warn('[Player] AV Sync gap too large, jumping to live edge...');
-                    video.currentTime = lastBuffered - 1;
+                // Apenas intervir se o atraso for extremo (> 60s), comum após o app ficar em segundo plano
+                // Deixar folga de 15s para evitar esgotamento de buffer em redes móveis
+                if (gap > 60 && currentStream.type === 'channel') {
+                    console.warn('[Player] AV Sync gap too large, jumping to safe live edge...');
+                    video.currentTime = lastBuffered - 15;
                 }
             }
         }
