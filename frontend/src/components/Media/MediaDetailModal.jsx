@@ -209,7 +209,8 @@ export default function MediaDetailModal() {
 
     const handlePlay = (episode = null) => {
         const itemToPlay = episode || selectedMediaDetails;
-        setCurrentStream(itemToPlay, []);
+        const playlist = selectedMediaDetails.type === 'series' && episodesBySeason ? (episodesBySeason[selectedSeason] || []) : [];
+        setCurrentStream(itemToPlay, playlist);
     };
 
     const toggleFavorite = () => {

@@ -405,20 +405,35 @@ export default function VideoPlayer() {
 
     useEffect(() => {
         const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
+            setIsFullscreen(!!document.fullscreenElement || !!document.webkitFullscreenElement);
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        };
     }, []);
 
     const toggleFullscreen = () => {
-        if (!document.fullscreenElement) {
-            containerRef.current?.requestFullscreen().catch(err => {
-                console.error(`Error attempting to enable fullscreen: ${err.message}`);
-            });
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            if (containerRef.current?.requestFullscreen) {
+                containerRef.current.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                    if (videoRef.current?.webkitEnterFullscreen) {
+                        videoRef.current.webkitEnterFullscreen();
+                    }
+                });
+            } else if (videoRef.current?.webkitEnterFullscreen) {
+                videoRef.current.webkitEnterFullscreen();
+            } else if (containerRef.current?.webkitRequestFullscreen) {
+                containerRef.current.webkitRequestFullscreen();
+            }
         } else {
             if (document.exitFullscreen) {
                 document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
             }
         }
     };
@@ -623,9 +638,14 @@ export default function VideoPlayer() {
         setError(null);
     }, [currentStream]);
 
-    // Watchdog: Se ficar buffereando por mais de 12s, tenta próxima variação
+    // Watchdog: Se ficar buffereando por mais de 15s, tenta próxima variação (Apenas Live ou VOD no início)
     useEffect(() => {
         if (!isBuffering || error || !currentStream) return;
+        
+        const isStarted = videoRef.current && videoRef.current.currentTime > 2;
+        // Não resetar VOD que já começou a tocar só porque a internet do usuário oscilou
+        if (isVOD && isStarted) return;
+
         const timer = setTimeout(() => {
             if (isBuffering && !error) {
                 console.warn(`[Player] Buffer timeout na variação ${streamFormatFallback}, tentando próxima...`);
@@ -635,9 +655,9 @@ export default function VideoPlayer() {
                     setStreamFormatFallback(prev => prev + 1);
                 }
             }
-        }, 12000);
+        }, 15000);
         return () => clearTimeout(timer);
-    }, [isBuffering, error, streamFormatFallback, useProxy, currentStream]);
+    }, [isBuffering, error, streamFormatFallback, useProxy, currentStream, isVOD]);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -977,11 +997,35 @@ export default function VideoPlayer() {
                 <div className="absolute inset-0 bg-transparent z-[100] flex justify-end animate-fade-in pointer-events-auto" onClick={() => setShowSchedule(false)}>
                     <div className="w-full max-w-md h-full bg-black/40 backdrop-blur-2xl border-l border-white/5 shadow-2xl flex flex-col animate-slide-left" onClick={e => e.stopPropagation()}>
                         <div className="p-8 border-b border-white/10 flex items-center justify-between">
-                            <div><h3 className="text-xl font-black text-white uppercase tracking-tight">Programação</h3><p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">{currentStream.name}</p></div>
+                            <div>
+                                <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                                    {isVOD && streamPlaylist?.length > 0 ? 'Episódios' : 'Programação'}
+                                </h3>
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">{currentStream.name}</p>
+                            </div>
                             <button onClick={() => setShowSchedule(false)} className="p-3 bg-white/5 hover:bg-red-600/20 hover:text-red-500 rounded-2xl transition-all"><FiX size={24} /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            {fullEpg.length > 0 ? fullEpg.map((prog, idx) => {
+                            {isVOD && streamPlaylist?.length > 0 ? (
+                                streamPlaylist.map((ep, idx) => {
+                                    const isCurrent = ep.id === currentStream.id;
+                                    return (
+                                        <div 
+                                            key={ep.id || idx} 
+                                            onClick={() => setCurrentStream(ep, streamPlaylist)}
+                                            className={`p-5 rounded-2xl border transition-all cursor-pointer hover:border-primary/50 hover:bg-white/10 ${isCurrent ? 'bg-primary/20 border-primary/30' : 'bg-white/5 border-white/5'}`}
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${isCurrent ? 'bg-primary text-black' : 'bg-white/10 text-white'}`}>
+                                                    {ep.order ? `EP ${ep.order}` : `EP ${idx + 1}`}
+                                                </span>
+                                                {isCurrent && <span className="text-[9px] font-black text-primary uppercase tracking-widest animate-pulse">Assistindo</span>}
+                                            </div>
+                                            <h4 className="font-black text-white uppercase mb-1">{ep.name}</h4>
+                                        </div>
+                                    );
+                                })
+                            ) : fullEpg.length > 0 ? fullEpg.map((prog, idx) => {
                                 const parseDate = (d) => { 
                                     if (!d) return null; 
                                     const str = String(d);
@@ -1011,7 +1055,7 @@ export default function VideoPlayer() {
                                     </div>
                                 );
                             }) : (
-                                <div className="h-full flex flex-col items-center justify-center text-center px-10"><FiClock size={48} className="text-white/10 mb-6" /><p className="text-xs font-black uppercase tracking-widest text-white/40">Nenhuma programação disponível</p></div>
+                                <div className="h-full flex flex-col items-center justify-center text-center px-10"><FiClock size={48} className="text-white/10 mb-6" /><p className="text-xs font-black uppercase tracking-widest text-white/40">{isVOD ? 'Nenhum episódio listado' : 'Nenhuma programação disponível'}</p></div>
                             )}
                         </div>
                     </div>
