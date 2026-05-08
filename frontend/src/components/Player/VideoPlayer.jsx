@@ -238,7 +238,13 @@ export default function VideoPlayer() {
 
         if (isHls && (isApple || videoRef.current.canPlayType('application/vnd.apple.mpegurl'))) {
             videoRef.current.src = streamUrl;
-            playVideo();
+            isInitializingRef.current = false;
+            const onLoadedMetadata = () => {
+                playVideo();
+                videoRef.current?.removeEventListener('loadedmetadata', onLoadedMetadata);
+            };
+            videoRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
+            videoRef.current.load();
         } else if (isHls && Hls.isSupported()) {
             const hls = new Hls({
                 maxBufferLength: isTV ? 15 : 30, // Buffer menor em TVs para economizar RAM
@@ -328,9 +334,19 @@ export default function VideoPlayer() {
                     }
                 });
             } catch (err) { setError("O formato TS não é suportado neste dispositivo."); }
-        } else if (videoRef.current.canPlayType('video/mp4') || videoRef.current.canPlayType('video/mp2t')) {
+        } else if (videoRef.current.canPlayType('video/mp4') || videoRef.current.canPlayType('video/mp2t') || videoRef.current.canPlayType('video/webm')) {
             videoRef.current.src = streamUrl;
             isInitializingRef.current = false;
+            const onLoadedMetadata = () => {
+                playVideo();
+                videoRef.current?.removeEventListener('loadedmetadata', onLoadedMetadata);
+            };
+            videoRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
+            videoRef.current.load();
+        } else {
+            videoRef.current.src = streamUrl;
+            isInitializingRef.current = false;
+            playVideo();
         }
     }, [currentStream, getStreamUrl, cleanUp, useProxy, getActivePlaylist, streamFormatFallback]);
 
