@@ -55,6 +55,7 @@ export default function VideoPlayer() {
     const [isPiP, setIsPiP] = useState(false); // Custom PiP
     const [isNativePiP, setIsNativePiP] = useState(false); // Browser PiP
     const [isDragging, setIsDragging] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [pipPosition, setPipPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 200 });
     const pipDragRef = useRef({ dragging: false, startX: 0, startY: 0, initX: 0, initY: 0 });
 
@@ -400,6 +401,26 @@ export default function VideoPlayer() {
             initX: pipPosition.x,
             initY: pipPosition.y
         };
+    };
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            containerRef.current?.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
     };
 
     useEffect(() => {
@@ -918,7 +939,9 @@ export default function VideoPlayer() {
                                     <button onClick={() => addFavorite(currentStream)} className={`p-4 rounded-[1.5rem] transition-all border ${isFavorite ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/5 text-white/40 hover:text-white'}`}><FiHeart size={20} fill={isFavorite ? 'currentColor' : 'none'} /></button>
                                     <button onClick={togglePiP} className="p-4 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-[1.5rem] transition-all border border-white/5"><FiMonitor size={20} /></button>
                                     <button onClick={() => setShowSchedule(true)} className="p-4 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-[1.5rem] transition-all border border-white/5"><FiClock size={20} /></button>
-                                    <button onClick={() => containerRef.current.requestFullscreen()} className="p-4 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-[1.5rem] transition-all border border-white/5"><FiMaximize size={20} /></button>
+                                    <button onClick={toggleFullscreen} className="p-4 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-[1.5rem] transition-all border border-white/5">
+                                        {isFullscreen ? <FiMinimize2 size={20} /> : <FiMaximize size={20} />}
+                                    </button>
                                 </div>
                             </div>
                         </div>
