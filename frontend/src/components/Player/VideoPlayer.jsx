@@ -932,20 +932,38 @@ export default function VideoPlayer() {
             )}
 
             {showSchedule && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-[100] flex justify-end animate-fade-in" onClick={() => setShowSchedule(false)}>
-                    <div className="w-full max-w-md h-full bg-surface/95 border-l border-white/10 shadow-2xl flex flex-col animate-slide-left" onClick={e => e.stopPropagation()}>
+                <div className="absolute inset-0 bg-transparent z-[100] flex justify-end animate-fade-in pointer-events-auto" onClick={() => setShowSchedule(false)}>
+                    <div className="w-full max-w-md h-full bg-black/40 backdrop-blur-2xl border-l border-white/5 shadow-2xl flex flex-col animate-slide-left" onClick={e => e.stopPropagation()}>
                         <div className="p-8 border-b border-white/10 flex items-center justify-between">
                             <div><h3 className="text-xl font-black text-white uppercase tracking-tight">Programação</h3><p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">{currentStream.name}</p></div>
                             <button onClick={() => setShowSchedule(false)} className="p-3 bg-white/5 hover:bg-red-600/20 hover:text-red-500 rounded-2xl transition-all"><FiX size={24} /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
                             {fullEpg.length > 0 ? fullEpg.map((prog, idx) => {
-                                const parseDate = (d) => { if (!d) return null; const clean = d.split(' ')[0]; const y = clean.substring(0, 4), m = clean.substring(4, 6), day = clean.substring(6, 8), h = clean.substring(8, 10), min = clean.substring(10, 12); return new Date(`${y}-${m}-${day}T${h}:${min}:00`); };
-                                const start = parseDate(prog.start), stop = parseDate(prog.stop), now = new Date();
+                                const parseDate = (d) => { 
+                                    if (!d) return null; 
+                                    const str = String(d);
+                                    if (!isNaN(str) || /^\d{10,13}$/.test(str)) {
+                                        let ts = parseInt(str, 10);
+                                        if (ts < 10000000000) ts *= 1000;
+                                        return new Date(ts);
+                                    }
+                                    if (str.includes('-') && str.includes(':')) {
+                                        return new Date(str.replace(' ', 'T'));
+                                    }
+                                    const clean = str.split(' ')[0]; 
+                                    if (clean.length >= 12) {
+                                        const y = clean.substring(0, 4), m = clean.substring(4, 6), day = clean.substring(6, 8), h = clean.substring(8, 10), min = clean.substring(10, 12); 
+                                        return new Date(`${y}-${m}-${day}T${h}:${min}:00`); 
+                                    }
+                                    return new Date(str);
+                                };
+                                const start = parseDate(prog.start), stop = parseDate(prog.stop || prog.end), now = new Date();
                                 const isCurrent = start && stop && now >= start && now <= stop;
+                                const timeStr = start && !isNaN(start.getTime()) ? start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
                                 return (
                                     <div key={idx} className={`p-5 rounded-2xl border transition-all ${isCurrent ? 'bg-primary/20 border-primary/30' : 'bg-white/5 border-white/5'}`}>
-                                        <div className="flex items-center gap-3 mb-2"><span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${isCurrent ? 'bg-primary' : 'bg-white/10'}`}>{start?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>{isCurrent && <span className="text-[9px] font-black text-primary uppercase tracking-widest animate-pulse">No Ar</span>}</div>
+                                        <div className="flex items-center gap-3 mb-2"><span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${isCurrent ? 'bg-primary text-black' : 'bg-white/10 text-white'}`}>{timeStr}</span>{isCurrent && <span className="text-[9px] font-black text-primary uppercase tracking-widest animate-pulse">No Ar</span>}</div>
                                         <h4 className="font-black text-white uppercase mb-1">{prog.title}</h4>
                                         {prog.desc && <p className="text-[11px] text-gray-400 font-medium line-clamp-2">{prog.desc}</p>}
                                     </div>
