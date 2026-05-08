@@ -811,14 +811,31 @@ export default function VideoPlayer() {
             )}
 
             {isBuffering && !error && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-50">
-                    <div className="relative">
-                        <FiRefreshCw className="w-12 h-12 text-primary animate-spin" />
-                        <div className="absolute inset-0 bg-primary/20 blur-xl animate-pulse rounded-full"></div>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
+                    <div className="bg-black/80 p-4 md:p-6 rounded-[2rem] backdrop-blur-xl border border-white/10 flex flex-col md:flex-row items-center gap-4 md:gap-6 shadow-2xl pointer-events-auto">
+                        <div className="relative flex-shrink-0">
+                            <FiRefreshCw className="w-8 h-8 md:w-10 md:h-10 text-primary animate-spin" />
+                            <div className="absolute inset-0 bg-primary/20 blur-xl animate-pulse rounded-full"></div>
+                        </div>
+                        <div className="flex flex-col items-center md:items-start text-center md:text-left gap-1">
+                            <p className="text-[10px] md:text-xs font-black text-white uppercase tracking-[0.2em] animate-pulse">
+                                {streamFormatFallback > 0 ? `Otimizando Sinal (${streamFormatFallback}/10)...` : 'Carregando Sinal...'}
+                            </p>
+                            {streamFormatFallback > 0 && (
+                                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">
+                                    Buscando melhor rota de vídeo
+                                </p>
+                            )}
+                        </div>
+                        {streamFormatFallback > 0 && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setCurrentStream(null); }}
+                                className="mt-2 md:mt-0 px-5 py-2.5 bg-white/5 hover:bg-red-600/80 text-white rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-white/5"
+                            >
+                                Sair
+                            </button>
+                        )}
                     </div>
-                    <p className="mt-4 text-[10px] font-black text-white uppercase tracking-[0.2em] animate-pulse">
-                        {streamFormatFallback > 0 ? `Otimizando Sinal (Tentativa ${streamFormatFallback}/10)...` : 'Carregando Sinal HD...'}
-                    </p>
                 </div>
             )}
 
