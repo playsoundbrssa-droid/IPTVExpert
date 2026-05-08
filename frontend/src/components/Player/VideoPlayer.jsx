@@ -907,7 +907,7 @@ export default function VideoPlayer() {
 
             {!isPiP && !isNativePiP && (
                 <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/60 transition-opacity duration-500 z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                    <div className="absolute top-0 left-0 p-4 md:p-8 pt-[calc(env(safe-area-inset-top,0px)+1rem)] transition-transform duration-300">
+                    <div onClick={(e) => e.stopPropagation()} className="absolute top-0 left-0 p-4 md:p-8 pt-[calc(env(safe-area-inset-top,0px)+1rem)] transition-transform duration-300">
                         <div className="flex items-center gap-4 md:gap-6">
                             <div className="w-12 h-12 md:w-16 md:h-16 bg-white/5 backdrop-blur-md rounded-2xl md:rounded-[1.5rem] border border-white/10 overflow-hidden shadow-2xl group-hover:scale-110 transition-transform">
                                 <img src={getProxyImageUrl(currentStream.logo)} alt="" className="w-full h-full object-contain p-2" onError={(e) => e.target.src = '/placeholder.png'} />
@@ -945,7 +945,7 @@ export default function VideoPlayer() {
                         </button>
                     </div>
 
-                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-10 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
+                    <div onClick={(e) => e.stopPropagation()} className="absolute bottom-0 left-0 right-0 p-4 md:p-10 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
                         {(currentStream.type !== 'channel') && (
                             <div className="mb-6 md:mb-8 group/progress">
                                 <div className="flex justify-between text-[10px] md:text-xs font-black text-white/40 mb-3 uppercase tracking-widest">
@@ -968,11 +968,11 @@ export default function VideoPlayer() {
 
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
                             <div className="flex items-center gap-3 md:gap-6">
-                                <button onClick={playPrev} className="p-3 md:p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-2xl md:rounded-[1.5rem]"><FiSkipBack size={20} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-16 h-16 md:w-20 md:h-20 bg-primary hover:scale-110 active:scale-95 text-black rounded-3xl md:rounded-[2rem] flex items-center justify-center transition-all shadow-2xl shadow-primary/20">
+                                <button onClick={() => playPrev()} className="p-3 md:p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-2xl md:rounded-[1.5rem]"><FiSkipBack size={20} /></button>
+                                <button onClick={() => togglePlay()} className="w-16 h-16 md:w-20 md:h-20 bg-primary hover:scale-110 active:scale-95 text-black rounded-3xl md:rounded-[2rem] flex items-center justify-center transition-all shadow-2xl shadow-primary/20">
                                     {isPlaying ? <FiPause size={32} /> : <FiPlay size={32} className="ml-1" />}
                                 </button>
-                                <button onClick={playNext} className="p-3 md:p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-2xl md:rounded-[1.5rem]"><FiSkipForward size={20} /></button>
+                                <button onClick={() => playNext()} className="p-3 md:p-4 text-white/40 hover:text-white transition-colors bg-white/5 rounded-2xl md:rounded-[1.5rem]"><FiSkipForward size={20} /></button>
 
                                 {isVOD && (
                                     <div className="flex items-center gap-2 md:gap-3 ml-2 md:ml-4">
