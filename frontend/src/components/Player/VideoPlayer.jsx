@@ -26,7 +26,7 @@ export default function VideoPlayer() {
     const playPromiseRef = useRef(null);
     const isInitializingRef = useRef(false);
 
-    const { currentStream, setCurrentStream, streamPlaylist, isPlaying, togglePlay, setIsPlaying, playNext, playPrev } = usePlayerStore();
+    const { currentStream, setCurrentStream, playlist: streamPlaylist, isPlaying, togglePlay, setIsPlaying, playNext, playPrev } = usePlayerStore();
     const { favorites, addFavorite, removeFavorite } = usePlaylistStore();
     const { nowPlaying } = useEpgStore();
     const { getActivePlaylist } = usePlaylistManagerStore();
