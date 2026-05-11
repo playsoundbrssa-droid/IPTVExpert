@@ -40,7 +40,8 @@ const initializeTables = async () => {
             role TEXT DEFAULT 'user',
             isActive BOOLEAN DEFAULT true,
             can_download BOOLEAN DEFAULT false,
-            createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
     `;
 
@@ -106,7 +107,8 @@ const initializeTables = async () => {
             // Migração: Adiciona colunas que podem estar faltando em tabelas antigas
             const alterUsers = [
                 'ALTER TABLE users ADD COLUMN IF NOT EXISTS can_download BOOLEAN DEFAULT false',
-                'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_playlist_id TEXT'
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_playlist_id TEXT',
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP'
             ];
             for (const sql of alterUsers) {
                 await db.query(sql).catch(err => console.log('[DB MIGRATION] Coluna já existe ou erro:', err.message));
@@ -150,6 +152,8 @@ const initializeTables = async () => {
                 await run('ALTER TABLE user_playlists ADD COLUMN moviesCount INTEGER DEFAULT 0').catch(() => {});
                 await run('ALTER TABLE user_playlists ADD COLUMN seriesCount INTEGER DEFAULT 0').catch(() => {});
                 await run('ALTER TABLE users ADD COLUMN last_active_playlist_id TEXT').catch(() => {});
+                await run('ALTER TABLE users ADD COLUMN can_download INTEGER DEFAULT 0').catch(() => {});
+                await run('ALTER TABLE users ADD COLUMN updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP').catch(() => {});
 
                 // Migração de UNIQUE(client_id) para UNIQUE(user_id, client_id)
                 // No SQLite, a forma mais segura é recriar a tabela se quisermos mudar a estrutura de UNIQUE
