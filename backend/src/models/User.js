@@ -8,19 +8,6 @@ const formatQuery = (text) => {
 };
 
 const User = {
-    normalize: (user) => {
-        if (!user) return null;
-        const normalized = { ...user };
-        // Normaliza campos para compatibilidade Postgres/SQLite
-        if (user.isactive !== undefined) normalized.isActive = !!user.isactive;
-        if (user.can_download !== undefined) {
-            normalized.can_download = !!user.can_download;
-            normalized.canDownload = !!user.can_download;
-        }
-        normalized.lastActivePlaylistId = user.last_active_playlist_id || user.lastactiveplaylistid;
-        return normalized;
-    },
-
     findOne: async (criteria) => {
         let sql = 'SELECT * FROM users WHERE ';
         const keys = Object.keys(criteria.where);
@@ -29,12 +16,25 @@ const User = {
         sql += keys.map(k => `${k} = ?`).join(' AND ');
         
         const res = await db.query(formatQuery(sql), values);
-        return User.normalize(res.rows[0]);
+        if (!res.rows[0]) return null;
+        
+        // Normaliza campos para compatibilidade Postgres/SQLite
+        const user = res.rows[0];
+        if (user.isactive !== undefined) user.isActive = user.isactive;
+        if (user.can_download !== undefined) user.canDownload = !!user.can_download;
+        user.lastActivePlaylistId = user.last_active_playlist_id || user.lastactiveplaylistid;
+        return user;
     },
 
     findByPk: async (id) => {
         const res = await db.query(formatQuery('SELECT * FROM users WHERE id = ?'), [id]);
-        return User.normalize(res.rows[0]);
+        if (!res.rows[0]) return null;
+        
+        const user = res.rows[0];
+        if (user.isactive !== undefined) user.isActive = user.isactive;
+        if (user.can_download !== undefined) user.canDownload = !!user.can_download;
+        user.lastActivePlaylistId = user.last_active_playlist_id || user.lastactiveplaylistid;
+        return user;
     },
 
     create: async (data) => {
@@ -48,11 +48,13 @@ const User = {
         if (!db.isPostgres) {
             sql = `INSERT INTO users (${keys.join(', ')}) VALUES (${placeholders})`;
             const res = await db.query(sql, values);
-            return User.normalize({ id: res.lastInsertId, isActive: 1, ...data });
+            return { id: res.lastInsertId, isActive: 1, ...data };
         }
 
         const res = await db.query(formatQuery(sql), values);
-        return User.normalize(res.rows[0]);
+        const user = res.rows[0];
+        if (user.isactive !== undefined) user.isActive = user.isactive;
+        return user;
     },
 
     update: async (data, criteria) => {
@@ -82,7 +84,7 @@ const User = {
         }
 
         const res = await db.query(formatQuery(sql), params);
-        return (res.rows || res).map(row => User.normalize(row));
+        return res.rows;
     },
 
     destroy: async (criteria) => {
